@@ -1,0 +1,60 @@
+classDiagram
+    direction LR
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Lottery
+    %% Boundary: root + LotteryWinner
+    %% One per Event with LOTTERY sales method
+    %% ══════════════════════════════════════════
+
+    class Lottery {
+        <<Aggregate Root>>
+        -LotteryId lotteryId
+        -EventId eventId
+        -LotteryStatus status
+        -Set~MemberId~ registrations
+        -Set~LotteryWinner~ winners
+        -Instant drawTimestamp
+        +register(memberId: MemberId) void
+        +close() void
+        +draw(winnerCount: int) void
+        +validateCode(code: String) MemberId
+    }
+
+    class LotteryWinner {
+        <<Entity>>
+        -MemberId memberId
+        -String permissionCode
+        -Instant codeExpiry
+    }
+
+    class LotteryStatus {
+        <<enumeration>>
+        REGISTRATION_OPEN
+        CLOSED
+        DRAWN
+    }
+
+    %% Repository
+    class LotteryRepository {
+        <<Repository>>
+        +findByEventId(EventId) Lottery
+        +save(Lottery) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition within aggregate boundary
+    Lottery "1" *-- "0..*" LotteryWinner : winners 
+
+    %% Enum usage
+    Lottery --> LotteryStatus : status
+
+    %% Cross-aggregate associations (ORM-managed)
+    Lottery "1" --> "1" Event : event
+    Lottery "*" --> "*" Member : registrations
+
+    %% Repository → Aggregate Root
+    LotteryRepository ..> Lottery : manages persistence

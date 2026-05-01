@@ -1,0 +1,72 @@
+classDiagram
+    direction TB
+
+    %% ══════════════════════════════════════════
+    %% STRATEGY PATTERN: Policies
+    %% Pluggable, composable policy rules
+    %% Required by CC7 and V0 genericity note
+    %% ══════════════════════════════════════════
+
+    class PurchasePolicy {
+        <<interface>>
+        +evaluate(order: ActiveOrder, buyer: BuyerReference) PolicyResult
+    }
+
+    class CompositePurchasePolicy {
+        -List~PurchasePolicy~ rules
+        -CompositionMode mode
+        +evaluate(order: ActiveOrder, buyer: BuyerReference) PolicyResult
+    }
+
+    class PurchasePolicyChain {
+        -List~PurchasePolicy~ chain
+        +evaluate(order: ActiveOrder, buyer: BuyerReference) PolicyResult
+    }
+
+    class DiscountPolicy {
+        <<interface>>
+        +apply(order: ActiveOrder, rules: List~DiscountRule~) DiscountResult
+    }
+
+    class CompositeDiscountPolicy {
+        -List~DiscountRule~ rules
+        -DiscountCompositionMode mode
+        +apply(order: ActiveOrder, rules: List~DiscountRule~) DiscountResult
+    }
+
+    class DiscountRule {
+        <<interface>>
+        +isApplicable(item: OrderItem, now: Instant) boolean
+        +calculateDiscount(item: OrderItem) Money
+    }
+
+    class PolicyResult {
+        <<Value Object>>
+        -boolean approved
+        -String rejectionReason
+    }
+
+    class DiscountResult {
+        <<Value Object>>
+        -Money totalDiscount
+        -List~DiscountSnapshot~ appliedDiscounts
+    }
+
+    class CompositionMode {
+        <<enumeration>>
+        ALL_MUST_PASS
+        ANY_MUST_PASS
+    }
+
+    class DiscountCompositionMode {
+        <<enum>>
+        BEST_SINGLE
+        STACKABLE
+        EXCLUSIVE
+    }
+
+    CompositePurchasePolicy "1" o-- "*" PurchasePolicy : rules
+    PurchasePolicyChain "1" o-- "*" PurchasePolicy : chain
+    CompositeDiscountPolicy "1" o-- "*" DiscountRule : rules
+    CompositePurchasePolicy "1" --> "1" CompositionMode : mode
+    CompositeDiscountPolicy "1" --> "1" DiscountCompositionMode : mode

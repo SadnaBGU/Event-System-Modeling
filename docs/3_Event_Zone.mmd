@@ -1,0 +1,163 @@
+classDiagram
+    direction TB
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Event
+    %% Boundary: Event root + VenueMap + MapElement
+    %% Zone is a SEPARATE aggregate (concurrency)
+    %% ══════════════════════════════════════════
+
+    class Event {
+        <<Aggregate Root>>
+        -EventId eventId
+        -CompanyId companyId
+        -EventDetails eventDetails
+        -EventStatus status
+        -VenueMap venueMap
+        -List~ZoneId~ zoneIds
+        -PurchasePolicy purchasePolicy
+        -DiscountPolicy discountPolicy
+        -SalesMethod salesMethod
+        +updateDetails(details: EventDetails) void
+        +addZone(zoneId: ZoneId) void
+        +removeZone(zoneId: ZoneId) void
+        +setPurchasePolicy(policy: PurchasePolicy) void
+        +setDiscountPolicy(policy: DiscountPolicy) void
+        +setSalesMethod(method: SalesMethod) void
+        +cancel() void
+        +markSoldOut() void
+    }
+
+    class VenueMap {
+        <<Entity>>
+        -List~MapElement~ mapElements
+    }
+
+    class MapElement {
+        <<Entity>>
+        -String elementType
+        -String label
+        -int positionX
+        -int positionY
+        -ZoneId linkedZoneId
+    }
+
+    class EventDetails {
+        <<Value Object>>
+        -String name
+        -List~LocalDate~ dates
+        -String location
+        -String category
+        -String description
+    }
+
+    class EventStatus {
+        <<enumeration>>
+        DRAFT
+        ON_SALE
+        SOLD_OUT
+        CANCELLED
+    }
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Zone (separate for concurrency)
+    %% Boundary: Zone root + Row + Seat
+    %% ══════════════════════════════════════════
+
+    class Zone {
+        <<Aggregate Root>>
+        -ZoneId zoneId
+        -EventId eventId
+        -String zoneName
+        -ZoneType zoneType
+        -Money pricePerTicket
+        -long version
+        -List~Row~ rows
+        -int totalCapacity
+        -int availableCount
+        +reserveSeat(seatId: SeatId) void
+        +reserveStanding(quantity: int) void
+        +releaseSeat(seatId: SeatId) void
+        +releaseStanding(quantity: int) void
+        +markSold(seatId: SeatId) void
+        +markSoldStanding(quantity: int) void
+        +getAvailableCount() int
+    }
+
+    class Row {
+        <<Entity>>
+        -String rowLabel
+        -List~Seat~ seats
+    }
+
+    class Seat {
+        <<Entity>>
+        -SeatId seatId
+        -String rowLabel
+        -int seatNumber
+        -SeatStatus status
+    }
+
+    class Money {
+        <<Value Object>>
+        -BigDecimal amount
+        -String currency
+    }
+
+    class ZoneType {
+        <<enumeration>>
+        SEATED
+        STANDING
+    }
+
+    class SeatStatus {
+        <<enumeration>>
+        AVAILABLE
+        RESERVED
+        SOLD
+    }
+
+    %% Repositories
+    class EventRepository {
+        <<Repository>>
+        +findById(EventId) Event
+        +findByCompanyId(CompanyId) List~Event~
+        +save(Event) void
+    }
+
+    class ZoneRepository {
+        <<Repository>>
+        +findById(ZoneId) Zone
+        +findByEventId(EventId) List~Zone~
+        +save(Zone) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition within Event aggregate
+    Event "1" *-- "1" VenueMap : venueMap ►
+    VenueMap "1" *-- "0..*" MapElement : mapElements ►
+
+    %% Value Object embedding
+    Event "1" --> "1" EventDetails : eventDetails
+    Zone "1" --> "1" Money : pricePerTicket
+
+    %% Composition within Zone aggregate
+    Zone "1" *-- "0..*" Row : rows (SEATED only) ►
+    Row "1" *-- "1..*" Seat : seats ►
+
+    %% Enum usage
+    Event --> EventStatus : status
+    Zone --> ZoneType : zoneType
+    Seat --> SeatStatus : status
+
+    %% Cross-aggregate associations (ORM-managed)
+    Event "1" --> "1..*" Zone : zones
+    Zone "*" --> "1" Event : event
+    Event "*" --> "1" ProductionCompany : company
+
+    %% Repository → Aggregate Root
+    EventRepository ..> Event : manages persistence
+    ZoneRepository ..> Zone : manages persistence

@@ -1,0 +1,92 @@
+classDiagram
+    direction LR
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: ActiveOrder
+    %% Boundary: ActiveOrder root + OrderItem
+    %% ══════════════════════════════════════════
+
+    class ActiveOrder {
+        <<Aggregate Root>>
+        -OrderId orderId
+        -BuyerReference buyerRef
+        -EventId eventId
+        -List~OrderItem~ items
+        -Instant reservationExpiry
+        -OrderStatus status
+        -long version
+        +addItem(item: OrderItem) void
+        +removeItem(zoneId: ZoneId, seatId: SeatId) void
+        +checkout() void
+        +expire() List~OrderItem~
+        +cancel() List~OrderItem~
+        +isExpired() boolean
+    }
+
+    class OrderItem {
+        <<Entity>>
+        -ZoneId zoneId
+        -SeatId seatId
+        -int quantity
+        -Money unitPrice
+    }
+
+    class BuyerReference {
+        <<Value Object>>
+        -BuyerType type
+        -String sessionId
+        -MemberId memberId
+    }
+
+    class OrderStatus {
+        <<enumeration>>
+        ACTIVE
+        CHECKED_OUT
+        EXPIRED
+        CANCELLED
+    }
+
+    class BuyerType {
+        <<enumeration>>
+        GUEST
+        MEMBER
+    }
+
+    %% Domain Service
+    class OrderFactory {
+        <<Domain Service>>
+        +createOrder(buyer: BuyerReference, eventId: EventId) ActiveOrder
+    }
+
+    %% Repository
+    class OrderRepository {
+        <<Repository>>
+        +findById(OrderId) ActiveOrder
+        +findActive(buyer: BuyerReference, eventId: EventId) ActiveOrder
+        +existsActive(buyer: BuyerReference, eventId: EventId) boolean
+        +save(ActiveOrder) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition within aggregate
+    ActiveOrder "1" *-- "0..*" OrderItem : items ►
+
+    %% Value Object embedding
+    ActiveOrder "1" --> "1" BuyerReference : buyerRef
+
+    %% Enum usage
+    ActiveOrder --> OrderStatus : status
+    BuyerReference --> BuyerType : type
+
+    %% Cross-aggregate associations (ORM-managed)
+    OrderItem "*" --> "1" Zone : zone
+    ActiveOrder "*" --> "1" Event : event
+    ActiveOrder "*" --> "0..1" Member : buyer
+
+    %% Domain Service / Repository dependencies
+    OrderFactory ..> ActiveOrder : «creates»
+    OrderFactory ..> OrderRepository : checks uniqueness
+    OrderRepository ..> ActiveOrder : manages persistence

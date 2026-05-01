@@ -1,0 +1,72 @@
+classDiagram
+    direction LR
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: VirtualQueue
+    %% Boundary: root + QueueEntry + AdmissionToken
+    %% One instance per Event (when activated)
+    %% Dynamic sliding-window: maintains maxConcurrent
+    %%   admitted buyers; slots freed on revoke/expiry
+    %% ══════════════════════════════════════════
+
+    class VirtualQueue {
+        <<Aggregate Root>>
+        -QueueId queueId
+        -EventId eventId
+        -QueueStatus status
+        -int loadThreshold
+        -int maxConcurrentAdmissions
+        -long version
+        +activate() void
+        +enqueue(visitor: BuyerReference) void
+        +admitNext() List~BuyerReference~
+        +revokeAdmission(buyer: BuyerReference) void
+        +isAdmitted(visitor: BuyerReference) boolean
+        +expireTokens() void
+        +getOpenSlots() int
+    }
+
+    class QueueEntry {
+        <<Entity>>
+        -BuyerReference visitorRef
+        -Instant joinedAt
+        -int position
+    }
+
+    class AdmissionToken {
+        <<Entity>>
+        -BuyerReference buyerRef
+        -Instant expiresAt
+        -boolean consumed
+    }
+
+    class QueueStatus {
+        <<enumeration>>
+        INACTIVE
+        ACTIVE
+        DRAINING
+    }
+
+    %% Repository
+    class QueueRepository {
+        <<Repository>>
+        +findByEventId(EventId) VirtualQueue
+        +save(VirtualQueue) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition within aggregate boundary
+    VirtualQueue "1" *-- "0..*" QueueEntry : waitingEntries ►
+    VirtualQueue "1" *-- "0..*" AdmissionToken : admittedSet ►
+
+    %% Enum usage
+    VirtualQueue --> QueueStatus : status
+
+    %% Cross-aggregate association (ORM-managed)
+    VirtualQueue "1" --> "1" Event : event
+
+    %% Repository → Aggregate Root
+    QueueRepository ..> VirtualQueue : manages persistence

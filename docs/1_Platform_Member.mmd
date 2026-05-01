@@ -1,0 +1,144 @@
+classDiagram
+    direction LR
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Platform
+    %% Boundary: Platform (sole root, no children)
+    %% ══════════════════════════════════════════
+
+    class Platform {
+        <<Aggregate Root>>
+        -PlatformStatus status
+        -Set~MemberId~ systemAdmins
+        -Set~ProviderId~ paymentProviders
+        -Set~ProviderId~ issuanceProviders
+        -Duration defaultReservationTimeout
+        -int queueLoadThreshold
+        +addAdmin(MemberId) void
+        +removeAdmin(MemberId) void
+        +addPaymentProvider(ProviderId) void
+        +removePaymentProvider(ProviderId) void
+        +removeIssuanceProvider(ProviderId) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Member
+    %% Boundary: Member root + Notification
+    %% ══════════════════════════════════════════
+
+    class Member {
+        <<Aggregate Root>>
+        -MemberId memberId
+        -String username
+        -HashedCredentials hashedCredentials
+        -PersonalDetails personalDetails
+        -MemberStatus status
+        -List~Notification~ notificationInbox
+        +updateDetails(PersonalDetails) void
+        +addNotification(Notification) void
+        +getUndeliveredNotifications() List~Notification~
+        +markNotificationsDelivered() void
+        +cancel() void
+    }
+
+    class Notification {
+        <<Entity>>
+        -String notificationId
+        -NotificationType type
+        -String content
+        -Instant createdAt
+        -boolean delivered
+    }
+
+    class PersonalDetails {
+        <<Value Object>>
+        -String firstName
+        -String lastName
+        -String email
+        -LocalDate dateOfBirth
+    }
+
+    class HashedCredentials {
+        <<Value Object>>
+        -String hash
+        -String salt
+        -String algorithm
+    }
+
+    class ProviderId {
+        <<Value Object>>
+        -String value
+    }
+
+    class MemberId {
+        <<Value Object>>
+        -String value
+    }
+
+    class MemberStatus {
+        <<enumeration>>
+        ACTIVE
+        CANCELLED
+    }
+
+    class PlatformStatus {
+        <<enumeration>>
+        INITIALIZING
+        ACTIVE
+        SHUTDOWN
+    }
+
+    class NotificationType {
+        <<enumeration>>
+        PURCHASE_COMPLETED
+        EVENT_CANCELLED
+        ORDER_EXPIRING
+        SOLD_OUT
+        COMPANY_SUSPENDED
+        COMPANY_TERMINATED
+        COMPANY_REOPENED
+        ROLE_CHANGED
+        LOTTERY_WON
+    }
+
+    %% Repository interfaces
+    class PlatformRepository {
+        <<Repository>>
+        +findInstance() Platform
+        +save(Platform) void
+    }
+
+    class MemberRepository {
+        <<Repository>>
+        +findById(MemberId) Member
+        +findByUsername(String) Member
+        +save(Member) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Cross-aggregate reference by identity
+    Platform "1" ..> "*" Member : references by MemberId
+
+    %% Composition
+    Member "1" *-- "0..*" Notification : notificationInbox ►
+
+    %% Value Object embedding
+    Member "1" --> "1" PersonalDetails : personalDetails
+    Member "1" --> "1" HashedCredentials : hashedCredentials
+
+    %% Enum usage
+    Member --> MemberStatus : status
+    Platform --> PlatformStatus : status
+    Notification --> NotificationType : type
+
+    %% Identity Value Objects
+    Platform "1" --> "1..*" ProviderId : paymentProviders
+    Platform "1" --> "1..*" ProviderId : issuanceProviders
+    Platform "1" --> "1..*" MemberId : systemAdmins
+
+    %% Repository → Aggregate Root (Vernon IDDD Ch.12)
+    PlatformRepository ..> Platform : manages persistence
+    MemberRepository ..> Member : manages persistence

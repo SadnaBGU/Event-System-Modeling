@@ -1,0 +1,39 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Event System V1 — Spring Boot configuration
+#
+# All tunables MUST live under the eventsystem.* namespace and be bound
+# via @ConfigurationProperties.
+# ──────────────────────────────────────────────────────────────────────────────
+spring:
+  application:
+    name: event-system
+  main:
+    web-application-type: none   # V1 has no web layer; tests only
+
+eventsystem:
+  security:
+    # HMAC-SHA256 secret for signing JWTs. MUST be at least 32 bytes (256 bits).
+    # Override via env var EVENTSYSTEM_SECURITY_JWT_SECRET in production.
+    jwt-secret: "CHANGE_ME_DEV_ONLY_0123456789abcdef"
+    # ISO-8601 duration. PT1H = 1 hour.
+    token-validity: PT1H
+    # BCrypt cost factor. 12 is the production default; tests use 4 for speed.
+    bcrypt-strength: 12
+
+  bootstrap:
+    default-reservation-timeout: PT15M
+    queue-load-threshold: 100
+    admin:
+      username: admin
+      password: changeme123
+      first-name: Initial
+      last-name: Admin
+      email: admin@eventsystem.local
+      date-of-birth: 1990-01-01
+
+logging:
+  level:
+    root: WARN
+    com.eventsystem: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

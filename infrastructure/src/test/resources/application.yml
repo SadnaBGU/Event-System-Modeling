@@ -1,0 +1,24 @@
+spring:
+  main:
+    web-application-type: none
+
+eventsystem:
+  security:
+    jwt-secret: "test_test_test_test_test_test_te"
+    token-validity: PT5M
+    bcrypt-strength: 4
+  bootstrap:
+    default-reservation-timeout: PT15M
+    queue-load-threshold: 100
+    admin:
+      username: testadmin
+      password: testadmin123
+      first-name: Test
+      last-name: Admin
+      email: testadmin@local
+      date-of-birth: 1990-01-01
+
+logging:
+  level:
+    root: WARN
+    com.eventsystem: INFO

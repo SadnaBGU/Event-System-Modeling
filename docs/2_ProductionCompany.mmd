@@ -1,0 +1,120 @@
+classDiagram
+    direction TB
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: ProductionCompany
+    %% Boundary: root + AppointmentTree,
+    %%   OwnerNode, ManagerNode
+    %% References Member by identity only
+    %% ══════════════════════════════════════════
+
+    class ProductionCompany {
+        <<Aggregate Root>>
+        -CompanyId companyId
+        -CompanyDetails companyDetails
+        -CompanyStatus status
+        -MemberId founderId
+        -AppointmentTree appointmentTree
+        -PurchasePolicy defaultPurchasePolicy
+        -DiscountPolicy defaultDiscountPolicy
+        -SalesMethod defaultSalesMethod
+        +appointOwner(appointerId: MemberId, targetId: MemberId) void
+        +removeOwner(removerId: MemberId, targetId: MemberId) void
+        +relinquishOwnership(memberId: MemberId) void
+        +appointManager(ownerId: MemberId, targetId: MemberId, perms: Set~Permission~) void
+        +removeManager(ownerId: MemberId, managerId: MemberId) void
+        +modifyManagerPermissions(ownerId: MemberId, managerId: MemberId, perms: Set~Permission~) void
+        +suspend() void
+        +terminate() void
+        +reopen() void
+        +isOwner(memberId: MemberId) boolean
+        +isManager(memberId: MemberId) boolean
+        +hasPermission(memberId: MemberId, perm: Permission) boolean
+        +getAppointmentSubTree(ownerId: MemberId) List~MemberId~
+    }
+
+    class AppointmentTree {
+        <<Entity>>
+        -OwnerNode root
+        +findOwner(MemberId) OwnerNode
+        +findManager(MemberId) ManagerNode
+        +countOwners() int
+        +reattachSubTree(targetId: MemberId, newParentId: MemberId) void
+        +clear() void
+        +getAllMemberIds() Set~MemberId~
+    }
+
+    class OwnerNode {
+        <<Entity>>
+        -MemberId memberId
+        -MemberId appointerId
+        -List~OwnerNode~ appointedOwners
+        -List~ManagerNode~ appointedManagers
+    }
+
+    class ManagerNode {
+        <<Entity>>
+        -MemberId memberId
+        -MemberId appointerId
+        -Set~Permission~ permissions
+    }
+
+    class CompanyDetails {
+        <<Value Object>>
+        -String name
+        -String description
+        -double rating
+    }
+
+    class CompanyStatus {
+        <<enumeration>>
+        ACTIVE
+        SUSPENDED
+        TERMINATED
+    }
+
+    class Permission {
+        <<enumeration>>
+        EVENT_INVENTORY_MANAGEMENT
+        VENUE_CONFIGURATION
+        MODIFY_POLICIES
+        VIEW_PURCHASE_HISTORY
+        GENERATE_SALES_REPORT
+    }
+
+    class SalesMethod {
+        <<enumeration>>
+        REGULAR
+        LOTTERY
+    }
+
+    %% Repository
+    class CompanyRepository {
+        <<Repository>>
+        +findById(CompanyId) ProductionCompany
+        +save(ProductionCompany) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition within aggregate boundary
+    ProductionCompany "1" *-- "1" AppointmentTree : appointmentTree ►
+    AppointmentTree "1" *-- "1..*" OwnerNode : root + descendants ►
+    OwnerNode "1" *-- "0..*" OwnerNode : appointedOwners ►
+    OwnerNode "1" *-- "0..*" ManagerNode : appointedManagers ►
+
+    %% Value Object embedding
+    ProductionCompany "1" --> "1" CompanyDetails : companyDetails
+
+    %% Enum usage
+    ProductionCompany --> CompanyStatus : status
+    ProductionCompany --> SalesMethod : defaultSalesMethod
+    ManagerNode --> Permission : permissions
+
+    %% Cross-aggregate association (ORM-managed)
+    ProductionCompany "*" --> "*" Member : members via ORM
+
+    %% Repository → Aggregate Root
+    CompanyRepository ..> ProductionCompany : manages persistence

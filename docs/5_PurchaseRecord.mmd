@@ -1,0 +1,75 @@
+classDiagram
+    direction TB
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: PurchaseRecord
+    %% Boundary: root + PurchasedItem
+    %% IMMUTABLE — no mutating methods
+    %% All data snapshotted at creation
+    %% ══════════════════════════════════════════
+
+    class PurchaseRecord {
+        <<Aggregate Root>>
+        -PurchaseRecordId recordId
+        -MemberId buyerId
+        -BuyerSnapshot buyerSnapshot
+        -EventSnapshot eventSnapshot
+        -List~PurchasedItem~ items
+        -Money totalPaid
+        -List~DiscountSnapshot~ discountsApplied
+        -Instant purchaseTimestamp
+        -String paymentConfirmationId
+        -String ticketIssuanceConfirmationId
+    }
+
+    class PurchasedItem {
+        <<Value Object>>
+        -String zoneName
+        -String rowLabel
+        -Integer seatNumber
+        -int quantity
+        -Money priceAtPurchase
+    }
+
+    class BuyerSnapshot {
+        <<Value Object>>
+        -String displayName
+    }
+
+    class EventSnapshot {
+        <<Value Object>>
+        -String eventName
+        -String companyName
+        -LocalDate eventDate
+        -String location
+    }
+
+    class DiscountSnapshot {
+        <<Value Object>>
+        -String discountName
+        -Money discountAmount
+    }
+
+    %% Repository
+    class PurchaseRecordRepository {
+        <<Repository>>
+        +findById(PurchaseRecordId) PurchaseRecord
+        +findByBuyerId(MemberId) List~PurchaseRecord~
+        +findByCompanyName(String) List~PurchaseRecord~
+        +save(PurchaseRecord) void
+    }
+
+    %% ══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ══════════════════════════════════════════
+
+    %% Composition
+    PurchaseRecord "1" *-- "1..*" PurchasedItem : items ►
+
+    %% Value Object embedding
+    PurchaseRecord "1" *-- "1" BuyerSnapshot : buyerSnapshot
+    PurchaseRecord "1" *-- "1" EventSnapshot : eventSnapshot
+    PurchaseRecord "1" *-- "0..*" DiscountSnapshot : discountsApplied
+
+    %% Repository → Aggregate Root
+    PurchaseRecordRepository ..> PurchaseRecord : manages persistence

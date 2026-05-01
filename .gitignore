@@ -1,0 +1,23 @@
+﻿*.pdf
+*.md
+
+# Maven
+target/
+*.jar
+*.war
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+Thumbs.db
+.DS_Store
