@@ -1,5 +1,4 @@
-﻿*.pdf
-*.md
+﻿*.md
 
 # Maven
 target/
