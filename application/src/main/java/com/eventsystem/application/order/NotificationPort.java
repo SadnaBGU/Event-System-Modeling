@@ -9,4 +9,6 @@ public interface NotificationPort {
     void sendPurchaseSuccess(BuyerReference buyer, String receiptId);
     
     void sendPurchaseFailure(BuyerReference buyer, String reason);
+
+    void sendQueueTurnArrived(BuyerReference buyer, String eventId);
 }
