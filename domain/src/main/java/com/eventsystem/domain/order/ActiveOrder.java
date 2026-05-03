@@ -82,12 +82,14 @@ public class ActiveOrder {
         return eventId; 
     }
 
-    public BigDecimal calculateTotalBeforeDiscounts() {
-        BigDecimal total = BigDecimal.ZERO;
-        for (OrderItem item : items) {
-            total = total.add(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
-        }
-        return total;
+    public BigDecimal calculateBaseTotal() {
+        return items.stream()
+                .map(OrderItem::getUnitPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public List<OrderItem> getItems() { 
+        return List.copyOf(items); 
     }
 }
 

@@ -4,6 +4,7 @@ import com.eventsystem.application.order.ActiveOrderRepository;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +22,14 @@ public class InMemoryActiveOrderRepository implements ActiveOrderRepository {
         return store.values().stream()
                 .filter(order -> order.getEventId().equals(eventId) && order.getBuyerRef().equals(buyer))
                 .findFirst();
+    }
+
+    @Override
+    public Optional<List<ActiveOrder>> findExpired() {
+        List<ActiveOrder> expiredOrders = store.values().stream()
+                .filter(ActiveOrder::isExpired)
+                .toList();
+        return Optional.of(expiredOrders);
     }
 
     @Override

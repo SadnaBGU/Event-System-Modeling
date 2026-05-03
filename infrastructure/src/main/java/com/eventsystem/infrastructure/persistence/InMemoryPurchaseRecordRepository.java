@@ -29,4 +29,11 @@ public class InMemoryPurchaseRecordRepository implements PurchaseRecordRepositor
                 .filter(record -> record.buyerId().equals(buyerId))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<PurchaseRecord> findByEvent(String eventId) {
+        return store.values().stream()
+                .filter(record -> record.eventSnapshot().eventId().equals(eventId))
+                .collect(Collectors.toList());
+    }
 }

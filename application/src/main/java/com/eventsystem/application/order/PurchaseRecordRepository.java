@@ -8,4 +8,5 @@ public interface PurchaseRecordRepository {
     void append(PurchaseRecord record);
     Optional<PurchaseRecord> findById(String recordId);
     List<PurchaseRecord> findByBuyer(String buyerId);
+    List<PurchaseRecord> findByEvent(String eventId);
 }
