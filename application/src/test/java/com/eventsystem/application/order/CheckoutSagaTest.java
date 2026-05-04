@@ -176,4 +176,29 @@ class CheckoutSagaTest {
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), eq("Payment declined"));
         verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
     }
+
+    @Test
+    void executeCheckout_IssuanceThrowsException_TriggersCrashCompensation() {
+        // Arrange
+        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", BigDecimal.ZERO));
+        
+        when(paymentGateway.charge(any(), any(), any(), any()))
+                .thenReturn(PaymentResult.successful("TXN-999"));
+                
+        when(ticketIssuance.issueTickets(any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Connection Timeout 504"));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
+        });
+        
+        assertTrue(exception.getMessage().contains("automatic refund triggered"));
+
+        verify(paymentGateway).refund(eq("TXN-999"), any(), contains("Ticket issuance service crashed"));
+        verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("System error"));
+        
+        verify(zoneService, times(1)).unlockSeat("VIP-ZONE", "SEAT-42");
+    }
 }
