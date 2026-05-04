@@ -63,7 +63,7 @@ class CheckoutSagaTest {
         testOrder.addItem(mockItem);
 
         // Define the behavior of the orderRepository mock to return our testOrder when findById is called with ORDER_ID
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        lenient().when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
     }
 
     @Test
