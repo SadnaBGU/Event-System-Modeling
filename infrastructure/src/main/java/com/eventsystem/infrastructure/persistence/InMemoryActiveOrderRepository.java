@@ -4,12 +4,18 @@ import com.eventsystem.application.order.ActiveOrderRepository;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryActiveOrderRepository implements ActiveOrderRepository {
+    
+    private static final Logger logger = LoggerFactory.getLogger(InMemoryActiveOrderRepository.class);
+    
     private final Map<String, ActiveOrder> store = new ConcurrentHashMap<>();
 
     @Override
@@ -35,10 +41,16 @@ public class InMemoryActiveOrderRepository implements ActiveOrderRepository {
     @Override
     public void save(ActiveOrder order) {
         store.put(order.getOrderId(), order);
+        logger.info("Persisted ActiveOrder to memory store: {}", order.getOrderId());
     }
 
     @Override
     public void delete(String orderId) {
-        store.remove(orderId);
+        ActiveOrder removed = store.remove(orderId);
+        if (removed != null) {
+            logger.info("Deleted ActiveOrder from memory store: {}", orderId);
+        } else {
+            logger.warn("Attempted to delete non-existent ActiveOrder: {}", orderId);
+        }
     }
 }

@@ -6,10 +6,14 @@ import com.eventsystem.domain.order.BuyerReference;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class QueueService {
+    private final Logger logger = LoggerFactory.getLogger(QueueService.class);
+    
     private final VirtualQueueRepository queueRepository;
     private final NotificationPort notificationPort;
-    
     private static final int QUEUE_LOAD_THRESHOLD = 100;
     private static final int MAX_CONCURRENT_ADMISSIONS = 100;
     private static final int TOKEN_VALIDITY_MINUTES = 10;
@@ -25,11 +29,18 @@ public class QueueService {
      * it will either create a new queue for the event or add the user to the existing queue. 
      */
     public void enqueueVisitor(String eventId, BuyerReference buyer) {
+        logger.info("Attempting to enqueue visitor {} for event {}", buyer.memberId(), eventId);
+
         VirtualQueue queue = queueRepository.findByEvent(eventId)
-                .orElseGet(() -> createNewQueue(eventId));
+                .orElseGet(() -> {
+                    logger.info("No existing queue found for event {}. Creating a new one.", eventId);
+                    return createNewQueue(eventId);
+                });
 
         queue.enqueue(buyer);
         queueRepository.save(queue);
+
+        logger.info("Successfully enqueued visitor {} for event {}", buyer.memberId(), eventId);
     }
 
     /**
@@ -37,7 +48,9 @@ public class QueueService {
      * this method will be called by a scheduled task that runs every minute.
      */
     public void processNextBatch(String eventId) {
-        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+        logger.info("Processing next batch of visitors for event {}", eventId);
+
+        queueRepository.findByEvent(eventId).ifPresentOrElse(queue -> {
             List<BuyerReference> newlyAdmitted = queue.admitNext(TOKEN_VALIDITY_MINUTES);
             queueRepository.save(queue);
 
@@ -45,6 +58,9 @@ public class QueueService {
             for (BuyerReference buyer : newlyAdmitted) {
                 notificationPort.sendQueueTurnArrived(buyer, eventId);
             }
+            logger.info("Successfully admitted {} new visitors for event {}", newlyAdmitted.size(), eventId);
+        }, () -> {
+            logger.warn("Failed to process batch: No active queue found for event {}", eventId);        
         });
     }
 
@@ -54,9 +70,16 @@ public class QueueService {
      * to complete the purchase within the token validity period, or if they violate some rules.
      */
     public void revokeAdmission(String eventId, BuyerReference buyer) {
-        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+        logger.info("Attempting to revoke admission for buyer {} in event {}", buyer.memberId(), eventId);
+        
+        queueRepository.findByEvent(eventId).ifPresentOrElse(queue -> {
             queue.revokeAdmission(buyer);
             queueRepository.save(queue);
+            
+            logger.info("Successfully revoked admission for buyer {} in event {}", buyer.memberId(), eventId);
+            
+        }, () -> {
+            logger.warn("Failed to revoke admission: No active queue found for event {}", eventId);
         });
     }
 
@@ -64,9 +87,15 @@ public class QueueService {
      * Check the admission status of a buyer for a specific event.
      */
     public boolean checkAdmissionStatus(String eventId, BuyerReference buyer) {
-        return queueRepository.findByEvent(eventId)
+        logger.info("Checking admission status for buyer {} in event {}", buyer.memberId(), eventId);
+        
+        boolean status = queueRepository.findByEvent(eventId)
                 .map(queue -> queue.isAdmitted(buyer))
                 .orElse(false);
+                
+        logger.info("Admission status for buyer {} in event {}: {}", buyer.memberId(), eventId, status);
+        
+        return status;
     }
     
     private VirtualQueue createNewQueue(String eventId) {
@@ -77,6 +106,9 @@ public class QueueService {
                 MAX_CONCURRENT_ADMISSIONS
         );
         newQueue.activate();
+
+        logger.info("Created and activated new VirtualQueue {} for event {}", newQueue.getQueueId(), eventId);
+
         return newQueue;
     }
 }

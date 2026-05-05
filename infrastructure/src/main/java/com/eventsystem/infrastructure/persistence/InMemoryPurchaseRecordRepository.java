@@ -3,6 +3,9 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.application.order.PurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,11 +14,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class InMemoryPurchaseRecordRepository implements PurchaseRecordRepository {
+    
+    private static final Logger logger = LoggerFactory.getLogger(InMemoryPurchaseRecordRepository.class);
+    
     private final Map<String, PurchaseRecord> store = new ConcurrentHashMap<>();
 
     @Override
     public void append(PurchaseRecord record) {
-        store.putIfAbsent(record.recordId(), record);
+        PurchaseRecord existing = store.putIfAbsent(record.recordId(), record);
+        if (existing != null) {
+            logger.warn("Data anomaly: Attempted to append duplicate PurchaseRecord with ID: {}", record.recordId());
+        } else {
+            logger.info("Appended new PurchaseRecord to memory store: {}", record.recordId());
+        }
     }
 
     @Override

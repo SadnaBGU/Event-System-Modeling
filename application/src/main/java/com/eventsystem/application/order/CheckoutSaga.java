@@ -14,7 +14,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class CheckoutSaga {
+
+    private static final Logger logger = LoggerFactory.getLogger(CheckoutSaga.class);
 
     private final ActiveOrderRepository orderRepository;
     private final PurchaseRecordRepository purchaseRecordRepository;
@@ -54,17 +59,20 @@ public class CheckoutSaga {
       * Note: This method assumes that the caller has already verified that the order exists and belongs to the buyer.
      */
     public void executeCheckout(String orderId, String paymentToken, String discountCode) {
+        logger.info("Initiating checkout process for order: {}", orderId);
         // 1. Validate the order and its expiration
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
         
         if (order.isExpired()) {
+            logger.warn("Checkout failed: Order {} reservation timer has expired", orderId);
             throw new IllegalStateException("Order reservation timer expired");
         }
 
         // 2. Validating purchase policies before discounts
         boolean isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
         if (!isEligible) {
+            logger.warn("Checkout failed: Order {} violates purchase policy for event {}", orderId, order.getEventId());
             throw new IllegalStateException("Order violates purchase policy");
         }
 
@@ -76,9 +84,12 @@ public class CheckoutSaga {
         // 4. Charging the payment through the PaymentGateway
         PaymentResult paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);
         if (!paymentResult.success()) {
+            logger.warn("Checkout failed for order {}: Payment declined. Reason: {}", orderId, paymentResult.errorMessage());
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment declined");
             throw new RuntimeException("Payment failed: " + paymentResult.errorMessage());
         }
+
+        logger.info("Payment successful for order {}. Proceeding with ticket issuance.", orderId);
 
         // 5. Issuing tickets through the TicketIssuance service (distributed transaction)
         IssuanceResult issuanceResult;
@@ -86,6 +97,7 @@ public class CheckoutSaga {
             issuanceResult = ticketIssuance.issueTickets(order.getEventId(), orderId, order.getItems(), order.getBuyerRef());
         } catch (Exception e) {
             // If an exception occurs during ticket issuance, we need to compensate by refunding the payment and unlocking any reserved seats
+            logger.error("System crash during ticket issuance for order {}. Triggering compensating actions (Refund & Unlock).", orderId, e);
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance service crashed: " + e.getMessage());
             
             for (OrderItem item : order.getItems()) {
@@ -97,6 +109,7 @@ public class CheckoutSaga {
         }
         
         if (!issuanceResult.success()) {
+            logger.warn("Checkout failed for order {}: Ticket issuance logic rejected the request. Reason: {}", orderId, issuanceResult.errorMessage());
             // If ticket issuance fails (e.g., due to business logic), we also need to compensate by refunding the payment and unlocking any reserved seats
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance failed: " + issuanceResult.errorMessage());
             
@@ -133,5 +146,6 @@ public class CheckoutSaga {
         orderRepository.save(order); 
         
         notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.recordId());
+        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.recordId());
     }
 }
