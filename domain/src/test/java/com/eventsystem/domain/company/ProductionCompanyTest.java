@@ -56,6 +56,45 @@ class ProductionCompanyTest {
     }
 
     @Test
+    void managerCanAppointSubordinateManager() {
+        MemberId founder = MemberId.random();
+        MemberId manager1 = MemberId.random();
+        MemberId manager2 = MemberId.random();
+
+        ProductionCompany company = ProductionCompany.create(founder, "Manager Hierarchy", "desc", 4.5);
+
+        company.appointManager(founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        company.appointManagerToManager(manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+
+        assertThat(company.isManager(manager1)).isTrue();
+        assertThat(company.isManager(manager2)).isTrue();
+        assertThat(company.hasPermission(manager1, Permission.EVENT_INVENTORY_MANAGEMENT)).isTrue();
+        assertThat(company.hasPermission(manager2, Permission.VENUE_CONFIGURATION)).isTrue();
+    }
+
+    @Test
+    void removingManagerReassignsChildManagersToParent() {
+        MemberId founder = MemberId.random();
+        MemberId manager1 = MemberId.random();
+        MemberId manager2 = MemberId.random();
+        MemberId manager3 = MemberId.random();
+
+        ProductionCompany company = ProductionCompany.create(founder, "Reassign Test", "desc", 4.2);
+
+        company.appointManager(founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        company.appointManagerToManager(manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+        company.appointManagerToManager(manager1, manager3, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+
+        // Remove manager1 - manager2 and manager3 should be reassigned to founder
+        company.removeManager(founder, manager1);
+
+        assertThat(company.isManager(manager1)).isFalse();
+        // manager2 and manager3 should still exist and be reassigned to founder
+        assertThat(company.isManager(manager2)).isTrue();
+        assertThat(company.isManager(manager3)).isTrue();
+    }
+
+    @Test
     void duplicateAppointmentIsRejected() {
         MemberId founder = MemberId.random();
         MemberId target = MemberId.random();

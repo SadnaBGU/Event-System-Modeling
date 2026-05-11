@@ -49,6 +49,13 @@ public class ProductionCompanyService {
         productionCompanyRepository.save(company);
     }
 
+    public void appointManagerToManager(CompanyId companyId, MemberId actor, MemberId target, Set<Permission> permissions) {
+        requireMemberExists(target);
+        ProductionCompany company = loadCompany(companyId);
+        company.appointManagerToManager(actor, target, permissions);
+        productionCompanyRepository.save(company);
+    }
+
     public void removeAppointee(CompanyId companyId, MemberId actor, MemberId target) {
         ProductionCompany company = loadCompany(companyId);
         if (company.isOwner(target)) {

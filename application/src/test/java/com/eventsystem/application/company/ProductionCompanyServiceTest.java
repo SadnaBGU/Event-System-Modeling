@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,6 +68,48 @@ class ProductionCompanyServiceTest {
         assertThat(company.isOwner(owner)).isFalse();
         // childOwner should be reassigned to founder (owner's appointer)
         assertThat(company.isOwner(childOwner)).isTrue();
+    }
+
+    @Test
+    void appointManagerToManager_successfully_creates_manager_hierarchy() {
+        MemberId founder = MemberId.random();
+        MemberId manager1 = MemberId.random();
+        MemberId manager2 = MemberId.random();
+        memberRepository.save(new Member(founder));
+        memberRepository.save(new Member(manager1));
+        memberRepository.save(new Member(manager2));
+
+        CompanyId companyId = service.createCompany(founder, "ManagerHierarchy", "desc", 4.3);
+        service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        assertThat(company.isManager(manager1)).isTrue();
+        assertThat(company.isManager(manager2)).isTrue();
+    }
+
+    @Test
+    void removeManager_reassigns_subordinate_managers_to_parent() {
+        MemberId founder = MemberId.random();
+        MemberId manager1 = MemberId.random();
+        MemberId manager2 = MemberId.random();
+        MemberId manager3 = MemberId.random();
+        memberRepository.save(new Member(founder));
+        memberRepository.save(new Member(manager1));
+        memberRepository.save(new Member(manager2));
+        memberRepository.save(new Member(manager3));
+
+        CompanyId companyId = service.createCompany(founder, "ReassignManagers", "desc", 4.0);
+        service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+        service.appointManagerToManager(companyId, manager1, manager3, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+
+        service.removeAppointee(companyId, founder, manager1);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        assertThat(company.isManager(manager1)).isFalse();
+        assertThat(company.isManager(manager2)).isTrue();
+        assertThat(company.isManager(manager3)).isTrue();
     }
 
     private static final class InMemoryMemberRepository implements MemberRepository {
