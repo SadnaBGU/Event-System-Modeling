@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ProductionCompanyTest {
 
     @Test
-    void appointAndRemoveOwnerCascadesSubTree() {
+    void appointAndRemoveOwnerReassignsSubTree() {
         MemberId founder = MemberId.random();
         MemberId ownerA = MemberId.random();
         MemberId ownerB = MemberId.random();
@@ -26,11 +26,13 @@ class ProductionCompanyTest {
         assertThat(company.isOwner(ownerB)).isTrue();
         assertThat(company.isManager(manager)).isTrue();
 
+        // When removing ownerA, ownerB should be reassigned to founder (ownerA's appointer)
         company.removeOwner(founder, ownerA);
 
         assertThat(company.isOwner(ownerA)).isFalse();
-        assertThat(company.isOwner(ownerB)).isFalse();
-        assertThat(company.isManager(manager)).isFalse();
+        // ownerB and manager should still exist but reassigned
+        assertThat(company.isOwner(ownerB)).isTrue();
+        assertThat(company.isManager(manager)).isTrue();
     }
 
     @Test

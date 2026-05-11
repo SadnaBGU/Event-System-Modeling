@@ -49,7 +49,7 @@ class ProductionCompanyServiceTest {
     }
 
     @Test
-    void removeAppointeeCascadesOwners() {
+    void removeAppointeeReassignsOwnersToParent() {
         MemberId founder = MemberId.random();
         MemberId owner = MemberId.random();
         MemberId childOwner = MemberId.random();
@@ -65,7 +65,8 @@ class ProductionCompanyServiceTest {
 
         ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
         assertThat(company.isOwner(owner)).isFalse();
-        assertThat(company.isOwner(childOwner)).isFalse();
+        // childOwner should be reassigned to founder (owner's appointer)
+        assertThat(company.isOwner(childOwner)).isTrue();
     }
 
     private static final class InMemoryMemberRepository implements MemberRepository {

@@ -162,10 +162,15 @@ public final class AppointmentTree {
     private Optional<OwnerNode> removeOwnerFromTree(OwnerNode current, MemberId targetId) {
         Optional<OwnerNode> removedDirect = current.removeOwner(targetId);
         if (removedDirect.isPresent()) {
+            OwnerNode removedNode = removedDirect.get();
+            // Reassign removed owner's children to current owner (the parent)
+            for (OwnerNode child : removedNode.appointedOwners()) {
+                current.addOwner(child);
+            }
             return removedDirect;
         }
 
-        for (OwnerNode child : current.appointedOwners()) {
+        for (OwnerNode child : new ArrayList<>(current.appointedOwners())) {
             Optional<OwnerNode> removed = removeOwnerFromTree(child, targetId);
             if (removed.isPresent()) {
                 return removed;
