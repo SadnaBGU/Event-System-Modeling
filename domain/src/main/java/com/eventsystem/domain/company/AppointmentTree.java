@@ -38,16 +38,29 @@ public final class AppointmentTree {
 
     public Optional<ManagerNode> findManager(MemberId memberId) {
         Objects.requireNonNull(memberId, "memberId must not be null");
-        Deque<OwnerNode> queue = new ArrayDeque<>();
-        queue.add(root);
-        while (!queue.isEmpty()) {
-            OwnerNode current = queue.removeFirst();
-            for (ManagerNode manager : current.appointedManagers()) {
-                if (manager.memberId().equals(memberId)) {
-                    return Optional.of(manager);
-                }
+        Deque<OwnerNode> ownerQueue = new ArrayDeque<>();
+        ownerQueue.add(root);
+        while (!ownerQueue.isEmpty()) {
+            OwnerNode current = ownerQueue.removeFirst();
+            // Search in managers directly under this owner
+            Optional<ManagerNode> found = searchManagerInHierarchy(current, memberId);
+            if (found.isPresent()) {
+                return found;
             }
-            queue.addAll(current.appointedOwners());
+            ownerQueue.addAll(current.appointedOwners());
+        }
+        return Optional.empty();
+    }
+
+    private Optional<ManagerNode> searchManagerInHierarchy(OwnerNode ownerNode, MemberId targetId) {
+        Deque<ManagerNode> managerQueue = new ArrayDeque<>();
+        managerQueue.addAll(ownerNode.appointedManagers());
+        while (!managerQueue.isEmpty()) {
+            ManagerNode current = managerQueue.removeFirst();
+            if (current.memberId().equals(targetId)) {
+                return Optional.of(current);
+            }
+            managerQueue.addAll(current.appointedManagers());
         }
         return Optional.empty();
     }
@@ -68,6 +81,13 @@ public final class AppointmentTree {
                 .orElseThrow(() -> new CompanyDomainException("actor is not an owner"));
         ensureNotAlreadyAppointed(targetId);
         owner.addManager(new ManagerNode(targetId, ownerId, permissions));
+    }
+
+    public void appointManagerToManager(MemberId appointerId, MemberId targetId, Set<Permission> permissions) {
+        ManagerNode appointer = findManager(appointerId)
+                .orElseThrow(() -> new CompanyDomainException("appointer is not a manager"));
+        ensureNotAlreadyAppointed(targetId);
+        appointer.addManager(new ManagerNode(targetId, appointerId, permissions));
     }
 
     public void removeOwner(MemberId removerId, MemberId targetId) {
@@ -180,14 +200,53 @@ public final class AppointmentTree {
     }
 
     private boolean removeManagerFromTree(OwnerNode current, MemberId managerId) {
-        if (current.removeManager(managerId).isPresent()) {
+        // Try to remove from owners' managers
+        Optional<ManagerNode> removed = current.removeManager(managerId);
+        if (removed.isPresent()) {
+            ManagerNode removedNode = removed.get();
+            // Reassign removed manager's child managers to current owner
+            for (ManagerNode childManager : removedNode.appointedManagers()) {
+                current.addManager(childManager);
+            }
             return true;
         }
-        for (OwnerNode child : current.appointedOwners()) {
-            if (removeManagerFromTree(child, managerId)) {
+
+        // Search recursively in owner children and manager children
+        for (OwnerNode childOwner : new ArrayList<>(current.appointedOwners())) {
+            if (removeManagerFromTree(childOwner, managerId)) {
                 return true;
             }
         }
+
+        // Also search in manager hierarchy
+        for (ManagerNode manager : new ArrayList<>(current.appointedManagers())) {
+            if (removeManagerFromManagerTree(manager, managerId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean removeManagerFromManagerTree(ManagerNode current, MemberId managerId) {
+        // Try to remove from manager's child managers
+        Optional<ManagerNode> removed = current.removeManager(managerId);
+        if (removed.isPresent()) {
+            ManagerNode removedNode = removed.get();
+            // Reassign removed manager's child managers to current manager (parent)
+            for (ManagerNode childManager : removedNode.appointedManagers()) {
+                current.addManager(childManager);
+            }
+            return true;
+        }
+
+        // Search recursively in child managers
+        for (ManagerNode childManager : new ArrayList<>(current.appointedManagers())) {
+            if (removeManagerFromManagerTree(childManager, managerId)) {
+                return true;
+            }
+        }
+
         return false;
     }
 

@@ -48,6 +48,11 @@ public final class ProductionCompany {
         appointmentTree.appointManager(ownerId, targetId, permissions);
     }
 
+    public synchronized void appointManagerToManager(MemberId appointerId, MemberId targetId, Set<Permission> permissions) {
+        requireActive();
+        appointmentTree.appointManagerToManager(appointerId, targetId, permissions);
+    }
+
     public synchronized void removeManager(MemberId ownerId, MemberId managerId) {
         requireActive();
         appointmentTree.removeManager(ownerId, managerId);
