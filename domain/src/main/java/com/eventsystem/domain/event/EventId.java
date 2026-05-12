@@ -5,8 +5,6 @@ import java.util.UUID;
 
 public record EventId(String value) {
 
-    private static final String PREFIX = "evt_"; //TODO- check if necessary
-
     public EventId {
         Objects.requireNonNull(value, "value must not be null");
 
@@ -14,13 +12,11 @@ public record EventId(String value) {
             throw new IllegalArgumentException("value must not be blank");
         }
 
-        if (!value.startsWith(PREFIX)) {
-            throw new IllegalArgumentException("event id must start with " + PREFIX);
-        }
+
     }
 
     public static EventId random() {
-        return new EventId(PREFIX + UUID.randomUUID());
+        return new EventId(UUID.randomUUID().toString());
     }
 
     @Override
