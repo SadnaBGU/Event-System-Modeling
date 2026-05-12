@@ -74,6 +74,20 @@ public class EventService {
         eventRepository.save(event);
     }
 
+    /*TODO - Add when Policy and SalesMethod Support are added:
+    public void setPurchasePolicy(String actorId, EventId eventId, PurchasePolicy policy) {
+        
+    }
+
+    public void setDiscountPolicy(String actorId, EventId eventId, DiscountPolicy policy) {
+        
+    }
+
+    public void setSalesMethod(String actorId, EventId eventId, SalesMethod method) {
+        
+    }
+    */
+   
     public void publish(String actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         requireValidActor(actorId);
@@ -81,6 +95,16 @@ public class EventService {
         requireManageEventsPermission(actorId, event.companyId());
 
         event.publish();
+        eventRepository.save(event);
+    }
+
+    public void eventOver(String actorId, EventId eventId) { //TODO - ensure OVER is required
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        requireValidActor(actorId);
+        Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
+        event.over();
         eventRepository.save(event);
     }
 

@@ -64,6 +64,16 @@ public class Event {
         return Set.copyOf(zones);
     }
 
+    public boolean isPurchasable() {
+        return status == EventStatus.PUBLISHED;
+    }
+
+    public void requirePurchasable() {
+        if (!isPurchasable()) {
+            throw new EventDomainException("event is not purchasable");
+        }
+    }
+
     public synchronized void updateDetails(EventDetails newDetails) {
         requireDraft("Cannot update event details after publish");
         this.details = Objects.requireNonNull(newDetails, "event details must not be null");

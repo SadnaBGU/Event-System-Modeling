@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EventTest {
@@ -236,6 +237,48 @@ class EventTest {
         event.cancel();
 
         assertThatThrownBy(event::over)
+                .isInstanceOf(EventDomainException.class);
+    }
+
+    @Test
+    void publishedEventIsPurchasable() {
+        Event event = createDraftEvent();
+        event.addZone(ZoneId.random());
+        event.publish();
+
+        assertThat(event.isPurchasable()).isTrue();
+    }
+
+    @Test
+    void draftEventIsNotPurchasable() {
+        Event event = createDraftEvent();
+
+        assertThat(event.isPurchasable()).isFalse();
+    }
+
+    @Test
+    void cancelledEventIsNotPurchasable() {
+        Event event = createDraftEvent();
+        event.cancel();
+
+        assertThat(event.isPurchasable()).isFalse();
+    }
+
+    @Test
+    void requirePurchasable_whenPublished_doesNotThrow() {
+        Event event = createDraftEvent();
+        event.addZone(ZoneId.random());
+        event.publish();
+
+        assertThatCode(event::requirePurchasable)
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requirePurchasable_whenDraft_throws() {
+        Event event = createDraftEvent();
+
+        assertThatThrownBy(event::requirePurchasable)
                 .isInstanceOf(EventDomainException.class);
     }
 }
