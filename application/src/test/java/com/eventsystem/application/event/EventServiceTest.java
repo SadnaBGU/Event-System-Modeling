@@ -115,6 +115,15 @@ class EventServiceTest {
     }
 
     @Test
+    void createDraft_blankActorId_throws() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.createDraft("   ", COMPANY_ID, defaultDetails(), VenueMap.empty()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
     void createDraft_nullCompanyId_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.createDraft(ACTOR_ID, null, defaultDetails(), VenueMap.empty()));
@@ -517,6 +526,15 @@ class EventServiceTest {
     }
 
     @Test
+    void publish_blankActorId_throws() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.publish("   ", EventId.random()));
+
+        verifyNoInteractions(eventRepository);
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
     void publish_nullEventId_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.publish(ACTOR_ID, null));
@@ -702,6 +720,216 @@ class EventServiceTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.findPublishedByCompany(null));
 
+        verifyNoInteractions(permissionChecker);
+    }
+
+    // ── sales method ───────────────────────────────────────────────────────────
+
+    @Test
+    void setSalesMethod_actorHasPermission_updatesSalesMethodAndSaves() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        service.setSalesMethod(ACTOR_ID, event.id(), SalesMethod.LOTTERY);
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.LOTTERY);
+        assertThat(event.isMethodLottery()).isTrue();
+        verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void setSalesMethod_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.setSalesMethod(ACTOR_ID, event.id(), SalesMethod.LOTTERY))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void setSalesMethod_eventNotFound_throws() {
+        EventId unknownId = EventId.random();
+
+        when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.setSalesMethod(ACTOR_ID, unknownId, SalesMethod.LOTTERY));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void setSalesMethod_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.setSalesMethod(null, EventId.random(), SalesMethod.LOTTERY));
+
+        verifyNoInteractions(eventRepository);
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void setSalesMethod_blankActorId_throws() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.setSalesMethod("   ", EventId.random(), SalesMethod.LOTTERY));
+
+        verifyNoInteractions(eventRepository);
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void setSalesMethod_nullEventId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.setSalesMethod(ACTOR_ID, null, SalesMethod.LOTTERY));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void setSalesMethod_nullSalesMethod_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.setSalesMethod(ACTOR_ID, EventId.random(), null));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void setMethodRegular_setsRegularAndSaves() {
+        Event event = createDraftEvent();
+        event.setMethodLottery();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        service.setMethodRegular(ACTOR_ID, event.id());
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.REGULAR);
+        assertThat(event.isMethodSale()).isTrue();
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void setMethodQueue_setsVirtualQueueAndSaves() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        service.setMethodQueue(ACTOR_ID, event.id());
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.VIRTUAL_QUEUE);
+        assertThat(event.isMethodQueue()).isTrue();
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void setMethodLottery_setsLotteryAndSaves() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        service.setMethodLottery(ACTOR_ID, event.id());
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.LOTTERY);
+        assertThat(event.isMethodLottery()).isTrue();
+        verify(eventRepository).save(event);
+    }
+
+    // ── over ───────────────────────────────────────────────────────────────────
+
+    @Test
+    void eventOver_actorHasPermission_marksEventOverAndSaves() {
+        Event event = createPublishableDraftEvent();
+        event.publish();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        service.eventOver(ACTOR_ID, event.id());
+
+        assertThat(event.status()).isEqualTo(EventStatus.OVER);
+        assertThat(event.isOver()).isTrue();
+        verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void eventOver_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createPublishableDraftEvent();
+        event.publish();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.eventOver(ACTOR_ID, event.id()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void eventOver_eventNotFound_throws() {
+        EventId unknownId = EventId.random();
+
+        when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.eventOver(ACTOR_ID, unknownId));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void eventOver_whenDomainRejects_doesNotSave() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
+
+        assertThatThrownBy(() -> service.eventOver(ACTOR_ID, event.id()))
+                .isInstanceOf(EventDomainException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void eventOver_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.eventOver(null, EventId.random()));
+
+        verifyNoInteractions(eventRepository);
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void eventOver_blankActorId_throws() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> service.eventOver("   ", EventId.random()));
+
+        verifyNoInteractions(eventRepository);
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void eventOver_nullEventId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.eventOver(ACTOR_ID, null));
+
+        verify(eventRepository, never()).save(any());
         verifyNoInteractions(permissionChecker);
     }
 }

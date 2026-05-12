@@ -15,9 +15,11 @@ public class Event {
     private EventStatus status;
     private final Set<ZoneId> zones;
 
+    private SalesMethod salesMethod; //TODO -verify if correct structure and implementation
+
+
     // private PurchasePolicy purchasePolicy; //TODO - add later
     // private DiscountPolicy discountPolicy; //TODO - add later
-    // private SalesMethod salesMethod;       //TODO - add later
 
      public Event( EventId id, String companyId, EventDetails details, VenueMap venueMap) {
         this.eventId= Objects.requireNonNull(id, "event id must not be null");
@@ -26,6 +28,7 @@ public class Event {
         this.venueMap = Objects.requireNonNull(venueMap, "venue map must not be null");
         this.status = EventStatus.DRAFT;
         this.zones = new LinkedHashSet<>();
+        this.salesMethod = SalesMethod.REGULAR;
     }
 
     public Event( String id, String companyId, EventDetails details, VenueMap venueMap) {
@@ -60,12 +63,28 @@ public class Event {
         return status;
     }
 
+    public synchronized SalesMethod salesMethod() {
+        return salesMethod;
+    }
+
     public synchronized Set<ZoneId> zoneIds() {
         return Set.copyOf(zones);
     }
 
-    public boolean isPurchasable() {
+    public synchronized boolean isZoneInEvent(ZoneId zoneId) {
+        Objects.requireNonNull(zoneId, "zone id must not be null");
+        return zones.contains(zoneId);
+    }
+
+    public synchronized boolean isPurchasable() {
         return status == EventStatus.PUBLISHED;
+    }
+
+    public void requireZoneBelongsToEvent(ZoneId zoneId) {
+        Objects.requireNonNull(zoneId, "zone id must not be null");
+        if (!isZoneInEvent(zoneId)) {
+            throw new EventDomainException("given zone does not belong to the event");
+        }
     }
 
     public void requirePurchasable() {
@@ -84,7 +103,7 @@ public class Event {
         this.venueMap = Objects.requireNonNull(newVenueMap, "venue map must not be null");
     }
 
-    /* TODO - requires adding POLICIES and sales method
+    /* TODO - requires adding POLICIES
     public synchronized void setPurchasePolicy(PurchasePolicy policy){
 
     }
@@ -93,10 +112,14 @@ public class Event {
 
     }
 
-    public synchronized void setSalesMethod(SalesMethod method){
-
+    private void isValidDiscountCode(String discountCode) {
+    
     }
+
+
     */
+
+
 
     public synchronized void addZone(ZoneId zoneId) {
         requireDraft("Cannot add zone after event is published");
@@ -168,6 +191,25 @@ public class Event {
         status = EventStatus.SOLD_OUT;
     }
 
+    public synchronized void setSalesMethod(SalesMethod salesMethod) {
+        this.salesMethod = Objects.requireNonNull(salesMethod, "salesMethod must not be null");
+    }
+
+    public void setMethodRegular()
+    {
+        setSalesMethod(SalesMethod.REGULAR);
+    }
+
+    public void setMethodQueue()
+    {
+        setSalesMethod(SalesMethod.VIRTUAL_QUEUE);
+    }
+
+    public void setMethodLottery()
+    {
+        setSalesMethod(SalesMethod.LOTTERY);
+    }
+
     // public synchronized void markNotSoldOut() { //TODO - Check if transition: soldout-> published again is allowwed
     //     if (status != EventStatus.SOLD_OUT) {
     //         throw new EventDomainException("Only sold-out events can return to published state");
@@ -176,8 +218,20 @@ public class Event {
     //     status = EventStatus.PUBLISHED;
     // }
 
+    public boolean isMethodSale() {
+        return salesMethod == SalesMethod.REGULAR;
+    }
+
+    public boolean isMethodQueue() {
+        return salesMethod == SalesMethod.VIRTUAL_QUEUE;
+    }
+
+    public boolean isMethodLottery() {
+        return salesMethod == SalesMethod.LOTTERY;
+    }
+
     public synchronized boolean isDraft() {
-    return status == EventStatus.DRAFT;
+        return status == EventStatus.DRAFT;
     }
 
     public synchronized boolean isPublished() {
@@ -201,5 +255,6 @@ public class Event {
             throw new EventDomainException(message);
         }
     }
+
 }
 

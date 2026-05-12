@@ -281,4 +281,90 @@ class EventTest {
         assertThatThrownBy(event::requirePurchasable)
                 .isInstanceOf(EventDomainException.class);
     }
+
+    @Test
+    void newEventDefaultsToRegularSalesMethod() {
+        Event event = createDraftEvent();
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.REGULAR);
+        assertThat(event.isMethodSale()).isTrue();
+        assertThat(event.isMethodQueue()).isFalse();
+        assertThat(event.isMethodLottery()).isFalse();
+    }
+
+    @Test
+    void draftEventCanSetSalesMethodToQueue() {
+        Event event = createDraftEvent();
+
+        event.setSalesMethod(SalesMethod.VIRTUAL_QUEUE);
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.VIRTUAL_QUEUE);
+        assertThat(event.isMethodQueue()).isTrue();
+        assertThat(event.isMethodSale()).isFalse();
+        assertThat(event.isMethodLottery()).isFalse();
+    }
+
+    @Test
+    void draftEventCanSetSalesMethodToLottery() {
+        Event event = createDraftEvent();
+
+        event.setSalesMethod(SalesMethod.LOTTERY);
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.LOTTERY);
+        assertThat(event.isMethodLottery()).isTrue();
+        assertThat(event.isMethodSale()).isFalse();
+        assertThat(event.isMethodQueue()).isFalse();
+    }
+
+    @Test
+    void draftEventCanSetSalesMethodBackToRegular() {
+        Event event = createDraftEvent();
+
+        event.setSalesMethod(SalesMethod.LOTTERY);
+        event.setSalesMethod(SalesMethod.REGULAR);
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.REGULAR);
+        assertThat(event.isMethodSale()).isTrue();
+        assertThat(event.isMethodQueue()).isFalse();
+        assertThat(event.isMethodLottery()).isFalse();
+    }
+
+    @Test
+    void setMethodRegularSetsRegularSalesMethod() {
+        Event event = createDraftEvent();
+
+        event.setMethodLottery();
+        event.setMethodRegular();
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.REGULAR);
+        assertThat(event.isMethodSale()).isTrue();
+    }
+
+    @Test
+    void setMethodQueueSetsVirtualQueueSalesMethod() {
+        Event event = createDraftEvent();
+
+        event.setMethodQueue();
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.VIRTUAL_QUEUE);
+        assertThat(event.isMethodQueue()).isTrue();
+    }
+
+    @Test
+    void setMethodLotterySetsLotterySalesMethod() {
+        Event event = createDraftEvent();
+
+        event.setMethodLottery();
+
+        assertThat(event.salesMethod()).isEqualTo(SalesMethod.LOTTERY);
+        assertThat(event.isMethodLottery()).isTrue();
+    }
+
+    @Test
+    void salesMethodCannotBeNull() {
+        Event event = createDraftEvent();
+
+        assertThatThrownBy(() -> event.setSalesMethod(null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

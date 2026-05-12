@@ -19,6 +19,7 @@ public class EventService {
     }
 
     public EventId createDraft(String actorId, String companyId, EventDetails details, VenueMap venueMap) {
+        requireValidActor(actorId);
         Objects.requireNonNull(details, "details must not be null");
         Objects.requireNonNull(venueMap, "venueMap must not be null");
 
@@ -31,6 +32,7 @@ public class EventService {
     }
 
     public void updateDetails( String actorId, EventId eventId, EventDetails newDetails ) {
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newDetails, "newDetails must not be null");
         requireValidActor(actorId);
@@ -42,6 +44,7 @@ public class EventService {
     }
 
     public void updateVenueMap( String actorId, EventId eventId, VenueMap newVenueMap ) {
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newVenueMap, "newVenueMap must not be null");
         requireValidActor(actorId);
@@ -53,6 +56,7 @@ public class EventService {
     }
 
     public void addZone(String actorId, EventId eventId, ZoneId zoneId ) {
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         requireValidActor(actorId);
@@ -64,6 +68,7 @@ public class EventService {
     }
 
     public void removeZone(String actorId, EventId eventId, ZoneId zoneId ) {
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         requireValidActor(actorId);
@@ -87,7 +92,7 @@ public class EventService {
         
     }
     */
-   
+
     public void publish(String actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         requireValidActor(actorId);
@@ -99,6 +104,7 @@ public class EventService {
     }
 
     public void eventOver(String actorId, EventId eventId) { //TODO - ensure OVER is required
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         requireValidActor(actorId);
         Event event = loadEvent(eventId);
@@ -109,6 +115,7 @@ public class EventService {
     }
 
     public void cancel(String actorId, EventId eventId) {
+        requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
         requireValidActor(actorId);
         Event event = loadEvent(eventId);
@@ -139,6 +146,30 @@ public class EventService {
                 .toList();
     }
 
+    public void setSalesMethod(String actorId, EventId eventId, SalesMethod salesMethod) {
+        requireValidActor(actorId);
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(salesMethod, "salesMethod must not be null");
+
+        Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
+        event.setSalesMethod(salesMethod);
+        eventRepository.save(event);
+    }
+
+    public void setMethodRegular(String actorId, EventId eventId) {
+        setSalesMethod(actorId, eventId, SalesMethod.REGULAR);
+    }
+
+    public void setMethodQueue(String actorId, EventId eventId) {
+        setSalesMethod(actorId, eventId, SalesMethod.VIRTUAL_QUEUE);
+    }
+
+    public void setMethodLottery(String actorId, EventId eventId) {
+        setSalesMethod(actorId, eventId, SalesMethod.LOTTERY);
+    }
+
     private Event loadEvent(EventId eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId.value()));
@@ -159,5 +190,16 @@ public class EventService {
         if (!permissionChecker.canManageEvents(actorId, companyId)) {
             throw new SecurityException("actor is not allowed to manage events for company: " + companyId);
         }
+        
     }
+
+    public void requireZoneBelongsToEvent(EventId eventId, ZoneId zoneId) {
+        Event event = loadEvent(eventId);
+        event.requireZoneBelongsToEvent(zoneId);
+    }
+
+    public Event getEvent(EventId eventId) {
+        return loadEvent(eventId);
+    }
+
 }
