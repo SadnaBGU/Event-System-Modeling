@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public record EventDetails( String name, List<LocalDateTime> dates, String category,
                             String location, String description ) {
     public EventDetails {
-        if (name == null || name.isBlank()) {
+        if (!isValidStringArg(name)) {
             throw new IllegalArgumentException("event name must not be blank");
         }
 
@@ -20,17 +20,20 @@ public record EventDetails( String name, List<LocalDateTime> dates, String categ
         for (LocalDateTime date : dates) {
             Objects.requireNonNull(date, "event date must not be null");
         }
-        if (category == null || category.isBlank()) {
+        if (!isValidStringArg(category)) {
             throw new IllegalArgumentException("category must not be blank");
         }
 
-        if (location == null || location.isBlank()) {
+        if (!isValidStringArg(location)) {
             throw new IllegalArgumentException("location must not be blank");
         }
 
-        if (description == null || description.isBlank()) {
+        if (!isValidStringArg(description)) {
             throw new IllegalArgumentException("description must not be blank"); //TODO- should enforce NON-EMPTY description?
         }
+    }
 
+    private boolean isValidStringArg(String arg) {
+        return !(arg == null || arg.isBlank());
     }
 }
