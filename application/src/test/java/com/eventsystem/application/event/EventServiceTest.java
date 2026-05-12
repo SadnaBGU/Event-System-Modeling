@@ -21,14 +21,20 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class EventServiceTest {
 
+    private static final String ACTOR_ID = "actor-1";
+    private static final String COMPANY_ID = "company-1";
+
     @Mock
     private EventRepository eventRepository;
+
+    @Mock
+    private EventPermissionChecker permissionChecker;
 
     private EventService service;
 
     @BeforeEach
     void setUp() {
-        service = new EventService(eventRepository);
+        service = new EventService(eventRepository, permissionChecker);
     }
 
     private EventDetails defaultDetails() {
@@ -43,7 +49,7 @@ class EventServiceTest {
 
     private Event createDraftEvent() {
         return Event.createDraft(
-                "company-1",
+                COMPANY_ID,
                 defaultDetails(),
                 VenueMap.empty()
         );
@@ -55,14 +61,23 @@ class EventServiceTest {
         return event;
     }
 
+    private void allowManageEvents() {
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+    }
+
+    private void denyManageEvents() {
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+    }
+
     // ── createDraft ─────────────────────────────────────────────────────────
 
     @Test
-    void createDraft_savesEventAndReturnsId() {
+    void createDraft_actorHasPermission_savesEventAndReturnsId() {
         EventDetails details = defaultDetails();
         VenueMap venueMap = VenueMap.empty();
+        allowManageEvents();
 
-        EventId eventId = service.createDraft("company-1", details, venueMap);
+        EventId eventId = service.createDraft(ACTOR_ID, COMPANY_ID, details, venueMap);
 
         assertThat(eventId).isNotNull();
 
@@ -71,40 +86,65 @@ class EventServiceTest {
 
         Event savedEvent = eventCaptor.getValue();
         assertThat(savedEvent.id()).isEqualTo(eventId);
-        assertThat(savedEvent.companyId()).isEqualTo("company-1");
+        assertThat(savedEvent.companyId()).isEqualTo(COMPANY_ID);
         assertThat(savedEvent.details()).isEqualTo(details);
         assertThat(savedEvent.venueMap()).isEqualTo(venueMap);
         assertThat(savedEvent.status()).isEqualTo(EventStatus.DRAFT);
+
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void createDraft_actorWithoutPermission_throwsAndDoesNotSave() {
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, defaultDetails(), VenueMap.empty()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void createDraft_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.createDraft(null, COMPANY_ID, defaultDetails(), VenueMap.empty()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void createDraft_nullCompanyId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft(null, defaultDetails(), VenueMap.empty()));
+                .isThrownBy(() -> service.createDraft(ACTOR_ID, null, defaultDetails(), VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void createDraft_nullDetails_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft("company-1", null, VenueMap.empty()));
+                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, null, VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void createDraft_nullVenueMap_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft("company-1", defaultDetails(), null));
+                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, defaultDetails(), null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     // ── updateDetails ───────────────────────────────────────────────────────
 
     @Test
-    void updateDetails_delegatesToEventAndSaves() {
+    void updateDetails_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createDraftEvent();
         EventDetails newDetails = new EventDetails(
                 "Updated Concert",
@@ -115,11 +155,34 @@ class EventServiceTest {
         );
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.updateDetails(event.id(), newDetails);
+        service.updateDetails(ACTOR_ID, event.id(), newDetails);
 
         assertThat(event.details()).isEqualTo(newDetails);
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void updateDetails_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+        EventDetails newDetails = new EventDetails(
+                "Updated Concert",
+                List.of(LocalDateTime.now().plusDays(20)),
+                "Rock",
+                "Jerusalem",
+                "Updated description"
+        );
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.updateDetails(ACTOR_ID, event.id(), newDetails))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -128,7 +191,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.updateDetails(unknownId, defaultDetails()));
+                .isThrownBy(() -> service.updateDetails(ACTOR_ID, unknownId, defaultDetails()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void updateDetails_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.updateDetails(null, EventId.random(), defaultDetails()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -136,32 +208,50 @@ class EventServiceTest {
     @Test
     void updateDetails_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.updateDetails(null, defaultDetails()));
+                .isThrownBy(() -> service.updateDetails(ACTOR_ID, null, defaultDetails()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void updateDetails_nullNewDetails_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.updateDetails(EventId.random(), null));
+                .isThrownBy(() -> service.updateDetails(ACTOR_ID, EventId.random(), null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     // ── updateVenueMap ──────────────────────────────────────────────────────
 
     @Test
-    void updateVenueMap_delegatesToEventAndSaves() {
+    void updateVenueMap_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createDraftEvent();
         VenueMap newVenueMap = VenueMap.empty();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.updateVenueMap(event.id(), newVenueMap);
+        service.updateVenueMap(ACTOR_ID, event.id(), newVenueMap);
 
         assertThat(event.venueMap()).isEqualTo(newVenueMap);
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void updateVenueMap_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.updateVenueMap(ACTOR_ID, event.id(), VenueMap.empty()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -170,7 +260,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.updateVenueMap(unknownId, VenueMap.empty()));
+                .isThrownBy(() -> service.updateVenueMap(ACTOR_ID, unknownId, VenueMap.empty()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void updateVenueMap_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.updateVenueMap(null, EventId.random(), VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -178,32 +277,50 @@ class EventServiceTest {
     @Test
     void updateVenueMap_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.updateVenueMap(null, VenueMap.empty()));
+                .isThrownBy(() -> service.updateVenueMap(ACTOR_ID, null, VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void updateVenueMap_nullNewVenueMap_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.updateVenueMap(EventId.random(), null));
+                .isThrownBy(() -> service.updateVenueMap(ACTOR_ID, EventId.random(), null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     // ── addZone / removeZone ────────────────────────────────────────────────
 
     @Test
-    void addZone_delegatesToEventAndSaves() {
+    void addZone_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.addZone(event.id(), zoneId);
+        service.addZone(ACTOR_ID, event.id(), zoneId);
 
         assertThat(event.zoneIds()).contains(zoneId);
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void addZone_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.addZone(ACTOR_ID, event.id(), ZoneId.random()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -213,7 +330,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.addZone(unknownId, ZoneId.random()));
+                .isThrownBy(() -> service.addZone(ACTOR_ID, unknownId, ZoneId.random()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void addZone_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.addZone(null, EventId.random(), ZoneId.random()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -221,17 +347,19 @@ class EventServiceTest {
     @Test
     void addZone_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.addZone(null, ZoneId.random()));
+                .isThrownBy(() -> service.addZone(ACTOR_ID, null, ZoneId.random()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void addZone_nullZoneId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.addZone(EventId.random(), null));
+                .isThrownBy(() -> service.addZone(ACTOR_ID, EventId.random(), null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
@@ -241,25 +369,45 @@ class EventServiceTest {
         event.addZone(zoneId);
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        assertThatThrownBy(() -> service.addZone(event.id(), zoneId))
+        assertThatThrownBy(() -> service.addZone(ACTOR_ID, event.id(), zoneId))
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
-    void removeZone_delegatesToEventAndSaves() {
+    void removeZone_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
         event.addZone(zoneId);
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.removeZone(event.id(), zoneId);
+        service.removeZone(ACTOR_ID, event.id(), zoneId);
 
         assertThat(event.zoneIds()).doesNotContain(zoneId);
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void removeZone_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.removeZone(ACTOR_ID, event.id(), zoneId))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -269,7 +417,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.removeZone(unknownId, ZoneId.random()));
+                .isThrownBy(() -> service.removeZone(ACTOR_ID, unknownId, ZoneId.random()));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void removeZone_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.removeZone(null, EventId.random(), ZoneId.random()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -277,17 +434,19 @@ class EventServiceTest {
     @Test
     void removeZone_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.removeZone(null, ZoneId.random()));
+                .isThrownBy(() -> service.removeZone(ACTOR_ID, null, ZoneId.random()));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void removeZone_nullZoneId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.removeZone(EventId.random(), null));
+                .isThrownBy(() -> service.removeZone(ACTOR_ID, EventId.random(), null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
@@ -296,26 +455,44 @@ class EventServiceTest {
         ZoneId missingZoneId = ZoneId.random();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        assertThatThrownBy(() -> service.removeZone(event.id(), missingZoneId))
+        assertThatThrownBy(() -> service.removeZone(ACTOR_ID, event.id(), missingZoneId))
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     // ── publish / cancel ────────────────────────────────────────────────────
 
     @Test
-    void publish_delegatesToEventAndSaves() {
+    void publish_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createPublishableDraftEvent();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.publish(event.id());
+        service.publish(ACTOR_ID, event.id());
 
         assertThat(event.status()).isEqualTo(EventStatus.PUBLISHED);
         assertThat(event.isPublished()).isTrue();
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void publish_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createPublishableDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.publish(ACTOR_ID, event.id()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -325,7 +502,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.publish(unknownId));
+                .isThrownBy(() -> service.publish(ACTOR_ID, unknownId));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void publish_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.publish(null, EventId.random()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -333,9 +519,10 @@ class EventServiceTest {
     @Test
     void publish_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.publish(null));
+                .isThrownBy(() -> service.publish(ACTOR_ID, null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
@@ -343,11 +530,13 @@ class EventServiceTest {
         Event event = createDraftEvent();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        assertThatThrownBy(() -> service.publish(event.id()))
+        assertThatThrownBy(() -> service.publish(ACTOR_ID, event.id()))
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -356,24 +545,42 @@ class EventServiceTest {
         event.cancel();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        assertThatThrownBy(() -> service.publish(event.id()))
+        assertThatThrownBy(() -> service.publish(ACTOR_ID, event.id()))
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
-    void cancel_delegatesToEventAndSaves() {
+    void cancel_actorHasPermission_delegatesToEventAndSaves() {
         Event event = createDraftEvent();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        allowManageEvents();
 
-        service.cancel(event.id());
+        service.cancel(ACTOR_ID, event.id());
 
         assertThat(event.status()).isEqualTo(EventStatus.CANCELLED);
         assertThat(event.isCancelled()).isTrue();
         verify(eventRepository).save(event);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+    }
+
+    @Test
+    void cancel_actorWithoutPermission_throwsAndDoesNotSave() {
+        Event event = createDraftEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        denyManageEvents();
+
+        assertThatThrownBy(() -> service.cancel(ACTOR_ID, event.id()))
+                .isInstanceOf(SecurityException.class);
+
+        verify(eventRepository, never()).save(any());
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
     }
 
     @Test
@@ -383,7 +590,16 @@ class EventServiceTest {
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.cancel(unknownId));
+                .isThrownBy(() -> service.cancel(ACTOR_ID, unknownId));
+
+        verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
+    }
+
+    @Test
+    void cancel_nullActorId_throws() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.cancel(null, EventId.random()));
 
         verify(eventRepository, never()).save(any());
     }
@@ -391,9 +607,10 @@ class EventServiceTest {
     @Test
     void cancel_nullEventId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.cancel(null));
+                .isThrownBy(() -> service.cancel(ACTOR_ID, null));
 
         verify(eventRepository, never()).save(any());
+        verifyNoInteractions(permissionChecker);
     }
 
     // ── queries ─────────────────────────────────────────────────────────────
@@ -407,6 +624,7 @@ class EventServiceTest {
         Event result = service.findById(event.id());
 
         assertThat(result).isSameAs(event);
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
@@ -417,30 +635,37 @@ class EventServiceTest {
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> service.findById(unknownId));
+
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void findById_nullEventId_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.findById(null));
+
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void findByCompany_delegatesToRepository() {
         Event event = createDraftEvent();
 
-        when(eventRepository.findByCompany("company-1")).thenReturn(List.of(event));
+        when(eventRepository.findByCompany(COMPANY_ID)).thenReturn(List.of(event));
 
-        List<Event> result = service.findByCompany("company-1");
+        List<Event> result = service.findByCompany(COMPANY_ID);
 
         assertThat(result).containsExactly(event);
-        verify(eventRepository).findByCompany("company-1");
+        verify(eventRepository).findByCompany(COMPANY_ID);
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void findByCompany_nullCompanyId_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.findByCompany(null));
+
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
@@ -453,26 +678,30 @@ class EventServiceTest {
         Event cancelledEvent = createDraftEvent();
         cancelledEvent.cancel();
 
-        when(eventRepository.findByCompany("company-1"))
+        when(eventRepository.findByCompany(COMPANY_ID))
                 .thenReturn(List.of(draftEvent, publishedEvent, cancelledEvent));
 
-        List<Event> result = service.findPublishedByCompany("company-1");
+        List<Event> result = service.findPublishedByCompany(COMPANY_ID);
 
         assertThat(result).containsExactly(publishedEvent);
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void findPublishedByCompany_whenNoEvents_returnsEmptyList() {
-        when(eventRepository.findByCompany("company-1")).thenReturn(List.of());
+        when(eventRepository.findByCompany(COMPANY_ID)).thenReturn(List.of());
 
-        List<Event> result = service.findPublishedByCompany("company-1");
+        List<Event> result = service.findPublishedByCompany(COMPANY_ID);
 
         assertThat(result).isEmpty();
+        verifyNoInteractions(permissionChecker);
     }
 
     @Test
     void findPublishedByCompany_nullCompanyId_throws() {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.findPublishedByCompany(null));
+
+        verifyNoInteractions(permissionChecker);
     }
 }

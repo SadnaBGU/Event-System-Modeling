@@ -11,15 +11,18 @@ import java.util.Objects;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final EventPermissionChecker permissionChecker;
 
-    public EventService(EventRepository eventRepository) {
-        this.eventRepository = Objects.requireNonNull(eventRepository, "eventRepository must not be null");
+    public EventService(EventRepository eventRepository, EventPermissionChecker permissionChecker ) {
+        this.eventRepository = Objects.requireNonNull( eventRepository, "eventRepository must not be null");
+        this.permissionChecker = Objects.requireNonNull(permissionChecker,"permissionChecker must not be null");
     }
 
-    public EventId createDraft(String companyId, EventDetails details, VenueMap venueMap) {
-        Objects.requireNonNull(companyId, "companyId must not be null");
+    public EventId createDraft(String actorId, String companyId, EventDetails details, VenueMap venueMap) {
         Objects.requireNonNull(details, "details must not be null");
         Objects.requireNonNull(venueMap, "venueMap must not be null");
+
+        requireManageEventsPermission(actorId, companyId);
 
         Event event = Event.createDraft(companyId, details, venueMap);
         eventRepository.save(event);
@@ -27,54 +30,66 @@ public class EventService {
         return event.id();
     }
 
-    public void updateDetails(EventId eventId, EventDetails newDetails) {
+    public void updateDetails( String actorId, EventId eventId, EventDetails newDetails ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newDetails, "newDetails must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.updateDetails(newDetails);
         eventRepository.save(event);
     }
 
-    public void updateVenueMap(EventId eventId, VenueMap newVenueMap) {
+    public void updateVenueMap( String actorId, EventId eventId, VenueMap newVenueMap ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newVenueMap, "newVenueMap must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.updateVenueMap(newVenueMap);
         eventRepository.save(event);
     }
 
-    public void addZone(EventId eventId, ZoneId zoneId) {
+    public void addZone(String actorId, EventId eventId, ZoneId zoneId ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.addZone(zoneId);
         eventRepository.save(event);
     }
 
-    public void removeZone(EventId eventId, ZoneId zoneId) {
+    public void removeZone(String actorId, EventId eventId, ZoneId zoneId ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.removeZone(zoneId);
         eventRepository.save(event);
     }
 
-    public void publish(EventId eventId) {
+    public void publish(String actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.publish();
         eventRepository.save(event);
     }
 
-    public void cancel(EventId eventId) {
+    public void cancel(String actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
-
+        requireValidActor(actorId);
         Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+
         event.cancel();
         eventRepository.save(event);
     }
@@ -103,5 +118,22 @@ public class EventService {
     private Event loadEvent(EventId eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId.value()));
+    }
+
+    private void requireValidActor(String actorId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        if (actorId.isBlank()) 
+        {
+            throw new IllegalArgumentException("actorId must not be blank or null");
+        }
+    }
+
+    private void requireManageEventsPermission(String actorId, String companyId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+
+        if (!permissionChecker.canManageEvents(actorId, companyId)) {
+            throw new SecurityException("actor is not allowed to manage events for company: " + companyId);
+        }
     }
 }
