@@ -2,7 +2,6 @@ package com.eventsystem.domain.event;
 
 import com.eventsystem.domain.zone.ZoneId;
 
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -91,7 +90,14 @@ public class Event {
 
     public synchronized void addZone(ZoneId zoneId) {
         requireDraft("Cannot add zone after event is published");
-        zones.add(Objects.requireNonNull(zoneId, "zone id must not be null"));
+
+        Objects.requireNonNull(zoneId, "zone id must not be null");
+
+        boolean added = zones.add(zoneId);
+
+        if (!added) {
+            throw new EventDomainException("Zone already belongs to this event");
+        }
     }
 
     public synchronized void removeZone(ZoneId zoneId) {

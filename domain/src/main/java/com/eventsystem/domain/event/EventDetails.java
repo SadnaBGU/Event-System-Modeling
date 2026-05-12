@@ -33,7 +33,7 @@ public record EventDetails( String name, List<LocalDateTime> dates, String categ
         }
     }
 
-    private boolean isValidStringArg(String arg) {
+    private static boolean isValidStringArg(String arg) {
         return !(arg == null || arg.isBlank());
     }
 }
