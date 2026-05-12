@@ -158,13 +158,13 @@ public class Event {
         status = EventStatus.SOLD_OUT;
     }
 
-    public synchronized void markNotSoldOut() { //TODO - Check if transition: soldout-> published again is allowwed
-        if (status != EventStatus.SOLD_OUT) {
-            throw new EventDomainException("Only sold-out events can return to published state");
-        }
+    // public synchronized void markNotSoldOut() { //TODO - Check if transition: soldout-> published again is allowwed
+    //     if (status != EventStatus.SOLD_OUT) {
+    //         throw new EventDomainException("Only sold-out events can return to published state");
+    //     }
 
-        status = EventStatus.PUBLISHED;
-    }
+    //     status = EventStatus.PUBLISHED;
+    // }
 
     public synchronized boolean isDraft() {
     return status == EventStatus.DRAFT;
