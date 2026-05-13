@@ -4,6 +4,7 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberRepository;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.venue.*;
 import com.eventsystem.domain.zone.*;
 import org.junit.jupiter.api.BeforeEach;
