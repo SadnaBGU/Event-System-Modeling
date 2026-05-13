@@ -1,6 +1,7 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
  * Application service for zone lifecycle, seat reservations, and standing inventory.
@@ -17,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is handled
  * by the Event team's EventService, which owns the Event aggregate boundary.
  */
-public class ZoneService {
+public class ZoneService implements ZoneServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(ZoneService.class);
 
@@ -37,6 +39,16 @@ public class ZoneService {
         lock.lock();
         try {
             action.run();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private <T> T withLockAndReturn(ZoneId zoneId, Supplier<T> action) {
+        ReentrantLock lock = lockFor(zoneId);
+        lock.lock();
+        try {
+            return action.get();
         } finally {
             lock.unlock();
         }
@@ -169,6 +181,33 @@ public class ZoneService {
         withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.markSoldStanding(quantity);
+            zoneRepository.save(zone);
+        });
+    }
+
+    // ── ZoneServicePort ──────────────────────────────────────────────────────
+
+    @Override
+    public OrderItem lockSeat(String zoneId, String seatId, String activeOrderId) {
+        log.info("lockSeat: zoneId={}, seatId={}, activeOrderId={}", zoneId, seatId, activeOrderId);
+        ZoneId zId = new ZoneId(zoneId);
+        SeatId sId = new SeatId(seatId);
+        return withLockAndReturn(zId, () -> {
+            Zone zone = loadZone(zId);
+            zone.reserveSeat(sId);
+            zoneRepository.save(zone);
+            return new OrderItem(zoneId, seatId, 1, zone.pricePerTicket().amount());
+        });
+    }
+
+    @Override
+    public void unlockSeat(String zoneId, String seatId) {
+        log.info("unlockSeat: zoneId={}, seatId={}", zoneId, seatId);
+        ZoneId zId = new ZoneId(zoneId);
+        SeatId sId = new SeatId(seatId);
+        withLock(zId, () -> {
+            Zone zone = loadZone(zId);
+            zone.releaseSeat(sId);
             zoneRepository.save(zone);
         });
     }
