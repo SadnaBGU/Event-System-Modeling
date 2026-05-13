@@ -72,10 +72,7 @@ class OrderConcurrencyTest {
      */
     @Test
     void testConcurrentSeatReservation_100Threads_OnlyOneSucceeds() throws InterruptedException {
-        // ───────────────────────────────────────────────────────────────
-        // SETUP: Create test order and configure mocks
-        // ───────────────────────────────────────────────────────────────
-        
+        // Arrange: Create a test order and mock repository to return it
         ActiveOrder testOrder = orderFactory.createOrder(
                 new BuyerReference(BuyerType.MEMBER, "session-master", "master-buyer"),
                 EVENT_ID,
@@ -84,7 +81,7 @@ class OrderConcurrencyTest {
         
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
 
-        // Setup: First call succeeds (creates OrderItem), subsequent calls throw exception
+        // First call succeeds (creates OrderItem), subsequent calls throw exception
         OrderItem lockedItem = new OrderItem(ZONE_ID, SEAT_ID, 1, new BigDecimal("150.00"));
         
         AtomicInteger lockAttempts = new AtomicInteger(0);
@@ -101,10 +98,7 @@ class OrderConcurrencyTest {
                     }
                 });
 
-        // ───────────────────────────────────────────────────────────────
-        // EXECUTE: Launch 100 threads with synchronized timing
-        // ───────────────────────────────────────────────────────────────
-        
+        // Act: Launch 100 threads to reserve the same seat concurrently        
         ExecutorService executor = Executors.newFixedThreadPool(100);
         
         // Signal for all threads to start simultaneously
@@ -144,10 +138,6 @@ class OrderConcurrencyTest {
                 }
             });
         }
-
-        // ───────────────────────────────────────────────────────────────
-        // SYNCHRONIZE: Fire all threads at the same instant
-        // ───────────────────────────────────────────────────────────────
         
         // All 100 threads now race to reserve the seat
         startSignal.countDown();
@@ -157,10 +147,7 @@ class OrderConcurrencyTest {
         
         executor.shutdown();
 
-        // ───────────────────────────────────────────────────────────────
-        // ASSERT: Verify race condition protection
-        // ───────────────────────────────────────────────────────────────
-        
+        // Assert: Validate outcomes of the concurrent reservation attempts        
         // All threads should complete
         assertThat(completed)
                 .as("All 100 threads should complete within timeout")
@@ -241,7 +228,7 @@ class OrderConcurrencyTest {
         endSignal.await(5, TimeUnit.SECONDS);
         executor.shutdown();
 
-        // Assert - All should succeed when reserving different seats
+        // Assert: All should succeed when reserving different seats
         assertThat(successCount.get()).isEqualTo(10);
         verify(orderRepository, times(10)).save(testOrder);
     }
