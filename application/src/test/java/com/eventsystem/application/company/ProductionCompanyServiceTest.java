@@ -112,6 +112,62 @@ class ProductionCompanyServiceTest {
         assertThat(company.isManager(manager3)).isTrue();
     }
 
+    @Test
+    void createCompany_with_duplicate_name_fails() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        service.createCompany(founder, "DuplicateCompany", "First", 4.5);
+
+        assertThatThrownBy(() -> service.createCompany(founder, "DuplicateCompany", "Second", 3.0))
+                .isInstanceOf(CompanyDomainException.class)
+                .hasMessageContaining("already exists");
+    }
+
+    @Test
+    void suspendCompany_prevents_new_operations() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        CompanyId companyId = service.createCompany(founder, "SuspendTest", "desc", 4.0);
+        service.suspendCompany(companyId);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
+                .isInstanceOf(CompanyDomainException.class);
+    }
+
+    @Test
+    void reopenCompany_restores_functionality() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        CompanyId companyId = service.createCompany(founder, "ReopenTest", "desc", 4.0);
+        service.suspendCompany(companyId);
+        service.reopenCompany(companyId);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        MemberId newOwner = MemberId.random();
+        memberRepository.save(new Member(newOwner));
+        
+        company.appointOwner(founder, newOwner);
+        assertThat(company.isOwner(newOwner)).isTrue();
+    }
+
+    @Test
+    void terminateCompany_closes_operations() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        CompanyId companyId = service.createCompany(founder, "TerminateTest", "desc", 4.0);
+        service.terminateCompany(companyId);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
+                .isInstanceOf(CompanyDomainException.class)
+                .hasMessageContaining("not active");
+    }
+
     private static final class InMemoryMemberRepository implements MemberRepository {
         private final Map<MemberId, Member> members = new ConcurrentHashMap<>();
 
