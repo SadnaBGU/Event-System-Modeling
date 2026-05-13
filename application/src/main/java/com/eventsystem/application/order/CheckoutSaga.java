@@ -2,6 +2,7 @@ package com.eventsystem.application.order;
 
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;

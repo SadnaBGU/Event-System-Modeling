@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;

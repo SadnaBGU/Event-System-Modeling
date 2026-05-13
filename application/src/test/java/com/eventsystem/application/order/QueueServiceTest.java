@@ -1,5 +1,6 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.queue.VirtualQueue;

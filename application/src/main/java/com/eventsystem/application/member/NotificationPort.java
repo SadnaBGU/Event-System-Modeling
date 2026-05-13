@@ -1,4 +1,4 @@
-package com.eventsystem.application.order;
+package com.eventsystem.application.member;
 
 import com.eventsystem.domain.order.BuyerReference;
 import java.math.BigDecimal;
