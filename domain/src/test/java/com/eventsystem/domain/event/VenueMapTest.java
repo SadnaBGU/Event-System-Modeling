@@ -1,5 +1,6 @@
 package com.eventsystem.domain.event;
 
+import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.Test;
 

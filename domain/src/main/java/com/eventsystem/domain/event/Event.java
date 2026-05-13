@@ -1,7 +1,12 @@
 package com.eventsystem.domain.event;
 
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.domainexceptions.EventDomainException;
+import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 
+
+import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -111,15 +116,15 @@ public class Event {
     public synchronized void setDiscountPolicy(DiscountPolicy policy){
 
     }
-
-    private void isValidDiscountCode(String discountCode) {
-    
-    }
-
-
     */
 
+    public boolean isValidDiscountCode(String discountCode) { //TODO - placeholder until discounts are implemented
+        return false;
+    }
 
+    public DiscountSnapshot getDiscountSnapshot(String discountCode, Money baseTotal) { //TODO - placeholder until discounts are implemented
+        return new DiscountSnapshot("YES_DISCOUNT", Money.of(BigDecimal.ZERO, baseTotal.currency()) );
+    }
 
     public synchronized void addZone(ZoneId zoneId) {
         requireDraft("Cannot add zone after event is published");

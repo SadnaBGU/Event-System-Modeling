@@ -1,9 +1,19 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.*;
+import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.ZoneRepository;
+import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
+import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.shared.Money;
+
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -385,5 +396,102 @@ class EventPurchaseSupportServiceTest {
 
         verifyNoInteractions(eventRepository);
         verifyNoInteractions(zoneRepository);
+    }
+
+    @Test
+    void validatePurchasePolicy_whenPublishedAndZoneBelongs_returnsTrue() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                "seat-1",
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        boolean result = service.validatePurchasePolicy(event.id().value(), buyer, List.of(item));
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void validatePurchasePolicy_whenEventIsNotPublished_returnsFalse() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                "seat-1",
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        boolean result = service.validatePurchasePolicy(event.id().value(), buyer, List.of(item));
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void validatePurchasePolicy_whenZoneDoesNotBelongToEvent_returnsFalse() {
+        Event event = createDraftEvent();
+        ZoneId eventZoneId = ZoneId.random();
+        ZoneId otherZoneId = ZoneId.random();
+        event.addZone(eventZoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                otherZoneId.value(),
+                "seat-1",
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        boolean result = service.validatePurchasePolicy(event.id().value(), buyer, List.of(item));
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void applyDiscount_withoutDiscountPolicy_returnsZeroDiscount() {
+        Event event = createPublishedEvent();
+        Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        DiscountSnapshot result = service.applyDiscount(event.id().value(), null, baseTotal);
+
+        assertThat(result.discountName()).isEqualTo("NO_DISCOUNT");
+        assertThat(result.discountAmount()).isEqualTo(Money.of(BigDecimal.ZERO, "ILS"));
+    }
+
+    @Test
+    void getEventSnapshot_returnsSnapshotFromEventDetails() {
+        Event event = createPublishedEvent();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        EventSnapshot snapshot = service.getEventSnapshot(event.id().value());
+
+        assertThat(snapshot.eventId()).isEqualTo(event.id().value());
+        assertThat(snapshot.eventName()).isEqualTo(event.details().name());
+        assertThat(snapshot.companyName()).isEqualTo(event.companyId());
+        assertThat(snapshot.eventDate()).isEqualTo(event.details().dates().get(0).toLocalDate());
+        assertThat(snapshot.location()).isEqualTo(event.details().location());
     }
 }
