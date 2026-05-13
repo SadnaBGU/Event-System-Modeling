@@ -5,6 +5,7 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.SeatStatus;
 import com.eventsystem.domain.zone.ZoneType;
+import com.eventsystem.domain.zone.SeatedZoneHelper;
 import com.eventsystem.domain.shared.Money;
 import java.util.*;
 
@@ -96,25 +97,19 @@ public class VenueZone {
     }
 
     public void reserveSeat(SeatId seatId) {
-        Seat seat = findSeat(seatId);
-        seat.reserve();
+        SeatedZoneHelper.reserveSeat(this::findSeat, seatId);
     }
 
     public void releaseSeat(SeatId seatId) {
-        Seat seat = findSeat(seatId);
-        seat.release();
+        SeatedZoneHelper.releaseSeat(this::findSeat, seatId);
     }
 
     public void markSeatSold(SeatId seatId) {
-        Seat seat = findSeat(seatId);
-        seat.markSold();
+        SeatedZoneHelper.markSeatSold(this::findSeat, seatId);
     }
 
     private Seat findSeat(SeatId seatId) {
-        return seats.stream()
-                .filter(s -> s.seatId().equals(seatId))
-                .findFirst()
-                .orElseThrow(() -> new VenueException("Seat not found: " + seatId));
+        return SeatedZoneHelper.findSeatInList(seats, seatId);
     }
 
     @Override
