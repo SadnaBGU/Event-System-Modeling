@@ -5,8 +5,8 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.SeatStatus;
 import com.eventsystem.domain.zone.ZoneType;
+import com.eventsystem.domain.shared.Money;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class VenueZone {
     private final ZoneId zoneId;

@@ -1,6 +1,7 @@
 package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
