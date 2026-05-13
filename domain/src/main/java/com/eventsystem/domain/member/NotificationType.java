@@ -9,5 +9,7 @@ public enum NotificationType {
     COMPANY_TERMINATED,
     COMPANY_REOPENED,
     ROLE_CHANGED,
-    LOTTERY_WON
+    LOTTERY_WON,
+    PURCHASE_FAILED,
+    QUEUE_TURN_ARRIVED
 }

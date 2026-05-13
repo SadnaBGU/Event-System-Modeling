@@ -1,11 +1,18 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.appexceptions.ActiveOrderHasExpiredException;
+import com.eventsystem.application.appexceptions.IssuanceFailedException;
+import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
+import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
@@ -64,31 +71,31 @@ public class CheckoutSaga {
         logger.info("Initiating checkout process for order: {}", orderId);
         // 1. Validate the order and its expiration
         ActiveOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
         
         if (order.isExpired()) {
             logger.warn("Checkout failed: Order {} reservation timer has expired", orderId);
-            throw new IllegalStateException("Order reservation timer expired");
+            throw new ActiveOrderHasExpiredException(orderId);
         }
 
         // 2. Validating purchase policies before discounts
         boolean isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
         if (!isEligible) {
             logger.warn("Checkout failed: Order {} violates purchase policy for event {}", orderId, order.getEventId());
-            throw new IllegalStateException("Order violates purchase policy");
+            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event " + order.getEventId());
         }
 
         // 3. Calculating the total price and applying discounts
-        BigDecimal baseTotal = order.calculateBaseTotal();
+        Money baseTotal = order.calculateBaseTotal();
         DiscountSnapshot discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
-        BigDecimal finalAmount = baseTotal.subtract(discount.discountAmount());
+        Money finalAmount = baseTotal.subtract(discount.discountAmount());
 
         // 4. Charging the payment through the PaymentGateway
         PaymentResult paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);
         if (!paymentResult.success()) {
             logger.warn("Checkout failed for order {}: Payment declined. Reason: {}", orderId, paymentResult.errorMessage());
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment declined");
-            throw new RuntimeException("Payment failed: " + paymentResult.errorMessage());
+            throw new PaymentFailedException(paymentResult.errorMessage());
         }
 
         logger.info("Payment successful for order {}. Proceeding with ticket issuance.", orderId);
@@ -107,7 +114,7 @@ public class CheckoutSaga {
             }
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "System error during ticket issuance. You have been refunded.");
-            throw new RuntimeException("Issuance failed due to a system exception, automatic refund triggered.", e);
+            throw new IssuanceFailedException("Ticket issuance failed for order " + orderId + ": " + e.getMessage());
         }
         
         if (!issuanceResult.success()) {
@@ -120,7 +127,7 @@ public class CheckoutSaga {
             }
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Technical error during ticket issuance. You have been refunded.");
-            throw new RuntimeException("Issuance logic failed, automatic refund triggered.");
+            throw new IssuanceFailedException("Ticket issuance failed for order " + orderId + ": " + issuanceResult.errorMessage());
         }
 
         // 6. If all steps succeed, we create a purchase record, mark the order as checked out, and send a success notification

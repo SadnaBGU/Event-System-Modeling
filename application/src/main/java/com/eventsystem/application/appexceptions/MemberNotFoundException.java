@@ -1,4 +1,4 @@
-package com.eventsystem.application.member;
+package com.eventsystem.application.appexceptions;
 
 import com.eventsystem.domain.member.MemberId;
 

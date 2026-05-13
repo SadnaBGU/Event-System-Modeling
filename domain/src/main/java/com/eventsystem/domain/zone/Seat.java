@@ -2,6 +2,8 @@ package com.eventsystem.domain.zone;
 
 import java.util.Objects;
 
+import com.eventsystem.domain.domainexceptions.ZoneDomainException;
+
 public class Seat {
 
     private final SeatId seatId;

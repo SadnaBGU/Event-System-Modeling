@@ -2,13 +2,15 @@ package com.eventsystem.domain.order;
 
 import java.math.BigDecimal;
 
+import com.eventsystem.domain.shared.Money;
+
 public class OrderItem {
     private String zoneId;
     private String seatId;
     private int quantity;
-    private BigDecimal unitPrice;
+    private Money unitPrice;
 
-    public OrderItem(String zoneId, String seatId, int quantity, BigDecimal unitPrice) {
+    public OrderItem(String zoneId, String seatId, int quantity, Money unitPrice) {
         this.zoneId = zoneId;
         this.seatId = seatId;
         this.quantity = quantity;
@@ -27,7 +29,7 @@ public class OrderItem {
         return quantity; 
     }
 
-    public BigDecimal getUnitPrice() { 
+    public Money getUnitPrice() { 
         return unitPrice;
     }
 }

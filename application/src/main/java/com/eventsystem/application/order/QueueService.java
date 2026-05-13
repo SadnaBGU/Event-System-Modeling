@@ -1,6 +1,7 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.domain.queue.VirtualQueue;
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 
 import java.util.List;
@@ -110,5 +111,16 @@ public class QueueService {
         logger.info("Created and activated new VirtualQueue {} for event {}", newQueue.getQueueId(), eventId);
 
         return newQueue;
+    }
+
+    public void handleEventSoldOut(String eventId) {
+        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+            List<BuyerReference> disappointedBuyers = queue.clearQueue();
+            queueRepository.save(queue);
+            
+            for (BuyerReference buyer : disappointedBuyers) {
+                notificationPort.sendEventSoldOut(buyer, eventId);
+            }
+        });
     }
 }

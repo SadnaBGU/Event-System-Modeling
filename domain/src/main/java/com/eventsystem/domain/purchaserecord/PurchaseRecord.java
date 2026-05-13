@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.eventsystem.domain.shared.Money;
+
 
 public record PurchaseRecord(
     String recordId,
@@ -12,7 +14,7 @@ public record PurchaseRecord(
     BuyerSnapshot buyerSnapshot,
     EventSnapshot eventSnapshot,
     List<PurchasedItem> items,
-    BigDecimal totalPaid,
+    Money totalPaid,
     List<DiscountSnapshot> discountsApplied,
     Instant purchaseTimestamp,
     String paymentConfirmationId,
@@ -23,7 +25,7 @@ public record PurchaseRecord(
             BuyerSnapshot buyerSnapshot,
             EventSnapshot eventSnapshot,
             List<PurchasedItem> items,
-            BigDecimal totalPaid,
+            Money totalPaid,
             List<DiscountSnapshot> discountsApplied,
             String paymentConfirmationId,
             String ticketIssuanceConfirmationId) {

@@ -47,4 +47,9 @@ public class InMemoryPurchaseRecordRepository implements PurchaseRecordRepositor
                 .filter(record -> record.eventSnapshot().eventId().equals(eventId))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<PurchaseRecord> findAll() {
+        return new ArrayList<>(store.values());
+    }   
 }

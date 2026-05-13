@@ -1,5 +1,6 @@
 package com.eventsystem.domain.zone;
 
+import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
 

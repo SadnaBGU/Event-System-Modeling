@@ -1,4 +1,4 @@
-package com.eventsystem.domain.venue;
+package com.eventsystem.domain.domainexceptions;
 
 public class VenueException extends RuntimeException {
     public VenueException(String message) {

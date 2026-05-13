@@ -1,5 +1,6 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.queue.VirtualQueue;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,5 +121,21 @@ class QueueServiceTest {
 
         // Assert
         assertFalse(result);
+    }
+
+    @Test
+    void handleEventSoldOut_ClearsQueueAndNotifiesWaiting() {
+        // Arrange
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
+        BuyerReference waitingBuyer = new BuyerReference(BuyerType.MEMBER, "sess-2", "user-456");
+        when(mockQueue.clearQueue()).thenReturn(List.of(waitingBuyer));
+
+        // Act
+        queueService.handleEventSoldOut(EVENT_ID);
+
+        // Assert
+        verify(mockQueue, times(1)).clearQueue();
+        verify(queueRepository, times(1)).save(mockQueue);
+        verify(notificationPort, times(1)).sendEventSoldOut(waitingBuyer, EVENT_ID);
     }
 }

@@ -1,5 +1,6 @@
 package com.eventsystem.application.member;
 
+import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberRepository;

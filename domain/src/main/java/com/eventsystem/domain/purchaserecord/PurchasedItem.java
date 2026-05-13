@@ -2,4 +2,6 @@ package com.eventsystem.domain.purchaserecord;
 
 import java.math.BigDecimal;
 
-public record PurchasedItem(String zoneName, String seatId, int quantity, BigDecimal priceAtPurchase) {}
+import com.eventsystem.domain.shared.Money;
+
+public record PurchasedItem(String zoneName, String seatId, int quantity, Money priceAtPurchase) {}

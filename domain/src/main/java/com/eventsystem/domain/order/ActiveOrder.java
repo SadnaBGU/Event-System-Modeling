@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
+import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
+import com.eventsystem.domain.shared.Money;
+
 
 
 public class ActiveOrder {
@@ -59,10 +63,10 @@ public class ActiveOrder {
 
     private void verifyActive() {
         if (status != OrderStatus.ACTIVE) {
-            throw new IllegalStateException("Order is not active. Current status: " + status);
+            throw new ActiveOrderNotActiveException(eventId);
         }
         if (isExpired()) {
-            throw new IllegalStateException("Reservation time has expired.");
+            throw new ActiveOrderHasExpiredException(eventId);
         }
     }
 
@@ -82,10 +86,11 @@ public class ActiveOrder {
         return eventId; 
     }
 
-    public BigDecimal calculateBaseTotal() {
+    public Money calculateBaseTotal() {
+        String currency = items.isEmpty() ? "USD" : items.get(0).getUnitPrice().currency();
         return items.stream()
                 .map(OrderItem::getUnitPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(new Money(BigDecimal.ZERO, currency), Money::add);
     }
 
     public List<OrderItem> getItems() { 

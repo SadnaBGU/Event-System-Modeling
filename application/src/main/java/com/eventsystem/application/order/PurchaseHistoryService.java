@@ -50,4 +50,8 @@ public class PurchaseHistoryService {
         logger.info("Found receipt for recordId: {}", recordId);
         return receipt;
     }
+
+    public List<PurchaseRecord> getGlobalHistory() {
+        return purchaseRecordRepository.findAll(); 
+    }
 }

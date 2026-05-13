@@ -1,4 +1,4 @@
-package com.eventsystem.application.auth;
+package com.eventsystem.application.appexceptions;
 
 /**
  * Thrown when authentication fails (bad credentials, unknown user, cancelled account).

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.eventsystem.domain.domainexceptions.EventDomainException;
+
 public final class VenueMap {
 
     private final List<MapElement> mapElements;

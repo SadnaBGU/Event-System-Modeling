@@ -1,5 +1,6 @@
 package com.eventsystem.domain.queue;
 
+import com.eventsystem.domain.domainexceptions.QueueIsNotActiveException;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,8 +39,7 @@ class VirtualQueueTest {
 
         // Act & Assert - Queue is not active by default
         assertThatThrownBy(() -> queue.enqueue(visitor))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Queue is not active");
+                .isInstanceOf(QueueIsNotActiveException.class);
     }
 
     @Test
