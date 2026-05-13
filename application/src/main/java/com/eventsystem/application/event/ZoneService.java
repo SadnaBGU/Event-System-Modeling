@@ -110,7 +110,7 @@ public class ZoneService implements ZoneServicePort {
             zoneHolder[0].reserveSeat(seatId);
             zoneRepository.save(zoneHolder[0]);
         });
-        return new OrderItem(zoneId.value(), seatId.value(), 1, zoneHolder[0].pricePerTicket().amount());
+        return new OrderItem(zoneId.value(), seatId.value(), 1, zoneHolder[0].pricePerTicket());
     }
 
     @Override

@@ -12,6 +12,7 @@ import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
@@ -85,9 +86,9 @@ public class CheckoutSaga {
         }
 
         // 3. Calculating the total price and applying discounts
-        BigDecimal baseTotal = order.calculateBaseTotal();
+        Money baseTotal = order.calculateBaseTotal();
         DiscountSnapshot discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
-        BigDecimal finalAmount = baseTotal.subtract(discount.discountAmount());
+        Money finalAmount = baseTotal.subtract(discount.discountAmount());
 
         // 4. Charging the payment through the PaymentGateway
         PaymentResult paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);

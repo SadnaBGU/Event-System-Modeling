@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
+import com.eventsystem.domain.shared.Money;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -40,10 +41,10 @@ class ActiveOrderTest {
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
 
         // Act
-        BigDecimal total = order.calculateBaseTotal();
+        Money total = order.calculateBaseTotal();
 
         // Assert
-        assertThat(total).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(total.amount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
@@ -52,14 +53,14 @@ class ActiveOrderTest {
         Instant expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
-        OrderItem item = new OrderItem("VIP-ZONE", "SEAT-101", 1, new BigDecimal("150.00"));
+        OrderItem item = new OrderItem("VIP-ZONE", "SEAT-101", 1, Money.of(new BigDecimal("150.00"), "USD"));
         order.addItem(item);
 
         // Act
-        BigDecimal total = order.calculateBaseTotal();
+        Money total = order.calculateBaseTotal();
 
         // Assert
-        assertThat(total).isEqualByComparingTo(new BigDecimal("150.00"));
+        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("150.00"));
     }
 
     @Test
@@ -69,19 +70,19 @@ class ActiveOrderTest {
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
         // Add items with fractional cents to test BigDecimal precision
-        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, new BigDecimal("150.50"));
-        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 2, new BigDecimal("75.25"));
-        OrderItem item3 = new OrderItem("BALCONY-ZONE", "SEAT-301", 1, new BigDecimal("99.99"));
+        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, Money.of(new BigDecimal("150.50"), "USD"));
+        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 2, Money.of(new BigDecimal("75.25"), "USD"));
+        OrderItem item3 = new OrderItem("BALCONY-ZONE", "SEAT-301", 1, Money.of(new BigDecimal("99.99"), "USD"));
         
         order.addItem(item1);
         order.addItem(item2);
         order.addItem(item3);
 
         // Act
-        BigDecimal total = order.calculateBaseTotal();
+        Money total = order.calculateBaseTotal();
 
         // Assert - Expected: 150.50 + 75.25 + 99.99 = 325.74
-        assertThat(total).isEqualByComparingTo(new BigDecimal("325.74"));
+        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("325.74"));
     }
 
     @Test
@@ -90,18 +91,18 @@ class ActiveOrderTest {
         Instant expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
-        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, new BigDecimal("100.00"));
-        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 1, new BigDecimal("50.00"));
+        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, Money.of(new BigDecimal("100.00"), "USD"));
+        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 1, Money.of(new BigDecimal("50.00"), "USD"));
         
         order.addItem(item1);
         order.addItem(item2);
 
         // Act - Remove one item
         order.removeItem("VIP-ZONE", "SEAT-101");
-        BigDecimal total = order.calculateBaseTotal();
+        Money total = order.calculateBaseTotal();
 
         // Assert
-        assertThat(total).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("50.00"));
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -146,7 +147,7 @@ class ActiveOrderTest {
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, futureExpiry);
         
         // Add an item and checkout while timer is still valid
-        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, new BigDecimal("100.00"));
+        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, Money.of(new BigDecimal("100.00"), "USD"));
         order.addItem(item);
         order.checkout();
 
@@ -180,8 +181,8 @@ class ActiveOrderTest {
         Instant expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
-        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, new BigDecimal("150.00"));
-        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 1, new BigDecimal("75.00"));
+        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, Money.of(new BigDecimal("150.00"), "USD"));
+        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 1, Money.of(new BigDecimal("75.00"), "USD"));
         
         order.addItem(item1);
         order.addItem(item2);
@@ -203,7 +204,7 @@ class ActiveOrderTest {
         order.expire();
 
         // Act & Assert - Try to add item after expiration
-        OrderItem newItem = new OrderItem("ZONE", "SEAT", 1, new BigDecimal("100.00"));
+        OrderItem newItem = new OrderItem("ZONE", "SEAT", 1, Money.of(new BigDecimal("100.00"), "USD"));
         
         assertThatThrownBy(() -> order.addItem(newItem))
                 .isInstanceOf(ActiveOrderNotActiveException.class);
@@ -228,7 +229,7 @@ class ActiveOrderTest {
         Instant expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
-        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, new BigDecimal("100.00"));
+        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, Money.of(new BigDecimal("100.00"), "USD"));
         order.addItem(item);
 
         // Act

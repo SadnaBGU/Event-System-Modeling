@@ -2,6 +2,7 @@ package com.eventsystem.application.order;
 
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
+import com.eventsystem.domain.shared.Money;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,7 +20,7 @@ public class ReportService {
         this.purchaseRecordRepository = purchaseRecordRepository;
     }
 
-    public record SalesSummary(String eventId, int totalTicketsSold, BigDecimal totalRevenue) {}
+    public record SalesSummary(String eventId, int totalTicketsSold, Money totalRevenue) {}
 
     /**
      * Returns a sales summary for a given event, including total tickets sold and total revenue generated.
@@ -37,10 +38,16 @@ public class ReportService {
                 .flatMap(record -> record.items().stream())
                 .mapToInt(PurchasedItem::quantity)
                 .sum();
+        
+        String currency = eventRecords.stream()
+                .flatMap(record -> record.items().stream())
+                .map(item -> item.priceAtPurchase().currency())
+                .findFirst()
+                .orElse("USD"); // Default to USD if no records found
 
-        BigDecimal totalRevenue = eventRecords.stream()
+        Money totalRevenue = eventRecords.stream()
                 .map(PurchaseRecord::totalPaid)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(Money.of(BigDecimal.ZERO, currency), Money::add);
 
         SalesSummary summary = new SalesSummary(eventId, totalTickets, totalRevenue);
 

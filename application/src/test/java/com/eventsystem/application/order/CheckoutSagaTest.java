@@ -40,6 +40,7 @@ import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -70,7 +71,7 @@ class CheckoutSagaTest {
         testOrder = factory.createOrder(testBuyer, EVENT_ID, Instant.now().plus(10, ChronoUnit.MINUTES));
         
         // Adding a mock item to the order to ensure it's not empty during checkout
-        OrderItem mockItem = new OrderItem("VIP-ZONE", "SEAT-42", 1, new BigDecimal("150.00"));
+        OrderItem mockItem = new OrderItem("VIP-ZONE", "SEAT-42", 1, Money.of(BigDecimal.valueOf(150), "USD"));
         testOrder.addItem(mockItem);
 
         // Define the behavior of the orderRepository mock to return our testOrder when findById is called with ORDER_ID
@@ -84,7 +85,7 @@ class CheckoutSagaTest {
                 .thenReturn(true);
         
         when(eventQueryPort.applyDiscount(eq(EVENT_ID), any(), any()))
-                .thenReturn(new DiscountSnapshot("No Discount", BigDecimal.ZERO));
+                .thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
                 
         when(paymentGateway.charge(eq(ORDER_ID), any(), eq(testBuyer), any()))
                 .thenReturn(PaymentResult.successful("TXN-777"));
@@ -108,7 +109,7 @@ class CheckoutSagaTest {
     void executeCheckout_TicketIssuanceFails_TriggersCompensatingAction() {
         // Arrange
         when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("No Discount", BigDecimal.ZERO));
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
         
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.successful("TXN-777"));
@@ -169,7 +170,7 @@ class CheckoutSagaTest {
     void executeCheckout_PaymentDeclined_ThrowsException() {
         // Arrange
         when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", BigDecimal.ZERO));
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
         
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.failed("Insufficient funds"));
@@ -187,7 +188,7 @@ class CheckoutSagaTest {
     void executeCheckout_IssuanceThrowsException_TriggersCrashCompensation() {
         // Arrange
         when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", BigDecimal.ZERO));
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
         
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.successful("TXN-999"));
@@ -210,7 +211,7 @@ class CheckoutSagaTest {
     void executeCheckout_PaymentGatewayTimeout_AbortsCheckout() {
         // Arrange
         when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", BigDecimal.ZERO));
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
         
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Payment Gateway Timeout"));

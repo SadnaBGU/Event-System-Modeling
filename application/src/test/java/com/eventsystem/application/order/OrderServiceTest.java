@@ -32,6 +32,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -112,7 +113,7 @@ class OrderServiceTest {
         // Arrange
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
         
-        OrderItem mockItem = new OrderItem("ZONE-A", "SEAT-1", 1, new BigDecimal("100.0"));
+        OrderItem mockItem = new OrderItem("ZONE-A", "SEAT-1", 1, Money.of(new BigDecimal("100.0"), "USD"));
         when(zoneService.reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"))).thenReturn(mockItem);
 
         // Act
@@ -129,7 +130,7 @@ class OrderServiceTest {
         // Arrange
         when(orderRepository.findExpired()).thenReturn(Optional.of(List.of(testOrder)));
         
-        OrderItem expiredItem = new OrderItem("ZONE-VIP", "SEAT-9", 1, new BigDecimal("200.0"));
+        OrderItem expiredItem = new OrderItem("ZONE-VIP", "SEAT-9", 1, Money.of(new BigDecimal("200.0"), "USD"));
         when(testOrder.expire()).thenReturn(List.of(expiredItem));
 
         // Act
