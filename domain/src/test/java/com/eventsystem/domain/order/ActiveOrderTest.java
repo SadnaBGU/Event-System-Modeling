@@ -3,6 +3,8 @@ package com.eventsystem.domain.order;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -204,8 +206,7 @@ class ActiveOrderTest {
         OrderItem newItem = new OrderItem("ZONE", "SEAT", 1, new BigDecimal("100.00"));
         
         assertThatThrownBy(() -> order.addItem(newItem))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("not active");
+                .isInstanceOf(ActiveOrderNotActiveException.class);
     }
 
     @Test

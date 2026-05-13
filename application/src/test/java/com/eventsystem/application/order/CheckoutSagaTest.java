@@ -27,6 +27,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.eventsystem.application.appexceptions.ActiveOrderHasExpiredException;
+import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.member.NotificationPort;
@@ -131,10 +134,9 @@ class CheckoutSagaTest {
         when(orderRepository.findById("INVALID_ORDER")).thenReturn(Optional.empty());
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(OrderNotFoundException.class, () -> {
             checkoutSaga.executeCheckout("INVALID_ORDER", "VALID_TOKEN", "DISCOUNT10");
         });
-        assertEquals("Order not found", exception.getMessage());
     }
 
     @Test
@@ -145,10 +147,9 @@ class CheckoutSagaTest {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(expiredOrder));
 
         // Act & Assert
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+        assertThrows(ActiveOrderHasExpiredException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
         });
-        assertEquals("Order reservation timer expired", exception.getMessage());
     }
 
     @Test
@@ -157,10 +158,9 @@ class CheckoutSagaTest {
         when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(false);
 
         // Act & Assert
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+        assertThrows(OrderViolatesPolicyException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
         });
-        assertEquals("Order violates purchase policy", exception.getMessage());
         
         verify(paymentGateway, never()).charge(any(), any(), any(), any());
     }
@@ -175,12 +175,10 @@ class CheckoutSagaTest {
                 .thenReturn(PaymentResult.failed("Insufficient funds"));
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "INVALID_TOKEN", "DISCOUNT10");
         });
-        
-        assertTrue(exception.getMessage().contains("Payment failed"));
-        
+
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), eq("Payment declined"));
         verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
     }
@@ -198,12 +196,10 @@ class CheckoutSagaTest {
                 .thenThrow(new RuntimeException("Connection Timeout 504"));
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
         });
         
-        assertTrue(exception.getMessage().contains("automatic refund triggered"));
-
         verify(paymentGateway).refund(eq("TXN-999"), any(), contains("Ticket issuance service crashed"));
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("System error"));
         

@@ -1,5 +1,8 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
+import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.appexceptions.ZoneApplicationException;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.lottery.LotteryValidationPort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
@@ -72,7 +75,7 @@ public class OrderService {
         
         if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
             logger.warn("Reservation Rejected_Existing_Order: Buyer {} already has active order for event {}", buyer.memberId(), eventId);
-            throw new IllegalStateException("Reservation Rejected_Existing_Order");
+            throw new AlreadyExistsOrderException("An active order for this buyer and event already exists.");
         }
 
         ActiveOrder newOrder = orderFactory.createOrder(
@@ -95,7 +98,7 @@ public class OrderService {
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     logger.warn("Failed to reserve seat: Order {} not found", orderId);
-                    return new IllegalArgumentException("Active order not found");
+                    return new OrderNotFoundException("Active order" + orderId + "not found");
                 });
 
         try{
@@ -108,10 +111,10 @@ public class OrderService {
             logger.info("Successfully reserved seat {} for order {}", seatId, orderId);
         } catch (ZoneDomainException e) {
             logger.warn("Failed to reserve seat {} for order {}: {}", seatId, orderId, e.getMessage());
-            throw e; // rethrow the exception after logging
+            throw new ZoneApplicationException("Failed to reserve seat: " + e.getMessage());
         } catch (Exception e) {
             logger.error("System error while attempting to reserve seat {} for order {}", seatId, orderId, e);
-            throw e; // rethrow the exception after logging
+            throw new RuntimeException("Unexpected error occurred", e);
         }
     }
 
@@ -125,7 +128,7 @@ public class OrderService {
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     logger.warn("Failed to release seat: Order {} not found", orderId);
-                    return new IllegalArgumentException("Active order not found");
+                    return new OrderNotFoundException("Active order not found");
                 });
 
         // release the seat from the order aggregate and save it

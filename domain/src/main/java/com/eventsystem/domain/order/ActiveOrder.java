@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
+import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
+
 
 
 public class ActiveOrder {
@@ -59,10 +62,10 @@ public class ActiveOrder {
 
     private void verifyActive() {
         if (status != OrderStatus.ACTIVE) {
-            throw new IllegalStateException("Order is not active. Current status: " + status);
+            throw new ActiveOrderNotActiveException(eventId);
         }
         if (isExpired()) {
-            throw new IllegalStateException("Reservation time has expired.");
+            throw new ActiveOrderHasExpiredException(eventId);
         }
     }
 

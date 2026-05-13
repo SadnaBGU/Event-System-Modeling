@@ -1,5 +1,6 @@
 package com.eventsystem.domain.queue;
 
+import com.eventsystem.domain.domainexceptions.QueueIsNotActiveException;
 import com.eventsystem.domain.order.BuyerReference;
 
 import java.time.Instant;
@@ -40,7 +41,7 @@ public class VirtualQueue {
 
     public void enqueue(BuyerReference visitor) {
         if (status != QueueStatus.ACTIVE) {
-            throw new IllegalStateException("Queue is not active.");
+            throw new QueueIsNotActiveException(eventId);
         }
         
         boolean alreadyWaiting = waitingEntries.stream()

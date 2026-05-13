@@ -23,6 +23,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
+import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.lottery.LotteryValidationPort;
 import com.eventsystem.domain.order.ActiveOrder;
@@ -100,10 +102,9 @@ class OrderServiceTest {
         when(orderRepository.findById("INVALID_ORDER")).thenReturn(Optional.empty());
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(OrderNotFoundException.class, () -> {
             orderService.reserveSeat("INVALID_ORDER", "ZONE-A", "SEAT-1");
         });
-        assertEquals("Active order not found", exception.getMessage());
     }
 
     @Test
@@ -192,10 +193,8 @@ class OrderServiceTest {
         when(testOrder.isExpired()).thenReturn(false);
 
         // Act & Assert
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+        assertThrows(AlreadyExistsOrderException.class, () -> {
             orderService.createNewOrderStrict(testBuyer, EVENT_ID);
         });
-        
-        assertEquals("Reservation Rejected_Existing_Order", exception.getMessage());
     }
 }
