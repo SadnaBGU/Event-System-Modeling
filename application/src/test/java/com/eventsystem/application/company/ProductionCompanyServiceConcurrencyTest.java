@@ -77,7 +77,15 @@ class ProductionCompanyServiceConcurrencyTest {
             return Optional.ofNullable(members.get(memberId));
         }
 
-        void save(Member member) {
+        @Override
+        public Optional<Member> findByUsername(String username) {
+            return members.values().stream()
+                    .filter(m -> m.getUsername().equals(username))
+                    .findFirst();
+        }
+
+        @Override
+        public void save(Member member) {
             members.put(member.memberId(), member);
         }
     }
