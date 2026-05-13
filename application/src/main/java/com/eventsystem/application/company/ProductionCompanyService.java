@@ -103,6 +103,24 @@ public class ProductionCompanyService {
         productionCompanyRepository.save(company);
     }
 
+    public void updateCompanyName(CompanyId companyId, String newName) {
+        ProductionCompany company = loadCompany(companyId);
+        company.updateName(newName);
+        productionCompanyRepository.save(company);
+    }
+
+    public void updateCompanyDescription(CompanyId companyId, String newDescription) {
+        ProductionCompany company = loadCompany(companyId);
+        company.updateDescription(newDescription);
+        productionCompanyRepository.save(company);
+    }
+
+    public void updateCompanyRating(CompanyId companyId, double newRating) {
+        ProductionCompany company = loadCompany(companyId);
+        company.updateRating(newRating);
+        productionCompanyRepository.save(company);
+    }
+
     private ProductionCompany loadCompany(CompanyId companyId) {
         return productionCompanyRepository.findById(companyId)
                 .orElseThrow(() -> new CompanyDomainException("company not found"));

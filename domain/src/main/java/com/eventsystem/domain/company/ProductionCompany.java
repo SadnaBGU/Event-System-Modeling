@@ -106,6 +106,32 @@ public final class ProductionCompany {
         return appointmentTree.getAppointmentSubTree(ownerId);
     }
 
+    // ── Company Details Updates ──────────────────────────────────────────────
+
+    public synchronized void updateName(String newName) {
+        requireActive();
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        this.companyDetails = new CompanyDetails(newName, companyDetails.description(), companyDetails.rating());
+    }
+
+    public synchronized void updateDescription(String newDescription) {
+        requireActive();
+        if (newDescription == null || newDescription.isBlank()) {
+            throw new IllegalArgumentException("description must not be blank");
+        }
+        this.companyDetails = new CompanyDetails(companyDetails.name(), newDescription, companyDetails.rating());
+    }
+
+    public synchronized void updateRating(double newRating) {
+        requireActive();
+        if (newRating < 0.0 || newRating > 5.0) {
+            throw new IllegalArgumentException("rating must be in range [0, 5]");
+        }
+        this.companyDetails = new CompanyDetails(companyDetails.name(), companyDetails.description(), newRating);
+    }
+
     public CompanyId companyId() {
         return companyId;
     }
