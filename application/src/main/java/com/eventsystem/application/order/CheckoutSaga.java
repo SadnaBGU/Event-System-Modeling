@@ -1,0 +1,151 @@
+package com.eventsystem.application.order;
+
+import com.eventsystem.application.event.EventQueryPort;
+import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.domain.order.ActiveOrder;
+import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.purchaserecord.PurchaseRecord;
+import com.eventsystem.domain.purchaserecord.PurchasedItem;
+import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
+import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class CheckoutSaga {
+
+    private static final Logger logger = LoggerFactory.getLogger(CheckoutSaga.class);
+
+    private final ActiveOrderRepository orderRepository;
+    private final PurchaseRecordRepository purchaseRecordRepository;
+    private final PaymentGatewayPort paymentGateway;
+    private final TicketIssuancePort ticketIssuance;
+    private final NotificationPort notificationPort;
+    private final ZoneServicePort zoneService;
+    
+    private final EventQueryPort eventQueryPort; 
+
+    public CheckoutSaga(ActiveOrderRepository orderRepository,
+                        PurchaseRecordRepository purchaseRecordRepository,
+                        PaymentGatewayPort paymentGateway,
+                        TicketIssuancePort ticketIssuance,
+                        NotificationPort notificationPort,
+                        ZoneServicePort zoneService,
+                        EventQueryPort eventQueryPort) {
+        this.orderRepository = orderRepository;
+        this.purchaseRecordRepository = purchaseRecordRepository;
+        this.paymentGateway = paymentGateway;
+        this.ticketIssuance = ticketIssuance;
+        this.notificationPort = notificationPort;
+        this.zoneService = zoneService;
+        this.eventQueryPort = eventQueryPort;
+    }
+
+    /**
+     * This method orchestrates the entire checkout process for an active order. It includes:
+     * 1. Validating the order and its expiration.
+     * 2. Validating purchase policies before discounts (as required by Stream 4 instructions).
+     * 3. Calculating the total price and applying discounts.
+     * 4. Charging the payment through the PaymentGateway.
+     * 5. Issuing tickets through the TicketIssuance service (distributed transaction).
+     * 6. If any step fails, compensating actions are taken (e.g., refunding payment, unlocking seats).
+     * 7. If all steps succeed, a purchase record is created, the order is marked as checked out, and a success notification is sent.
+      * 
+      * Note: This method assumes that the caller has already verified that the order exists and belongs to the buyer.
+     */
+    public void executeCheckout(String orderId, String paymentToken, String discountCode) {
+        logger.info("Initiating checkout process for order: {}", orderId);
+        // 1. Validate the order and its expiration
+        ActiveOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        
+        if (order.isExpired()) {
+            logger.warn("Checkout failed: Order {} reservation timer has expired", orderId);
+            throw new IllegalStateException("Order reservation timer expired");
+        }
+
+        // 2. Validating purchase policies before discounts
+        boolean isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
+        if (!isEligible) {
+            logger.warn("Checkout failed: Order {} violates purchase policy for event {}", orderId, order.getEventId());
+            throw new IllegalStateException("Order violates purchase policy");
+        }
+
+        // 3. Calculating the total price and applying discounts
+        BigDecimal baseTotal = order.calculateBaseTotal();
+        DiscountSnapshot discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
+        BigDecimal finalAmount = baseTotal.subtract(discount.discountAmount());
+
+        // 4. Charging the payment through the PaymentGateway
+        PaymentResult paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);
+        if (!paymentResult.success()) {
+            logger.warn("Checkout failed for order {}: Payment declined. Reason: {}", orderId, paymentResult.errorMessage());
+            notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment declined");
+            throw new RuntimeException("Payment failed: " + paymentResult.errorMessage());
+        }
+
+        logger.info("Payment successful for order {}. Proceeding with ticket issuance.", orderId);
+
+        // 5. Issuing tickets through the TicketIssuance service (distributed transaction)
+        IssuanceResult issuanceResult;
+        try {
+            issuanceResult = ticketIssuance.issueTickets(order.getEventId(), orderId, order.getItems(), order.getBuyerRef());
+        } catch (Exception e) {
+            // If an exception occurs during ticket issuance, we need to compensate by refunding the payment and unlocking any reserved seats
+            logger.error("System crash during ticket issuance for order {}. Triggering compensating actions (Refund & Unlock).", orderId, e);
+            paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance service crashed: " + e.getMessage());
+            
+            for (OrderItem item : order.getItems()) {
+                zoneService.unlockSeat(item.getZoneId(), item.getSeatId());
+            }
+            
+            notificationPort.sendPurchaseFailure(order.getBuyerRef(), "System error during ticket issuance. You have been refunded.");
+            throw new RuntimeException("Issuance failed due to a system exception, automatic refund triggered.", e);
+        }
+        
+        if (!issuanceResult.success()) {
+            logger.warn("Checkout failed for order {}: Ticket issuance logic rejected the request. Reason: {}", orderId, issuanceResult.errorMessage());
+            // If ticket issuance fails (e.g., due to business logic), we also need to compensate by refunding the payment and unlocking any reserved seats
+            paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance failed: " + issuanceResult.errorMessage());
+            
+            for (OrderItem item : order.getItems()) {
+                zoneService.unlockSeat(item.getZoneId(), item.getSeatId());
+            }
+            
+            notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Technical error during ticket issuance. You have been refunded.");
+            throw new RuntimeException("Issuance logic failed, automatic refund triggered.");
+        }
+
+        // 6. If all steps succeed, we create a purchase record, mark the order as checked out, and send a success notification
+        EventSnapshot eventSnapshot = eventQueryPort.getEventSnapshot(order.getEventId());
+        BuyerSnapshot buyerSnapshot = new BuyerSnapshot("Member " + order.getBuyerRef().memberId());
+        
+        List<PurchasedItem> purchasedItems = order.getItems().stream()
+                .map(item -> new PurchasedItem(item.getZoneId(), item.getSeatId(), item.getQuantity(), item.getUnitPrice()))
+                .collect(Collectors.toList());
+
+        PurchaseRecord receipt = PurchaseRecord.create(
+                order.getBuyerRef().memberId(),
+                buyerSnapshot,
+                eventSnapshot,
+                purchasedItems,
+                finalAmount,
+                List.of(discount),
+                paymentResult.transactionId(),
+                issuanceResult.issuanceConfirmationId()
+        );
+
+        // 7. Append the purchase record, mark order as CHECKED_OUT, and send notification
+        purchaseRecordRepository.append(receipt);
+        order.checkout();
+        orderRepository.save(order); 
+        
+        notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.recordId());
+        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.recordId());
+    }
+}
