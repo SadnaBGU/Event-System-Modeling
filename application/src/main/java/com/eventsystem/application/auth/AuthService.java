@@ -1,5 +1,7 @@
 package com.eventsystem.application.auth;
 
+import com.eventsystem.application.appexceptions.AuthenticationException;
+import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.security.PasswordHasher;
 import com.eventsystem.application.security.TokenService;
 import com.eventsystem.application.security.TokenService.TokenClaims;

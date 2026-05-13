@@ -1,4 +1,4 @@
-package com.eventsystem.domain.zone;
+package com.eventsystem.domain.domainexceptions;
 
 public class ZoneDomainException extends RuntimeException {
 

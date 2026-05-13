@@ -1,9 +1,9 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.domain.company.CompanyDomainException;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.company.ProductionCompanyRepository;
+import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 
 import java.util.Locale;
 import java.util.Optional;

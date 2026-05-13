@@ -3,6 +3,8 @@ package com.eventsystem.domain.zone;
 import java.util.List;
 import java.util.function.Function;
 
+import com.eventsystem.domain.domainexceptions.ZoneDomainException;
+
 /**
  * Helper utility for common seated zone operations.
  * Encapsulates duplicate logic for reserving, releasing, and marking seats as sold

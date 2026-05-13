@@ -2,12 +2,12 @@ package com.eventsystem.application.order;
 
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
-import com.eventsystem.domain.zone.ZoneDomainException;
 import com.eventsystem.domain.zone.ZoneId;
 
 import java.time.Instant;

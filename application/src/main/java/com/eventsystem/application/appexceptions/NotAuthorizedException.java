@@ -1,4 +1,4 @@
-package com.eventsystem.application.admin;
+package com.eventsystem.application.appexceptions;
 
 /** Thrown when an actor is not a system administrator and tries to invoke an admin operation. */
 public class NotAuthorizedException extends RuntimeException {

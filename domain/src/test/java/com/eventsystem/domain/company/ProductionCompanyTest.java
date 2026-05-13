@@ -1,5 +1,6 @@
 package com.eventsystem.domain.company;
 
+import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.Test;
 
