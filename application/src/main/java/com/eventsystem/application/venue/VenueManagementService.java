@@ -4,6 +4,10 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberRepository;
 import com.eventsystem.domain.venue.*;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.ZoneType;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +40,7 @@ public class VenueManagementService {
                 .orElseThrow(() -> new VenueException("Venue not found: " + venueId));
 
         Money price = new Money(pricePerTicket, currency);
-        VenueZone zone = new VenueZone(ZoneId.generate(), zoneName, ZoneType.SEATED, price, capacity);
+        VenueZone zone = new VenueZone(ZoneId.random(), zoneName, ZoneType.SEATED, price, capacity);
         venue.addZone(zone);
         venueRepository.save(venue);
     }
@@ -50,7 +54,7 @@ public class VenueManagementService {
                 .orElseThrow(() -> new VenueException("Venue not found: " + venueId));
 
         Money price = new Money(pricePerTicket, currency);
-        VenueZone zone = new VenueZone(ZoneId.generate(), zoneName, ZoneType.STANDING, price, capacity);
+        VenueZone zone = new VenueZone(ZoneId.random(), zoneName, ZoneType.STANDING, price, capacity);
         venue.addZone(zone);
         venueRepository.save(venue);
     }

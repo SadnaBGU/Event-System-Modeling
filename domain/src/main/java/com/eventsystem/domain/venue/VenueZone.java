@@ -1,6 +1,7 @@
 package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.SeatStatus;
 import com.eventsystem.domain.zone.ZoneType;
@@ -46,12 +47,7 @@ public class VenueZone {
         for (char row = 'A'; row < 'Z' && currentSeat < capacity; row++) {
             String rowLabel = String.valueOf(row);
             for (int seatNum = 1; seatNum <= seatsPerRow && currentSeat < capacity; seatNum++) {
-                seats.add(new Seat(
-                        SeatId.random(),
-                        rowLabel,
-                        seatNum,
-                        SeatStatus.AVAILABLE
-                ));
+                seats.add(new Seat(SeatId.random(), rowLabel, seatNum));
                 currentSeat++;
             }
         }
@@ -83,30 +79,30 @@ public class VenueZone {
 
     public int getAvailableCount() {
         return (int) seats.stream()
-                .filter(seat -> seat.getStatus() == SeatStatus.AVAILABLE)
+                .filter(seat -> seat.status() == SeatStatus.AVAILABLE)
                 .count();
     }
 
     public int getReservedCount() {
         return (int) seats.stream()
-                .filter(seat -> seat.getStatus() == SeatStatus.RESERVED)
+                .filter(seat -> seat.status() == SeatStatus.RESERVED)
                 .count();
     }
 
     public int getSoldCount() {
         return (int) seats.stream()
-                .filter(seat -> seat.getStatus() == SeatStatus.SOLD)
+                .filter(seat -> seat.status() == SeatStatus.SOLD)
                 .count();
     }
 
     public void reserveSeat(SeatId seatId) {
         Seat seat = findSeat(seatId);
-        seat.markReserved();
+        seat.reserve();
     }
 
     public void releaseSeat(SeatId seatId) {
         Seat seat = findSeat(seatId);
-        seat.markAvailable();
+        seat.release();
     }
 
     public void markSeatSold(SeatId seatId) {
@@ -116,7 +112,7 @@ public class VenueZone {
 
     private Seat findSeat(SeatId seatId) {
         return seats.stream()
-                .filter(s -> s.getSeatId().equals(seatId))
+                .filter(s -> s.seatId().equals(seatId))
                 .findFirst()
                 .orElseThrow(() -> new VenueException("Seat not found: " + seatId));
     }

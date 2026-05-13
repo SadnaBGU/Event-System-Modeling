@@ -1,7 +1,19 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.*;
+import com.eventsystem.domain.shared.Money;
+import com.eventsystem.domain.zone.Row;
+import com.eventsystem.domain.zone.Seat;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.Zone;
+import com.eventsystem.domain.zone.ZoneRepository;
+import com.eventsystem.domain.zone.ZoneType;
+
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +52,8 @@ class OrderConcurrencyTest {
     private ActiveOrderRepository orderRepository;
 
     @Mock
+    private ZoneRepository zoneRepository;
+
     private ZoneServicePort zoneService;
 
     private OrderService orderService;
@@ -52,6 +67,7 @@ class OrderConcurrencyTest {
     @BeforeEach
     void setUp() {
         orderFactory = new OrderFactory();
+        zoneService = new ZoneService(zoneRepository);
         orderService = new OrderService(orderRepository, zoneService, orderFactory);
     }
 
@@ -72,109 +88,71 @@ class OrderConcurrencyTest {
      */
     @Test
     void testConcurrentSeatReservation_100Threads_OnlyOneSucceeds() throws InterruptedException {
-        // Arrange: Create a test order and mock repository to return it
+        // 1. Arrange
         ActiveOrder testOrder = orderFactory.createOrder(
                 new BuyerReference(BuyerType.MEMBER, "session-master", "master-buyer"),
                 EVENT_ID,
                 Instant.now().plus(10, ChronoUnit.MINUTES)
         );
-        
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
 
-        // First call succeeds (creates OrderItem), subsequent calls throw exception
-        OrderItem lockedItem = new OrderItem(ZONE_ID, SEAT_ID, 1, new BigDecimal("150.00"));
-        
-        AtomicInteger lockAttempts = new AtomicInteger(0);
-        when(zoneService.lockSeat(eq(ZONE_ID), eq(SEAT_ID), anyString()))
-                .thenAnswer(invocation -> {
-                    int attempt = lockAttempts.incrementAndGet();
-                    
-                    if (attempt == 1) {
-                        // First thread succeeds
-                        return lockedItem;
-                    } else {
-                        // All subsequent threads fail - seat already taken
-                        throw new IllegalStateException("Seat " + SEAT_ID + " is already reserved");
-                    }
-                });
+        Money price = mock(Money.class);
+        lenient().when(price.amount()).thenReturn(new BigDecimal("150.00"));
 
-        // Act: Launch 100 threads to reserve the same seat concurrently        
+        ZoneId zoneIdObj = new ZoneId(ZONE_ID);
+        EventId eventIdObj = new EventId(EVENT_ID);
+        SeatId seatIdObj = new SeatId(SEAT_ID);
+        
+        Seat seat = new Seat(seatIdObj, "Row A", 1);
+        Row row = new Row("Row A", List.of(seat));
+        
+        Zone realZone = Zone.createSeated(zoneIdObj, eventIdObj, "VIP", price, List.of(row));
+
+        when(zoneRepository.findById(zoneIdObj)).thenReturn(Optional.of(realZone));
+
         ExecutorService executor = Executors.newFixedThreadPool(100);
-        
-        // Signal for all threads to start simultaneously
         CountDownLatch startSignal = new CountDownLatch(1);
-        
-        // Signal for main thread to wait until all worker threads complete
         CountDownLatch endSignal = new CountDownLatch(100);
         
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
 
-        // Launch 100 worker threads
         for (int threadNum = 0; threadNum < 100; threadNum++) {
-            final int threadId = threadNum;
             executor.submit(() -> {
                 try {
-                    // Wait for start signal - all threads blocked here
                     startSignal.await();
                     
-                    // ALL THREADS START SIMULTANEOUSLY AT THIS POINT
-                    // Each one tries to reserve the same seat
                     orderService.reserveSeat(ORDER_ID, ZONE_ID, SEAT_ID);
                     
-                    // If we reach here, reservation succeeded
                     successCount.incrementAndGet();
-                    
-                } catch (IllegalStateException e) {
-                    // Expected for 99 threads: "Seat X is already reserved"
+                } catch (RuntimeException e) {
                     failureCount.incrementAndGet();
-                    
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     failureCount.incrementAndGet();
-                    
                 } finally {
                     endSignal.countDown();
                 }
             });
         }
         
-        // All 100 threads now race to reserve the seat
         startSignal.countDown();
-        
-        // Wait for all threads to complete (max 5 seconds)
         boolean completed = endSignal.await(5, TimeUnit.SECONDS);
-        
         executor.shutdown();
 
-        // Assert: Validate outcomes of the concurrent reservation attempts        
-        // All threads should complete
-        assertThat(completed)
-                .as("All 100 threads should complete within timeout")
-                .isTrue();
+        // 4. Assert: Oonly 1 thread should succeed, 99 should fail
+        assertThat(completed).isTrue();
         
-        // Exactly 1 thread wins
-        assertThat(successCount.get())
-                .as("Exactly 1 thread should successfully reserve the seat")
-                .isEqualTo(1);
+        // Only 1 thread should have successfully reserved the seat
+        assertThat(successCount.get()).isEqualTo(1);
         
-        // Exactly 99 threads fail
-        assertThat(failureCount.get())
-                .as("Exactly 99 threads should fail with lock conflict")
-                .isEqualTo(99);
+        // 99 threads should have failed with an exception (seat already reserved)
+        assertThat(failureCount.get()).isEqualTo(99);
         
-        // Total should be 100
-        assertThat(successCount.get() + failureCount.get())
-                .as("All threads should have attempted reservation")
-                .isEqualTo(100);
-        
-        // Verify that ZoneService.lockSeat was called exactly 100 times
-        // (one per thread, but only first succeeds)
-        verify(zoneService, times(100)).lockSeat(eq(ZONE_ID), eq(SEAT_ID), anyString());
-        
-        // Verify that repository.save was called exactly 1 time
-        // (only for the successful reservation)
+
         verify(orderRepository, times(1)).save(testOrder);
+        
+        assertThat(realZone.getAvailableCount()).isEqualTo(0);
     }
 
     /**
@@ -189,15 +167,22 @@ class OrderConcurrencyTest {
                 EVENT_ID,
                 Instant.now().plus(10, ChronoUnit.MINUTES)
         );
-        
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+
+        Money price = mock(Money.class);
+        lenient().when(price.amount()).thenReturn(new BigDecimal("150.00"));
+
+        ZoneId zoneIdObj = new ZoneId(ZONE_ID);
+        EventId eventIdObj = new EventId(EVENT_ID);
         
-        // Mock: Each seat lock succeeds (different seats)
-        when(zoneService.lockSeat(anyString(), anyString(), anyString()))
-                .thenAnswer(invocation -> {
-                    String seatId = invocation.getArgument(1);
-                    return new OrderItem(ZONE_ID, seatId, 1, new BigDecimal("150.00"));
-                });
+        List<Seat> seats = new java.util.ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            seats.add(new Seat(new SeatId("SEAT-" + i), "Row A", i + 1));
+        }
+        Row row = new Row("Row A", seats);
+        
+        Zone realZone = Zone.createSeated(zoneIdObj, eventIdObj, "VIP", price, List.of(row));
+        when(zoneRepository.findById(zoneIdObj)).thenReturn(Optional.of(realZone));
 
         // Act
         ExecutorService executor = Executors.newFixedThreadPool(10);
@@ -212,12 +197,10 @@ class OrderConcurrencyTest {
                 try {
                     startSignal.await();
                     
-                    // Each thread reserves a different seat
                     orderService.reserveSeat(ORDER_ID, ZONE_ID, "SEAT-" + seatNum);
                     successCount.incrementAndGet();
                     
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
                 } finally {
                     endSignal.countDown();
                 }
@@ -228,9 +211,11 @@ class OrderConcurrencyTest {
         endSignal.await(5, TimeUnit.SECONDS);
         executor.shutdown();
 
-        // Assert: All should succeed when reserving different seats
-        assertThat(successCount.get()).isEqualTo(10);
+        // Assert
+        assertThat(successCount.get()).isEqualTo(10); 
         verify(orderRepository, times(10)).save(testOrder);
+        
+        assertThat(realZone.getAvailableCount()).isEqualTo(realZone.totalCapacity() - 10);
     }
 
 }

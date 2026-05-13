@@ -1,6 +1,7 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is handled
  * by the Event team's EventService, which owns the Event aggregate boundary.
  */
-public class ZoneService {
+public class ZoneService implements ZoneServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(ZoneService.class);
 
@@ -98,18 +99,21 @@ public class ZoneService {
     }
 
     // ── Seated reservation lifecycle ─────────────────────────────────────────
-
-    public void reserveSeat(ZoneId zoneId, SeatId seatId) {
+    @Override
+    public OrderItem reserveSeat(ZoneId zoneId, SeatId seatId) {
         log.info("reserveSeat: zoneId={}, seatId={}", zoneId, seatId);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Objects.requireNonNull(seatId, "seatId must not be null");
+        final Zone[] zoneHolder = new Zone[1];
         withLock(zoneId, () -> {
-            Zone zone = loadZone(zoneId);
-            zone.reserveSeat(seatId);
-            zoneRepository.save(zone);
+            zoneHolder[0] = loadZone(zoneId);
+            zoneHolder[0].reserveSeat(seatId);
+            zoneRepository.save(zoneHolder[0]);
         });
+        return new OrderItem(zoneId.value(), seatId.value(), 1, zoneHolder[0].pricePerTicket().amount());
     }
 
+    @Override
     public void releaseSeat(ZoneId zoneId, SeatId seatId) {
         log.info("releaseSeat: zoneId={}, seatId={}", zoneId, seatId);
         Objects.requireNonNull(zoneId, "zoneId must not be null");

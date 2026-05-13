@@ -6,6 +6,8 @@ import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -101,7 +103,7 @@ public class CheckoutSaga {
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance service crashed: " + e.getMessage());
             
             for (OrderItem item : order.getItems()) {
-                zoneService.unlockSeat(item.getZoneId(), item.getSeatId());
+                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
             }
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "System error during ticket issuance. You have been refunded.");
@@ -114,7 +116,7 @@ public class CheckoutSaga {
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance failed: " + issuanceResult.errorMessage());
             
             for (OrderItem item : order.getItems()) {
-                zoneService.unlockSeat(item.getZoneId(), item.getSeatId());
+                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
             }
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Technical error during ticket issuance. You have been refunded.");

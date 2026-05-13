@@ -28,7 +28,7 @@ public class Seat {
     public SeatStatus status(){ return status; }
 
     // Package-private: only Zone (same package) drives seat lifecycle
-    void reserve() {
+    public void reserve() {
         if (status != SeatStatus.AVAILABLE) {
             throw new ZoneDomainException(
                     "seat " + seatId.value() + " cannot be reserved: current status is " + status);
@@ -36,15 +36,15 @@ public class Seat {
         status = SeatStatus.RESERVED;
     }
 
-    void release() {
-        if (status != SeatStatus.RESERVED) {
+    public void release() {
+        if (status != SeatStatus.RESERVED || status == SeatStatus.SOLD) {
             throw new ZoneDomainException(
                     "seat " + seatId.value() + " cannot be released: current status is " + status);
         }
         status = SeatStatus.AVAILABLE;
     }
 
-    void markSold() {
+    public void markSold() {
         if (status != SeatStatus.RESERVED) {
             throw new ZoneDomainException(
                     "seat " + seatId.value() + " cannot be sold: current status is " + status);
