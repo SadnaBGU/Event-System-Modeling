@@ -62,4 +62,29 @@ class PurchaseHistoryServiceTest {
         assertTrue(result.isPresent());
         assertEquals(mockRecord, result.get());
     }
+
+    @Test
+    void getGlobalHistory_ReturnsAllRecords() {
+        // Arrange - UAT 68
+        PurchaseRecord record = mock(PurchaseRecord.class);
+        when(purchaseRecordRepository.findAll()).thenReturn(List.of(record));
+
+        // Act
+        List<PurchaseRecord> history = purchaseHistoryService.getGlobalHistory();
+
+        // Assert
+        assertEquals(1, history.size());
+    }
+
+    @Test
+    void getGlobalHistory_Empty_ReturnsEmptyList() {
+        // Arrange - UAT 69
+        when(purchaseRecordRepository.findAll()).thenReturn(List.of());
+
+        // Act
+        List<PurchaseRecord> history = purchaseHistoryService.getGlobalHistory();
+
+        // Assert
+        assertTrue(history.isEmpty());
+    }
 }

@@ -9,4 +9,5 @@ public interface PurchaseRecordRepository {
     Optional<PurchaseRecord> findById(String recordId);
     List<PurchaseRecord> findByBuyer(String buyerId);
     List<PurchaseRecord> findByEvent(String eventId);
+    List<PurchaseRecord> findAll();
 }

@@ -67,6 +67,23 @@ public class OrderService {
         return newOrder.getOrderId();
     }
 
+    public String createNewOrderStrict(BuyerReference buyer, String eventId) {
+        Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
+        
+        if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
+            logger.warn("Reservation Rejected_Existing_Order: Buyer {} already has active order for event {}", buyer.memberId(), eventId);
+            throw new IllegalStateException("Reservation Rejected_Existing_Order");
+        }
+
+        ActiveOrder newOrder = orderFactory.createOrder(
+                buyer, 
+                eventId, 
+                Instant.now().plus(TIMEOUT_MINUTES, ChronoUnit.MINUTES)
+        );
+        orderRepository.save(newOrder);
+        return newOrder.getOrderId();
+    }
+
     /**
      * Add a seat to the active order. This involves:
      * 1. Locking the seat through the ZoneService (which will throw an exception if the seat is already taken).

@@ -184,4 +184,18 @@ class OrderServiceTest {
         assertEquals("Lottery authorization failed. Access denied.", exception.getMessage());
         verify(orderRepository, never()).save(any());
     }
+
+    @Test
+    void createNewOrderStrict_ExistingOrder_ThrowsException() {
+        // Arrange - UAT 19
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
+        when(testOrder.isExpired()).thenReturn(false);
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            orderService.createNewOrderStrict(testBuyer, EVENT_ID);
+        });
+        
+        assertEquals("Reservation Rejected_Existing_Order", exception.getMessage());
+    }
 }
