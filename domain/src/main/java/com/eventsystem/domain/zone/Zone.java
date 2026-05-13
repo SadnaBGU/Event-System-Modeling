@@ -1,5 +1,6 @@
 package com.eventsystem.domain.zone;
 
+import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
 
@@ -60,21 +61,21 @@ public class Zone {
 
     public void reserveSeat(SeatId seatId) {
         requireSeated();
-        findSeat(seatId).reserve();
+        SeatedZoneHelper.reserveSeat(this::findSeat, seatId);
         availableCount--;
         version++;
     }
 
     public void releaseSeat(SeatId seatId) {
         requireSeated();
-        findSeat(seatId).release();
+        SeatedZoneHelper.releaseSeat(this::findSeat, seatId);
         availableCount++;
         version++;
     }
 
     public void markSold(SeatId seatId) {
         requireSeated();
-        findSeat(seatId).markSold();
+        SeatedZoneHelper.markSeatSold(this::findSeat, seatId);
         version++;
     }
 
@@ -158,10 +159,6 @@ public class Zone {
     }
 
     private Seat findSeat(SeatId seatId) {
-        return rows.stream()
-                .flatMap(r -> r.seats().stream())
-                .filter(s -> s.seatId().equals(seatId))
-                .findFirst()
-                .orElseThrow(() -> new ZoneDomainException("seat not found: " + seatId.value()));
+        return SeatedZoneHelper.findSeatInRows(rows, seatId);
     }
 }

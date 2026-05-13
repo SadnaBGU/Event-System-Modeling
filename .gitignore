@@ -1,4 +1,7 @@
-﻿*.md
+*.md
+
+# Reference folder – branched snapshot, not part of the main project
+Streams1&5/
 
 # Maven
 target/
