@@ -9,6 +9,8 @@ import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,7 +116,7 @@ class CheckoutSagaTest {
         verify(notificationPort, times(1)).sendPurchaseFailure(eq(testBuyer), anyString());
         verify(purchaseRecordRepository, never()).append(any());
 
-        verify(zoneService, times(1)).unlockSeat("VIP-ZONE", "SEAT-42");
+        verify(zoneService, times(1)).releaseSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42"));
     }
 
     @Test
@@ -199,6 +201,6 @@ class CheckoutSagaTest {
         verify(paymentGateway).refund(eq("TXN-999"), any(), contains("Ticket issuance service crashed"));
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("System error"));
         
-        verify(zoneService, times(1)).unlockSeat("VIP-ZONE", "SEAT-42");
+        verify(zoneService, times(1)).releaseSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42"));
     }
 }

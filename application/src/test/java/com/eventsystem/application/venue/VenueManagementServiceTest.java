@@ -5,6 +5,7 @@ import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberRepository;
 import com.eventsystem.domain.venue.*;
+import com.eventsystem.domain.zone.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -117,7 +118,7 @@ class VenueManagementServiceTest {
         // Given
         Venue venue = new Venue(venueId, companyId, "Main Venue");
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
         when(venueRepository.findById(venueId)).thenReturn(Optional.of(venue));
 
@@ -134,10 +135,10 @@ class VenueManagementServiceTest {
         // Given
         Venue venue = new Venue(venueId, companyId, "Main Venue");
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
         Seat seat = zone.getSeats().get(0);
-        SeatId seatId = seat.getSeatId();
+        SeatId seatId = seat.seatId();
 
         when(venueRepository.findById(venueId)).thenReturn(Optional.of(venue));
 

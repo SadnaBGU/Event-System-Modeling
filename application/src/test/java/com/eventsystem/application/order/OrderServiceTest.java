@@ -23,6 +23,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.SeatId;
+
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
@@ -99,13 +102,13 @@ class OrderServiceTest {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
         
         OrderItem mockItem = new OrderItem("ZONE-A", "SEAT-1", 1, new BigDecimal("100.0"));
-        when(zoneService.lockSeat("ZONE-A", "SEAT-1", ORDER_ID)).thenReturn(mockItem);
+        when(zoneService.reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"))).thenReturn(mockItem);
 
         // Act
         orderService.reserveSeat(ORDER_ID, "ZONE-A", "SEAT-1");
 
         // Assert
-        verify(zoneService, times(1)).lockSeat("ZONE-A", "SEAT-1", ORDER_ID);
+        verify(zoneService, times(1)).reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"));
         verify(testOrder, times(1)).addItem(mockItem);
         verify(orderRepository, times(1)).save(testOrder);
     }
@@ -124,6 +127,6 @@ class OrderServiceTest {
         // Assert
         verify(testOrder, times(1)).expire(); // מוודאים שהעגלה שינתה סטטוס
         verify(orderRepository, times(1)).save(testOrder); // מוודאים שהיא נשמרה כ-EXPIRED
-        verify(zoneService, times(1)).unlockSeat("ZONE-VIP", "SEAT-9"); // מוודאים שהכיסא שוחרר למלאי
+        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-VIP"), new SeatId("SEAT-9")); // מוודאים שהכיסא שוחרר למלאי
     }
 }

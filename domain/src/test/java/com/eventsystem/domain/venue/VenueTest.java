@@ -1,6 +1,7 @@
 package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.ZoneType;
@@ -117,7 +118,7 @@ class VenueTest {
         VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
         Seat seat = zone.getSeats().get(0);
-        SeatId seatId = seat.getSeatId();
+        SeatId seatId = seat.seatId();
 
         // When
         zone.reserveSeat(seatId);

@@ -5,6 +5,9 @@ import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneDomainException;
+import com.eventsystem.domain.zone.ZoneId;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -70,13 +73,13 @@ public class OrderService {
 
         try{
             // step 1: try to lock the seat through the ZoneService
-            OrderItem lockedItem = zoneService.lockSeat(zoneId, seatId, orderId);
+            OrderItem lockedItem = zoneService.reserveSeat(new ZoneId(zoneId), new SeatId(seatId));
 
             // step 2: if the lock is successful, add the item to our order aggregate and save it
             order.addItem(lockedItem);
             orderRepository.save(order);
             logger.info("Successfully reserved seat {} for order {}", seatId, orderId);
-        } catch (IllegalStateException e) {
+        } catch (ZoneDomainException e) {
             logger.warn("Failed to reserve seat {} for order {}: {}", seatId, orderId, e.getMessage());
             throw e; // rethrow the exception after logging
         } catch (Exception e) {
@@ -103,7 +106,7 @@ public class OrderService {
         orderRepository.save(order);
 
         // unlock the seat through the ZoneService to make it available again
-        zoneService.unlockSeat(zoneId, seatId);
+        zoneService.releaseSeat(new ZoneId(zoneId), new SeatId(seatId));
         logger.info("Successfully released seat {} and unlocked it in zone {}", seatId, zoneId);
     }
 
@@ -129,7 +132,7 @@ public class OrderService {
             List<OrderItem> expiredItems = order.expire();
             orderRepository.save(order);
             for (OrderItem item : expiredItems) {
-                zoneService.unlockSeat(item.getZoneId(), item.getSeatId());
+                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
             }
             logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
             count++;
