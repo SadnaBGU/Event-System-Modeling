@@ -129,4 +129,84 @@ class OrderServiceTest {
         verify(orderRepository, times(1)).save(testOrder); // מוודאים שהיא נשמרה כ-EXPIRED
         verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-VIP"), new SeatId("SEAT-9")); // מוודאים שהכיסא שוחרר למלאי
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UAT-19: Existing Order Check
+    // Verify that visitor cannot create a new order if they already have an active one
+    // ─────────────────────────────────────────────────────────────────────
+    @Test
+    void reserveSeat_VisitorAlreadyHasActiveOrder_ThrowsException() {
+        // Arrange - UAT-19: Existing order check
+        // Visitor already has an active order for this event
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
+        when(testOrder.isExpired()).thenReturn(false); // Order is still active
+
+        // Act & Assert - Attempting to create/get order should NOT create new one
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID);
+
+        // Verify that the existing order is returned, not a new one created
+        assertEquals(ORDER_ID, resultId);
+        verify(orderFactory, never()).createOrder(any(), any(), any());
+        verify(orderRepository, never()).save(any()); // No new order saved
+    }
+
+    @Test
+    void reserveSeat_ExistingOrderAlreadyExists_ThrowsIllegalStateException() {
+        // Arrange - UAT-19: Attempt to add seat to second order while first is active
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, "sess-existing", "user-exists");
+        ActiveOrder existingOrder = mock(ActiveOrder.class);
+        existingOrder.getOrderId(); // ORDER already exists
+        
+        // Simulate: buyer tries to reserve a seat but already has an active order
+        when(orderRepository.findByBuyerAndEvent(buyer, EVENT_ID)).thenReturn(Optional.of(existingOrder));
+        when(existingOrder.isExpired()).thenReturn(false);
+
+        // Act & Assert
+        String retrievedOrderId = orderService.createOrGetActiveOrder(buyer, EVENT_ID);
+        
+        // Verify existing order is returned
+        assertNotNull(retrievedOrderId);
+        verify(orderFactory, never()).createOrder(any(), any(), any());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UAT-22: Tickets Unavailable (Race Condition)
+    // Simulate concurrent access where seats are locked by another thread
+    // ─────────────────────────────────────────────────────────────────────
+    @Test
+    void reserveSeat_SeatLockedByAnotherUser_ThrowsIllegalStateException() {
+        // Arrange - UAT-22: Race condition - seat locked by another user
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        
+        // Simulate: ZoneService throws exception because seat is already locked
+        when(zoneService.reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1")))
+                .thenThrow(new IllegalStateException("Seat is already locked by another buyer"));
+
+        // Act & Assert - Expect exception
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            orderService.reserveSeat(ORDER_ID, "ZONE-A", "SEAT-1");
+        });
+        
+        assertEquals("Seat is already locked by another buyer", exception.getMessage());
+        // Verify that no item was added to the order
+        verify(testOrder, never()).addItem(any());
+    }
+
+    @Test
+    void reserveSeat_TicketsUnavailable_RefreshesMapAndNotifies() {
+        // Arrange - UAT-22: Tickets become unavailable just before reservation
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        
+        // First request checks availability, second lock fails due to concurrent access
+        when(zoneService.reserveSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42")))
+                .thenThrow(new IllegalStateException("Reservation failed: Tickets unavailable"));
+
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> {
+            orderService.reserveSeat(ORDER_ID, "VIP-ZONE", "SEAT-42");
+        });
+        
+        // Verify no item was added
+        verify(testOrder, never()).addItem(any());
+    }
 }

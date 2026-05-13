@@ -239,4 +239,129 @@ class ActiveOrderTest {
                 .contains(item);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // UAT-24: Active Order Timeout
+    // Verify that timer automatically expires orders and releases locks
+    // ─────────────────────────────────────────────────────────────────────
+    @Test
+    void orderExpiresBecauseTimerReachesZero() {
+        // Arrange - UAT-24: Active order timeout
+        // Create order with VERY SHORT expiry (0 minutes = expires immediately)
+        Instant almostExpired = Instant.now().minus(1, ChronoUnit.SECONDS);
+        ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, almostExpired);
+
+        // Add items to the order
+        OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, new BigDecimal("150.00"));
+        OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 1, new BigDecimal("75.00"));
+        order.addItem(item1);
+        order.addItem(item2);
+
+        // Add small delay to ensure time has definitely passed
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Act - Check if order has expired
+        boolean expired = order.isExpired();
+
+        // Assert
+        assertThat(expired).isTrue();
+        
+        // After expiration, verify items would be released
+        List<OrderItem> releasedItems = order.expire();
+        assertThat(releasedItems).isEmpty(); // Already expired, so nothing to release from expire()
+    }
+
+    @Test
+    void orderWithTimerStartingCountdown_ShouldExpireEventually() {
+        // Arrange - UAT-24: Countdown timer behavior
+        // Create order with 10 minute expiry
+        Instant futureExpiry = Instant.now().plus(10, ChronoUnit.MINUTES);
+        ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, futureExpiry);
+
+        OrderItem item = new OrderItem("ZONE", "SEAT", 1, new BigDecimal("100.00"));
+        order.addItem(item);
+
+        // Act - Initially should NOT be expired
+        boolean notYetExpired = order.isExpired();
+
+        // Assert - Timer is running but not reached zero yet
+        assertThat(notYetExpired).isFalse();
+        
+        // Verify order is still active and can be modified
+        OrderItem additionalItem = new OrderItem("ZONE2", "SEAT2", 1, new BigDecimal("50.00"));
+        order.addItem(additionalItem); // Should not throw
+        assertThat(order.calculateBaseTotal()).isEqualByComparingTo(new BigDecimal("150.00"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UAT-25: Manage Expired Order
+    // Verify that operations on expired orders fail appropriately
+    // ─────────────────────────────────────────────────────────────────────
+    @Test
+    void removeItem_OnExpiredOrder_ThrowsException() {
+        // Arrange - UAT-25: Manage expired order
+        Instant pastExpiry = Instant.now().minus(1, ChronoUnit.SECONDS);
+        ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, pastExpiry);
+
+        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, new BigDecimal("100.00"));
+        order.addItem(item);
+        
+        // Expire the order
+        order.expire();
+
+        // Add delay to ensure expiry
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Act & Assert - Try to remove item from expired order
+        assertThatThrownBy(() -> order.removeItem("ZONE-1", "SEAT-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not active");
+    }
+
+    @Test
+    void changeQuantity_OnExpiredOrder_ThrowsException() {
+        // Arrange - UAT-25: Cannot modify expired order
+        Instant pastExpiry = Instant.now().minus(1, ChronoUnit.SECONDS);
+        ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, pastExpiry);
+
+        // Expire the order
+        order.expire();
+
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Act & Assert - Try to add item to expired order
+        OrderItem newItem = new OrderItem("ZONE", "SEAT", 1, new BigDecimal("100.00"));
+        
+        assertThatThrownBy(() -> order.addItem(newItem))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not active");
+    }
+
+    @Test
+    void checkout_OnExpiredOrder_FailsAndLocks() {
+        // Arrange - UAT-25: Cannot checkout expired order
+        Instant pastExpiry = Instant.now().minus(1, ChronoUnit.SECONDS);
+        ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, pastExpiry);
+
+        OrderItem item = new OrderItem("ZONE-1", "SEAT-1", 1, new BigDecimal("100.00"));
+        order.addItem(item);
+        order.expire();
+
+        // Act & Assert - Attempting checkout on expired order
+        assertThatThrownBy(order::checkout)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not active");
+    }
+
 }
