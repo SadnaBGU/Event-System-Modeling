@@ -1,6 +1,9 @@
 package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.ZoneType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +26,7 @@ class VenueTest {
     void addZone_successfully_adds_zone_to_venue() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
 
         // When
         venue.addZone(zone);
@@ -37,8 +40,8 @@ class VenueTest {
     void addZone_throws_exception_for_duplicate_zone_name() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone1 = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
-        VenueZone zone2 = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 50);
+        VenueZone zone1 = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone2 = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 50);
 
         venue.addZone(zone1);
 
@@ -52,7 +55,7 @@ class VenueTest {
     void removeZone_successfully_removes_zone_from_venue() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
 
         // When
@@ -66,7 +69,7 @@ class VenueTest {
     void getZone_returns_correct_zone() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
 
         // When
@@ -81,8 +84,8 @@ class VenueTest {
     void getTotalCapacity_sums_all_zone_capacities() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone1 = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
-        VenueZone zone2 = new VenueZone(ZoneId.generate(), "Zone B", ZoneType.STANDING, price, 50);
+        VenueZone zone1 = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone2 = new VenueZone(ZoneId.random(), "Zone B", ZoneType.STANDING, price, 50);
         venue.addZone(zone1);
         venue.addZone(zone2);
 
@@ -97,7 +100,7 @@ class VenueTest {
     void getTotalAvailableSeats_counts_available_seats_in_seated_zone() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
 
         // When
@@ -111,7 +114,7 @@ class VenueTest {
     void reserveSeat_updates_seat_status() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
         venue.addZone(zone);
         Seat seat = zone.getSeats().get(0);
         SeatId seatId = seat.getSeatId();
@@ -128,8 +131,8 @@ class VenueTest {
     void addZone_case_insensitive_duplicate_check() {
         // Given
         Money price = new Money(BigDecimal.valueOf(50), "USD");
-        VenueZone zone1 = new VenueZone(ZoneId.generate(), "Zone A", ZoneType.SEATED, price, 100);
-        VenueZone zone2 = new VenueZone(ZoneId.generate(), "zone a", ZoneType.SEATED, price, 50);
+        VenueZone zone1 = new VenueZone(ZoneId.random(), "Zone A", ZoneType.SEATED, price, 100);
+        VenueZone zone2 = new VenueZone(ZoneId.random(), "zone a", ZoneType.SEATED, price, 50);
 
         venue.addZone(zone1);
 

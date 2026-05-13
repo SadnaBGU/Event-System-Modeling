@@ -1,5 +1,9 @@
 package com.eventsystem.domain.venue;
 
+import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.SeatStatus;
+import com.eventsystem.domain.zone.ZoneType;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,7 +47,7 @@ public class VenueZone {
             String rowLabel = String.valueOf(row);
             for (int seatNum = 1; seatNum <= seatsPerRow && currentSeat < capacity; seatNum++) {
                 seats.add(new Seat(
-                        SeatId.generate(),
+                        SeatId.random(),
                         rowLabel,
                         seatNum,
                         SeatStatus.AVAILABLE

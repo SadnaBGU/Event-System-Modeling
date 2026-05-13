@@ -1,5 +1,7 @@
 package com.eventsystem.domain.venue;
 
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.SeatStatus;
 import java.util.Objects;
 
 public class Seat {

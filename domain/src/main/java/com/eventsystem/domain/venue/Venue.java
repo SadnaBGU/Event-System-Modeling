@@ -1,6 +1,7 @@
 package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.zone.ZoneId;
 import java.util.*;
 
 public class Venue {
