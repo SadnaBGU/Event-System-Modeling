@@ -96,6 +96,15 @@ public class VirtualQueue {
                 .ifPresent(AdmissionToken::markConsumed);
     }
 
+    public List<BuyerReference> clearQueue() {
+        this.status = QueueStatus.INACTIVE;
+        List<BuyerReference> waiting = waitingEntries.stream()
+                .map(QueueEntry::getVisitorRef)
+                .toList();
+        waitingEntries.clear();
+        return waiting;
+    }
+
     public String getQueueId() { 
         return queueId; 
     }

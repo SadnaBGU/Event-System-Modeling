@@ -1,6 +1,7 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.lottery.LotteryValidationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
@@ -24,21 +25,30 @@ public class OrderService {
     private final ActiveOrderRepository orderRepository;
     private final ZoneServicePort zoneService;
     private final OrderFactory orderFactory;
+    private final LotteryValidationPort lotteryValidationPort;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory) {
+    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryValidationPort lotteryValidationPort) {
         this.orderRepository = orderRepository;
         this.zoneService = zoneService;
         this.orderFactory = orderFactory;
+        this.lotteryValidationPort = lotteryValidationPort;
     }
 
     /**
      * Create a new active order for the buyer and event, 
      * or return the existing active order if it exists and is not expired.
      */
-    public String createOrGetActiveOrder(BuyerReference buyer, String eventId) {
+    public String createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
         logger.info("Requested active order for buyer {} and event {}", buyer.memberId(), eventId);
+
+        if (lotteryCode.isPresent() && lotteryValidationPort.isLotteryEvent(eventId)) {
+            boolean isValid = lotteryValidationPort.validateWinnerCode(eventId, buyer, lotteryCode.get());
+            if (!isValid) {
+                throw new SecurityException("Lottery authorization failed. Access denied.");
+            }
+        }
 
         Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
         

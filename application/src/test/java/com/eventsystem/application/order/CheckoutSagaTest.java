@@ -1,5 +1,32 @@
 package com.eventsystem.application.order;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.domain.order.ActiveOrder;
@@ -11,28 +38,6 @@ import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutSagaTest {
@@ -202,5 +207,26 @@ class CheckoutSagaTest {
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("System error"));
         
         verify(zoneService, times(1)).releaseSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42"));
+    }
+
+    @Test
+    void executeCheckout_PaymentGatewayTimeout_AbortsCheckout() {
+        // Arrange
+        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
+        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", BigDecimal.ZERO));
+        
+        when(paymentGateway.charge(any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Payment Gateway Timeout"));
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> {
+            checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
+        });
+        
+        // Assert we never tried to issue tickets or append records
+        verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
+        verify(purchaseRecordRepository, never()).append(any());
+        // Verify payment gateway was NOT asked for a refund because the charge itself timed out
+        verify(paymentGateway, never()).refund(any(), any(), any());
     }
 }

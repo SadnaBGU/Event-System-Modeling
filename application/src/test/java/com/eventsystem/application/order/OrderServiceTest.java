@@ -1,11 +1,21 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.domain.order.ActiveOrder;
-import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.order.BuyerType;
-import com.eventsystem.domain.order.OrderFactory;
-import com.eventsystem.domain.order.OrderItem;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,18 +23,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
-import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.domain.order.ActiveOrder;
+import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.order.OrderFactory;
+import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.ZoneId;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -37,6 +44,9 @@ class OrderServiceTest {
     
     @Mock
     private OrderFactory orderFactory;
+
+    @Mock
+    private LotteryValidationPort lotteryValidationPort;
 
     @InjectMocks
     private OrderService orderService;
@@ -60,7 +70,7 @@ class OrderServiceTest {
         when(testOrder.isExpired()).thenReturn(false);
 
         // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID);
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
 
         // Assert
         assertEquals(ORDER_ID, resultId);
@@ -76,7 +86,7 @@ class OrderServiceTest {
         when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any(Instant.class))).thenReturn(testOrder);
 
         // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID);
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
 
         // Assert
         assertEquals(ORDER_ID, resultId);
@@ -125,8 +135,53 @@ class OrderServiceTest {
         orderService.sweepExpiredOrders();
 
         // Assert
-        verify(testOrder, times(1)).expire(); // מוודאים שהעגלה שינתה סטטוס
-        verify(orderRepository, times(1)).save(testOrder); // מוודאים שהיא נשמרה כ-EXPIRED
-        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-VIP"), new SeatId("SEAT-9")); // מוודאים שהכיסא שוחרר למלאי
+        verify(testOrder, times(1)).expire();
+        verify(orderRepository, times(1)).save(testOrder);
+        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-VIP"), new SeatId("SEAT-9"));
+    }
+
+    @Test
+    void releaseSeat_ValidOrder_RemovesItemAndUnlocks() {
+        // Arrange
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+
+        // Act
+        orderService.releaseSeat(ORDER_ID, "ZONE-A", "SEAT-1");
+
+        // Assert
+        verify(testOrder, times(1)).removeItem("ZONE-A", "SEAT-1");
+        verify(orderRepository, times(1)).save(testOrder);
+        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"));
+    }
+
+    @Test
+    void createOrder_LotteryEvent_ValidCode_CreatesOrder() {
+        // Arrange - UAT 17
+        when(lotteryValidationPort.isLotteryEvent(EVENT_ID)).thenReturn(true);
+        when(lotteryValidationPort.validateWinnerCode(EVENT_ID, testBuyer, "WINNER-123")).thenReturn(true);
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
+        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
+
+        // Act
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("WINNER-123"));
+
+        // Assert
+        assertEquals(ORDER_ID, resultId);
+        verify(orderRepository, times(1)).save(testOrder);
+    }
+
+    @Test
+    void createOrder_LotteryEvent_InvalidCode_ThrowsException() {
+        // Arrange - UAT 18
+        when(lotteryValidationPort.isLotteryEvent(EVENT_ID)).thenReturn(true);
+        when(lotteryValidationPort.validateWinnerCode(EVENT_ID, testBuyer, "FAKE-CODE")).thenReturn(false);
+
+        // Act & Assert
+        SecurityException exception = assertThrows(SecurityException.class, () -> {
+            orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("FAKE-CODE"));
+        });
+        
+        assertEquals("Lottery authorization failed. Access denied.", exception.getMessage());
+        verify(orderRepository, never()).save(any());
     }
 }

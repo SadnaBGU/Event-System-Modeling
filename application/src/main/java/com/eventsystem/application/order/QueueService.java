@@ -111,4 +111,15 @@ public class QueueService {
 
         return newQueue;
     }
+
+    public void handleEventSoldOut(String eventId) {
+        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+            List<BuyerReference> disappointedBuyers = queue.clearQueue();
+            queueRepository.save(queue);
+            
+            for (BuyerReference buyer : disappointedBuyers) {
+                notificationPort.sendEventSoldOut(buyer, eventId);
+            }
+        });
+    }
 }
