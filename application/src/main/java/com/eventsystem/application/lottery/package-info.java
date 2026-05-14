@@ -1,6 +1,2 @@
-/**
- * LotteryService (entry registration, draw execution, winner notification).
- *
- * <p>See: {@code docs/8_Lottery.mmd}.
- */
+/** Lottery use cases: open, register, draw, validate code. */
 package com.eventsystem.application.lottery;
