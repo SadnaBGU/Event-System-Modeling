@@ -75,9 +75,17 @@ public final class ProductionCompany {
         status = CompanyStatus.TERMINATED;
     }
 
+    public synchronized void adminClose() {
+        status = CompanyStatus.ADMIN_CLOSED;
+    }
+
+
     public synchronized void reopen() {
         if (status == CompanyStatus.TERMINATED) {
             throw new CompanyDomainException("terminated company cannot be reopened");
+        }
+        if (status == CompanyStatus.ADMIN_CLOSED) {
+            throw new CompanyDomainException("admin-closed company cannot be reopened");
         }
         status = CompanyStatus.ACTIVE;
     }
@@ -107,7 +115,7 @@ public final class ProductionCompany {
         return appointmentTree.getAppointmentSubTree(ownerId);
     }
 
-    // ── Company Details Updates ──────────────────────────────────────────────
+    // ג”€ג”€ Company Details Updates ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 
     public synchronized void updateName(String newName) {
         requireActive();

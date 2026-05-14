@@ -103,6 +103,12 @@ public class ProductionCompanyService {
         productionCompanyRepository.save(company);
     }
 
+    public void adminCloseCompany(CompanyId companyId) {
+        ProductionCompany company = loadCompany(companyId);
+        company.adminClose();
+        productionCompanyRepository.save(company);
+    }
+
     public void updateCompanyName(CompanyId companyId, String newName) {
         ProductionCompany company = loadCompany(companyId);
         company.updateName(newName);
