@@ -11,9 +11,16 @@ public record EventId(String value) {
         if (value.isBlank()) {
             throw new IllegalArgumentException("value must not be blank");
         }
+
+
     }
 
     public static EventId random() {
         return new EventId(UUID.randomUUID().toString());
+    }
+
+    @Override
+    public String toString() {
+        return value;
     }
 }
