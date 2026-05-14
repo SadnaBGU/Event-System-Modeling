@@ -168,6 +168,33 @@ class ProductionCompanyServiceTest {
                 .hasMessageContaining("not active");
     }
 
+    @Test
+    void reopenCompany_fails_when_admin_closed() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        CompanyId companyId = service.createCompany(founder, "AdminClosedTest", "desc", 4.0);
+        service.adminCloseCompany(companyId);
+
+        assertThatThrownBy(() -> service.reopenCompany(companyId))
+                .isInstanceOf(CompanyDomainException.class)
+                .hasMessageContaining("admin-closed");
+    }
+
+    @Test
+    void adminClosedCompany_prevents_all_operations() {
+        MemberId founder = MemberId.random();
+        memberRepository.save(new Member(founder));
+
+        CompanyId companyId = service.createCompany(founder, "AdminClosedOpsTest", "desc", 4.0);
+        service.adminCloseCompany(companyId);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
+        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
+                .isInstanceOf(CompanyDomainException.class);
+    }
+
+
     private static final class InMemoryMemberRepository implements MemberRepository {
         private final Map<MemberId, Member> members = new ConcurrentHashMap<>();
 
