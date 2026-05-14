@@ -11,6 +11,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * UC15: Create and Configure Event
+ *
+ * Tests for UATs:
+ * - UAT-41: Successful Event Creation
+ * - UAT-42: Missing Required Fields
+ *
+ * UC7: Ticket Selection and Reservation
+ *
+ * Tests for UATs:
+ * - UAT-16: Successful Reservation (Regular Event)
+ * - UAT-17: Successful Lottery Reservation
+ *
+ * UC3: Virtual Queue and Load Management
+ *
+ * Tests for UATs:
+ * - UAT-09: Sold Out While Queued
+ */
+
 class EventTest {
 
     private EventDetails defaultDetails() {
@@ -38,7 +57,7 @@ class EventTest {
         return testEvent;
     }
 
-    @Test
+    @Test // UAT-41: Successful Event Creation
     void newEventStartsAsDraft() {
         Event event = createDraftEvent();
 
@@ -46,7 +65,7 @@ class EventTest {
         assertThat(event.isDraft()).isTrue();
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields / Invalid Venue Map Configuration
     void draftEventRequiresNonEmptyZonesToPublish() {
         Event event = createDraftEvent();
 
@@ -54,7 +73,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-41: Successful Event Creation
     void draftEventCanBePublishedAndCancelled() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -69,7 +88,7 @@ class EventTest {
         assertThat(event.isCancelled()).isTrue();
     }
 
-    @Test
+    @Test // Supporting test for event lifecycle after publication
     void publishedEventCanBeMarkedOver() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -80,7 +99,7 @@ class EventTest {
         assertThat(event.isOver()).isTrue();
     }
 
-    @Test
+    @Test // UAT-09: Sold Out While Queued
     void draftEventCanBePublishedThenSoldOutThenOver() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -100,7 +119,7 @@ class EventTest {
         assertThat(event.isOver()).isTrue();
     }
 
-    @Test
+    @Test // Supporting test for UC15 / event lifecycle rules
     void cannotPublishPublishedOrCancelledEvent() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -115,7 +134,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // Supporting test for UC15 / event lifecycle rules
     void cannotPublishPublishedOrOverEvent() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -130,7 +149,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-61: Authorized Action Success — edit event details before publish
     void cannotUpdateDetailsAfterPublish() {
         Event event = createDraftEventWithZone("testZoneId");
         event.publish();
@@ -147,7 +166,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-61: Authorized Action Success — edit venue map before publish
     void cannotUpdateVenueMapAfterPublish() {
         Event event = createDraftEventWithZone("testZoneId");
         event.publish();
@@ -160,7 +179,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-41: Successful Event Creation — configure venue zones
     void canAddAndRemoveZoneWhileDraft() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
@@ -174,7 +193,7 @@ class EventTest {
         assertThat(event.zoneIds()).isEmpty();
     }
 
-    @Test
+    @Test // Supporting test for UC15 — prevent invalid post-publication configuration
     void cannotAddZoneAfterPublish() {
         Event event = createDraftEventWithZone("testZoneId");
         event.publish();
@@ -183,7 +202,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // Supporting test for UC15 — prevent invalid post-publication configuration
     void cannotRemoveZoneAfterPublish() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
@@ -195,7 +214,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing/Invalid Venue Map Configuration
     void cannotAddSameZoneTwice() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
@@ -206,7 +225,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing/Invalid Venue Map Configuration
     void cannotRemoveZoneThatDoesNotBelongToEvent() {
         Event event = createDraftEvent();
 
@@ -214,7 +233,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-09: Sold Out While Queued
     void onlyPublishedEventCanBeMarkedSoldOut() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -228,7 +247,7 @@ class EventTest {
         assertThat(event.isSoldOut()).isTrue();
     }
 
-    @Test
+    @Test // Supporting test for event lifecycle rules
     void cannotMarkDraftOrCancelledEventAsOver() {
         Event event = createDraftEventWithZone("testZoneId");
 
@@ -241,7 +260,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation (Regular Event)
     void publishedEventIsPurchasable() {
         Event event = createDraftEvent();
         event.addZone(ZoneId.random());
@@ -250,14 +269,14 @@ class EventTest {
         assertThat(event.isPurchasable()).isTrue();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation — event must be active/published
     void draftEventIsNotPurchasable() {
         Event event = createDraftEvent();
 
         assertThat(event.isPurchasable()).isFalse();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation — event must be active/published
     void cancelledEventIsNotPurchasable() {
         Event event = createDraftEvent();
         event.cancel();
@@ -265,7 +284,7 @@ class EventTest {
         assertThat(event.isPurchasable()).isFalse();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation (Regular Event)
     void requirePurchasable_whenPublished_doesNotThrow() {
         Event event = createDraftEvent();
         event.addZone(ZoneId.random());
@@ -275,7 +294,7 @@ class EventTest {
                 .doesNotThrowAnyException();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation — reject non-purchasable event
     void requirePurchasable_whenDraft_throws() {
         Event event = createDraftEvent();
 
@@ -283,7 +302,7 @@ class EventTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation (Regular Event)
     void newEventDefaultsToRegularSalesMethod() {
         Event event = createDraftEvent();
 
@@ -293,7 +312,7 @@ class EventTest {
         assertThat(event.isMethodLottery()).isFalse();
     }
 
-    @Test
+    @Test // UC3 / UAT-20: Threshold Exceeded Queue Created
     void draftEventCanSetSalesMethodToQueue() {
         Event event = createDraftEvent();
 
@@ -305,7 +324,7 @@ class EventTest {
         assertThat(event.isMethodLottery()).isFalse();
     }
 
-    @Test
+    @Test // UAT-17: Successful Lottery Reservation
     void draftEventCanSetSalesMethodToLottery() {
         Event event = createDraftEvent();
 
@@ -317,7 +336,7 @@ class EventTest {
         assertThat(event.isMethodQueue()).isFalse();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation (Regular Event)
     void draftEventCanSetSalesMethodBackToRegular() {
         Event event = createDraftEvent();
 
@@ -330,7 +349,7 @@ class EventTest {
         assertThat(event.isMethodLottery()).isFalse();
     }
 
-    @Test
+    @Test // UAT-16: Successful Reservation (Regular Event)
     void setMethodRegularSetsRegularSalesMethod() {
         Event event = createDraftEvent();
 
@@ -341,7 +360,7 @@ class EventTest {
         assertThat(event.isMethodSale()).isTrue();
     }
 
-    @Test
+    @Test // UC3 / UAT-20: Threshold Exceeded Queue Created
     void setMethodQueueSetsVirtualQueueSalesMethod() {
         Event event = createDraftEvent();
 
@@ -351,7 +370,7 @@ class EventTest {
         assertThat(event.isMethodQueue()).isTrue();
     }
 
-    @Test
+    @Test // UAT-17: Successful Lottery Reservation
     void setMethodLotterySetsLotterySalesMethod() {
         Event event = createDraftEvent();
 
@@ -361,7 +380,7 @@ class EventTest {
         assertThat(event.isMethodLottery()).isTrue();
     }
 
-    @Test
+    @Test // Supporting test for UC15 — invalid sales method configuration
     void salesMethodCannotBeNull() {
         Event event = createDraftEvent();
 

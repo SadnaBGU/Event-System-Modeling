@@ -5,6 +5,13 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * UC15: Create and Configure Event
+ *
+ * Supporting value-object tests.
+ * No direct UAT.
+ */
+
 class EventIdTest {
 
     @Test

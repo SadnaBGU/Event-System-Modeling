@@ -6,10 +6,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
+/**
+ * UC15: Create and Configure Event
+ *
+ * Tests for UATs:
+ * - UAT-42: Missing Required Fields
+ */
 class EventDetailsTest {
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void nameMustNotBeBlank() {
         assertThatThrownBy(() -> new EventDetails(
                 "",
@@ -20,7 +25,7 @@ class EventDetailsTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void descriptionMustNotBeBlank() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",
@@ -31,7 +36,7 @@ class EventDetailsTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void datesMustNotContainNull() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",
@@ -42,7 +47,7 @@ class EventDetailsTest {
         )).isInstanceOf(NullPointerException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void datesMustNotBeNull() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",
@@ -53,7 +58,7 @@ class EventDetailsTest {
         )).isInstanceOf(NullPointerException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void datesMustNotBeEmpty() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",
@@ -64,7 +69,7 @@ class EventDetailsTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void categoryMustNotBeBlank() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",
@@ -75,7 +80,7 @@ class EventDetailsTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void locationMustNotBeBlank() {
         assertThatThrownBy(() -> new EventDetails(
                 "Concert",

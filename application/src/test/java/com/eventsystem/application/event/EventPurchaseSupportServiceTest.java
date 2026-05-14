@@ -28,6 +28,35 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * UC7: Ticket Selection and Reservation
+ *
+ * Tests for UATs:
+ * - UAT-16: Successful Reservation
+ * - UAT-22: Tickets Unavailable
+ *
+ * UC3: Virtual Queue and Load Management
+ *
+ * Tests for UATs:
+ * - UAT-09: Sold Out While Queued
+ *
+ * UC9: Checkout and Payment Completion
+ *
+ * Tests for UATs:
+ * - UAT-26: Successful Checkout
+ * - UAT-27: Checkout Policy Violation
+ * - UAT-47: Invalid Coupon at Checkout
+ *
+ * Event purchase support coverage:
+ * - Check whether an event is purchasable
+ * - Enforce purchasable-event requirement before reservation or checkout
+ * - Check whether all zones are full
+ * - Mark event as sold out when all zones are full
+ * - Validate that selected zones belong to the event
+ * - Validate purchase policy before checkout
+ * - Apply discount snapshot
+ * - Create event snapshot for purchase records
+ */
 @ExtendWith(MockitoExtension.class)
 class EventPurchaseSupportServiceTest {
 
@@ -73,6 +102,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── isPurchasable ───────────────────────────────────────────────────────
 
+    // UAT-16: Successful Reservation
+    // A published event is considered purchasable before ticket selection/reservation.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void isPurchasable_whenEventIsPublished_returnsTrue() {
         Event event = createPublishedEvent();
@@ -84,6 +116,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isTrue();
     }
 
+    // UAT-16: Successful Reservation
+    // A draft event is not purchasable and cannot be used for reservation.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void isPurchasable_whenEventIsDraft_returnsFalse() {
         Event event = createDraftEvent();
@@ -95,6 +130,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isFalse();
     }
 
+    // UAT-16: Successful Reservation
+    // A cancelled event is not purchasable and cannot be used for reservation.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void isPurchasable_whenEventIsCancelled_returnsFalse() {
         Event event = createDraftEvent();
@@ -107,6 +145,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isFalse();
     }
 
+    // Supporting test for UC7
+    // Reject purchasability check when the event does not exist.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void isPurchasable_eventNotFound_throws() {
         EventId unknownId = EventId.random();
@@ -119,6 +160,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting validation test for UC7
+    // Reject purchasability check when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void isPurchasable_nullEventId_throws() {
         assertThatNullPointerException()
@@ -130,6 +174,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── requirePurchasable ──────────────────────────────────────────────────
 
+    // UAT-16: Successful Reservation
+    // Allow reservation flow to continue when the event is published and purchasable.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requirePurchasable_whenPublished_doesNotThrow() {
         Event event = createPublishedEvent();
@@ -140,6 +187,9 @@ class EventPurchaseSupportServiceTest {
                 .doesNotThrowAnyException();
     }
 
+    // UAT-16: Successful Reservation
+    // Reject reservation flow when the event is not published/purchasable.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requirePurchasable_whenDraft_throws() {
         Event event = createDraftEvent();
@@ -150,6 +200,9 @@ class EventPurchaseSupportServiceTest {
                 .isInstanceOf(EventDomainException.class);
     }
 
+    // Supporting test for UC7
+    // Reject purchasable requirement when the event does not exist.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requirePurchasable_eventNotFound_throws() {
         EventId unknownId = EventId.random();
@@ -162,6 +215,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting validation test for UC7
+    // Reject purchasable requirement when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requirePurchasable_nullEventId_throws() {
         assertThatNullPointerException()
@@ -173,6 +229,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── areAllZonesFull ─────────────────────────────────────────────────────
 
+    // UAT-09: Sold Out While Queued
+    // Detect that the event is sold out when all related zones have no availability.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void areAllZonesFull_whenAllZonesFull_returnsTrue() {
         EventId eventId = EventId.random();
@@ -188,6 +247,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(eventRepository);
     }
 
+    // UAT-16 / UAT-22: Successful Reservation / Tickets Unavailable
+    // Detect that an event still has ticket availability when at least one zone has capacity.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void areAllZonesFull_whenOneZoneHasAvailability_returnsFalse() {
         EventId eventId = EventId.random();
@@ -203,6 +265,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(eventRepository);
     }
 
+    // Supporting inventory test for UC7
+    // An event with no zones should not be considered sold out by zone availability.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void areAllZonesFull_whenNoZones_returnsFalse() {
         EventId eventId = EventId.random();
@@ -215,6 +280,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(eventRepository);
     }
 
+    // Supporting validation test for UC7
+    // Reject full-zone check when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void areAllZonesFull_nullEventId_throws() {
         assertThatNullPointerException()
@@ -226,6 +294,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── markSoldOutIfAllZonesFull ───────────────────────────────────────────
 
+    // UAT-09: Sold Out While Queued
+    // Mark the event as sold out when all zones are full.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_whenAllZonesFull_marksSoldOutAndSaves() {
         Event event = createPublishedEvent();
@@ -242,6 +313,9 @@ class EventPurchaseSupportServiceTest {
         verify(eventRepository).save(event);
     }
 
+    // UAT-16: Successful Reservation
+    // Do not mark the event as sold out when at least one zone still has availability.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_whenNotAllZonesFull_doesNotSave() {
         Event event = createPublishedEvent();
@@ -258,6 +332,9 @@ class EventPurchaseSupportServiceTest {
         verify(eventRepository, never()).save(any());
     }
 
+    // Supporting inventory test for UC7
+    // Do not mark an event as sold out when it has no zones.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_whenNoZones_doesNotSave() {
         Event event = createPublishedEvent();
@@ -271,6 +348,9 @@ class EventPurchaseSupportServiceTest {
         verify(eventRepository, never()).save(any());
     }
 
+    // Supporting lifecycle test for UC7
+    // Do not check zones or save when the event is still a draft.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_whenEventIsDraft_doesNotCheckZonesOrSave() {
         Event event = createDraftEvent();
@@ -284,6 +364,9 @@ class EventPurchaseSupportServiceTest {
         verify(eventRepository, never()).save(any());
     }
 
+    // Supporting test for UC3 / UC7
+    // Reject sold-out update when the event does not exist.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_eventNotFound_throws() {
         EventId unknownId = EventId.random();
@@ -297,6 +380,9 @@ class EventPurchaseSupportServiceTest {
         verify(eventRepository, never()).save(any());
     }
 
+    // Supporting validation test for UC3 / UC7
+    // Reject sold-out update when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void markSoldOutIfAllZonesFull_nullEventId_throws() {
         assertThatNullPointerException()
@@ -308,6 +394,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── getEventForSnapshot ─────────────────────────────────────────────────
 
+    // UAT-26: Successful Checkout
+    // Load the event so checkout can create a purchase-record snapshot.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void getEventForSnapshot_returnsLoadedEvent() {
         Event event = createDraftEvent();
@@ -319,6 +408,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isSameAs(event);
     }
 
+    // Supporting test for UC9
+    // Reject snapshot creation when the event does not exist.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void getEventForSnapshot_eventNotFound_throws() {
         EventId unknownId = EventId.random();
@@ -331,6 +423,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting validation test for UC9
+    // Reject snapshot creation when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void getEventForSnapshot_nullEventId_throws() {
         assertThatNullPointerException()
@@ -342,6 +437,9 @@ class EventPurchaseSupportServiceTest {
 
     // ── requireZoneBelongsToEvent ───────────────────────────────────────────
 
+    // UAT-16: Successful Reservation
+    // Allow ticket selection when the selected zone belongs to the event.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requireZoneBelongsToEvent_whenZoneBelongs_doesNotThrow() {
         Event event = createDraftEvent();
@@ -356,6 +454,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // UAT-22: Tickets Unavailable
+    // Reject ticket selection when the selected zone does not belong to the event.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requireZoneBelongsToEvent_whenZoneDoesNotBelong_throws() {
         Event event = createDraftEvent();
@@ -368,6 +469,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting test for UC7
+    // Reject zone-belonging validation when the event does not exist.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requireZoneBelongsToEvent_eventNotFound_throws() {
         EventId unknownId = EventId.random();
@@ -380,6 +484,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting validation test for UC7
+    // Reject zone-belonging validation when event ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requireZoneBelongsToEvent_nullEventId_throws() {
         assertThatNullPointerException()
@@ -389,6 +496,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // Supporting validation test for UC7
+    // Reject zone-belonging validation when zone ID is null.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void requireZoneBelongsToEvent_nullZoneId_throws() {
         assertThatNullPointerException()
@@ -398,6 +508,9 @@ class EventPurchaseSupportServiceTest {
         verifyNoInteractions(zoneRepository);
     }
 
+    // UAT-26: Successful Checkout
+    // Approve purchase-policy validation when the event is published and all selected zones belong to the event.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void validatePurchasePolicy_whenPublishedAndZoneBelongs_returnsTrue() {
         Event event = createDraftEvent();
@@ -421,6 +534,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isTrue();
     }
 
+    // UAT-27: Checkout Policy Violation
+    // Reject checkout when the event is not published.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void validatePurchasePolicy_whenEventIsNotPublished_returnsFalse() {
         Event event = createDraftEvent();
@@ -443,6 +559,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isFalse();
     }
 
+    // UAT-27: Checkout Policy Violation
+    // Reject checkout when the selected zone does not belong to the event.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void validatePurchasePolicy_whenZoneDoesNotBelongToEvent_returnsFalse() {
         Event event = createDraftEvent();
@@ -467,6 +586,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result).isFalse();
     }
 
+    // UAT-47: Invalid Coupon at Checkout
+    // Return zero discount when no discount policy/coupon is applicable.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void applyDiscount_withoutDiscountPolicy_returnsZeroDiscount() {
         Event event = createPublishedEvent();
@@ -480,6 +602,9 @@ class EventPurchaseSupportServiceTest {
         assertThat(result.discountAmount()).isEqualTo(Money.of(BigDecimal.ZERO, "ILS"));
     }
 
+    // UAT-26: Successful Checkout
+    // Create an event snapshot for the purchase record after checkout.
+    // ─────────────────────────────────────────────────────────────────────
     @Test
     void getEventSnapshot_returnsSnapshotFromEventDetails() {
         Event event = createPublishedEvent();

@@ -3,10 +3,16 @@ package com.eventsystem.domain.event;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
+/** 
+ * UC15: Create and Configure Event
+ *
+ * Tests for UATs:
+ * - UAT-41: Successful Event Creation
+ * - UAT-42: Missing Required Fields
+ */
 class MapElementTest {
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void typeMustNotBeBlank() {
         assertThatThrownBy(() -> new MapElement(
                 "",
@@ -17,7 +23,7 @@ class MapElementTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void labelMustNotBeBlank() {
         assertThatThrownBy(() -> new MapElement(
                 "STAGE",
@@ -28,7 +34,7 @@ class MapElementTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void positionXMustNotBeNegative() {
         assertThatThrownBy(() -> new MapElement(
                 "STAGE",
@@ -39,7 +45,7 @@ class MapElementTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
+    @Test // UAT-42: Missing Required Fields
     void positionYMustNotBeNegative() {
         assertThatThrownBy(() -> new MapElement(
                 "STAGE",
