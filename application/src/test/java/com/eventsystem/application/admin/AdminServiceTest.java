@@ -1,5 +1,6 @@
 package com.eventsystem.application.admin;
 
+import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;

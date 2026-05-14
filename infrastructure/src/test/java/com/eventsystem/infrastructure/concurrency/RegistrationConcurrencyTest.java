@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.concurrency;
 
+import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.RegisterMemberRequest;
-import com.eventsystem.application.auth.UsernameAlreadyTakenException;
 import com.eventsystem.application.security.TokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
