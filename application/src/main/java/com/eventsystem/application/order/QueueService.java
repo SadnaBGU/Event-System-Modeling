@@ -35,8 +35,12 @@ public class QueueService {
         VirtualQueue queue = queueRepository.findByEvent(eventId)
                 .orElseGet(() -> {
                     logger.info("No existing queue found for event {}. Creating a new one.", eventId);
-                    return VirtualQueueDTO.toDomain(createNewQueue(eventId));
+                    VirtualQueue newQueue = VirtualQueueDTO.toDomain(createNewQueue(eventId));
+                    newQueue.activate();
+                    return newQueue;
                 });
+
+        
 
         queue.enqueue(buyer);
         queueRepository.save(queue);

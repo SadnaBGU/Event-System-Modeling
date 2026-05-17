@@ -64,6 +64,7 @@ class OrderServiceTest {
         testBuyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "user-123");
         testOrder = mock(ActiveOrder.class);
         lenient().when(testOrder.getOrderId()).thenReturn(ORDER_ID);
+        lenient().when(testOrder.getBuyerRef()).thenReturn(testBuyer);
     }
 
     @Test
