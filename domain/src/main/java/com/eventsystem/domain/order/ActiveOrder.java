@@ -96,5 +96,13 @@ public class ActiveOrder {
     public List<OrderItem> getItems() { 
         return List.copyOf(items); 
     }
+
+    public OrderStatus getStatus() { 
+        return status; 
+    }
+
+    public Instant getReservationExpiry() { 
+        return reservationExpiry; 
+    }
 }
 

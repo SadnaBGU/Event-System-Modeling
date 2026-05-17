@@ -73,7 +73,7 @@ class OrderServiceTest {
         when(testOrder.isExpired()).thenReturn(false);
 
         // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty()).orderId();
 
         // Assert
         assertEquals(ORDER_ID, resultId);
@@ -89,7 +89,7 @@ class OrderServiceTest {
         when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any(Instant.class))).thenReturn(testOrder);
 
         // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty()).orderId();
 
         // Assert
         assertEquals(ORDER_ID, resultId);
@@ -165,7 +165,7 @@ class OrderServiceTest {
         when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
 
         // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("WINNER-123"));
+        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("WINNER-123")).orderId();
 
         // Assert
         assertEquals(ORDER_ID, resultId);

@@ -5,19 +5,20 @@ import com.eventsystem.application.appexceptions.IssuanceFailedException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
+import com.eventsystem.application.appexceptions.PriceCalcException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
+import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
+import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
-import com.eventsystem.domain.purchaserecord.EventSnapshot;
-import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -71,34 +72,59 @@ public class CheckoutSaga {
         logger.info("Initiating checkout process for order: {}", orderId);
         // 1. Validate the order and its expiration
         ActiveOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+                .orElseThrow(() -> {
+                    logger.warn("Checkout failed: Order not found");
+                    return new OrderNotFoundException(orderId);
+                });
         
         if (order.isExpired()) {
-            logger.warn("Checkout failed: Order {} reservation timer has expired", orderId);
+            logger.warn("Checkout failed: Order reservation timer has expired");
             throw new ActiveOrderHasExpiredException(orderId);
         }
 
         // 2. Validating purchase policies before discounts
-        boolean isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
+        boolean isEligible;
+        try {
+            isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
+        } catch (Exception e) {
+            logger.error("Error during purchase policy validation: {}", e.getMessage());
+            throw new OrderViolatesPolicyException("Error validating purchase policy for order " + orderId + ": " + e.getMessage());
+        }
+        
         if (!isEligible) {
-            logger.warn("Checkout failed: Order {} violates purchase policy for event {}", orderId, order.getEventId());
+            logger.warn("Checkout failed: Order violates purchase policy for event {}", order.getEventId());
             throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event " + order.getEventId());
         }
 
         // 3. Calculating the total price and applying discounts
-        Money baseTotal = order.calculateBaseTotal();
-        DiscountSnapshot discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
-        Money finalAmount = baseTotal.subtract(discount.discountAmount());
+        Money finalAmount;
+        DiscountSnapshot discount;
+        try {
+            Money baseTotal = order.calculateBaseTotal();
+            discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
+            finalAmount = baseTotal.subtract(discount.discountAmount());
+        } catch (Exception e) {
+            logger.error("Error during discount application: {}", e.getMessage());
+            throw new PriceCalcException(e.getMessage());
+        }
 
         // 4. Charging the payment through the PaymentGateway
-        PaymentResult paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);
+        PaymentResult paymentResult;
+        try {
+            paymentResult = paymentGateway.charge(orderId, finalAmount, order.getBuyerRef(), paymentToken);
+        } catch (Exception e) {
+            logger.error("Payment processing error: {}", e.getMessage());
+            notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment processing error: " + e.getMessage());
+            throw new PaymentFailedException("Payment processing failed for order " + orderId + ": " + e.getMessage());
+        }
+        
         if (!paymentResult.success()) {
-            logger.warn("Checkout failed for order {}: Payment declined. Reason: {}", orderId, paymentResult.errorMessage());
+            logger.warn("Checkout failed for order: Payment declined. Reason: {}", paymentResult.errorMessage());
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment declined");
             throw new PaymentFailedException(paymentResult.errorMessage());
         }
 
-        logger.info("Payment successful for order {}. Proceeding with ticket issuance.", orderId);
+        logger.info("Payment successful. Proceeding with ticket issuance.");
 
         // 5. Issuing tickets through the TicketIssuance service (distributed transaction)
         IssuanceResult issuanceResult;
@@ -106,7 +132,7 @@ public class CheckoutSaga {
             issuanceResult = ticketIssuance.issueTickets(order.getEventId(), orderId, order.getItems(), order.getBuyerRef());
         } catch (Exception e) {
             // If an exception occurs during ticket issuance, we need to compensate by refunding the payment and unlocking any reserved seats
-            logger.error("System crash during ticket issuance for order {}. Triggering compensating actions (Refund & Unlock).", orderId, e);
+            logger.error("System crash during ticket issuance. Triggering compensating actions (Refund & Unlock).", e);
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance service crashed: " + e.getMessage());
             
             for (OrderItem item : order.getItems()) {
@@ -118,7 +144,7 @@ public class CheckoutSaga {
         }
         
         if (!issuanceResult.success()) {
-            logger.warn("Checkout failed for order {}: Ticket issuance logic rejected the request. Reason: {}", orderId, issuanceResult.errorMessage());
+            logger.warn("Checkout failed for order: Ticket issuance logic rejected the request. Reason: {}", issuanceResult.errorMessage());
             // If ticket issuance fails (e.g., due to business logic), we also need to compensate by refunding the payment and unlocking any reserved seats
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance failed: " + issuanceResult.errorMessage());
             

@@ -43,8 +43,8 @@ public class OrderService {
      * Create a new active order for the buyer and event, 
      * or return the existing active order if it exists and is not expired.
      */
-    public String createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
-        logger.info("Requested active order for buyer {} and event {}", buyer.memberId(), eventId);
+    public ActiveOrderDTO createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
+        logger.info("Requested active order for event");
 
         if (lotteryCode.isPresent() && lotteryValidationPort.isLotteryEvent(eventId)) {
             boolean isValid = lotteryValidationPort.validateWinnerCode(eventId, buyer, lotteryCode.get());
@@ -57,7 +57,7 @@ public class OrderService {
         
         if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
             logger.info("Found existing active order: {}", existingOrder.get().getOrderId());
-            return existingOrder.get().getOrderId();
+            return ActiveOrderDTO.fromDomain(existingOrder.get());
         }
 
         ActiveOrder newOrder = orderFactory.createOrder(
@@ -67,14 +67,14 @@ public class OrderService {
         );
         orderRepository.save(newOrder);
         logger.info("Created new active order: {}", newOrder.getOrderId());
-        return newOrder.getOrderId();
+        return ActiveOrderDTO.fromDomain(newOrder);
     }
 
-    public String createNewOrderStrict(BuyerReference buyer, String eventId) {
+    public ActiveOrderDTO createNewOrderStrict(BuyerReference buyer, String eventId) {
         Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
         
         if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
-            logger.warn("Reservation Rejected_Existing_Order: Buyer {} already has active order for event {}", buyer.memberId(), eventId);
+            logger.warn("Reservation Rejected_Existing_Order: Buyer already has active order for event {}", eventId);
             throw new AlreadyExistsOrderException("An active order for this buyer and event already exists.");
         }
 
@@ -84,7 +84,7 @@ public class OrderService {
                 Instant.now().plus(TIMEOUT_MINUTES, ChronoUnit.MINUTES)
         );
         orderRepository.save(newOrder);
-        return newOrder.getOrderId();
+        return ActiveOrderDTO.fromDomain(newOrder);
     }
 
     /**

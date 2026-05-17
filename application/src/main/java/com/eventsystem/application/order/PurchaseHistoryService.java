@@ -1,7 +1,5 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.domain.purchaserecord.PurchaseRecord;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +7,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
 public class PurchaseHistoryService {
 
@@ -24,13 +24,13 @@ public class PurchaseHistoryService {
      * this method will be called from the web layer when a user accesses their purchase history page.
      */
     public List<PurchaseRecord> getHistoryForBuyer(String buyerId) {
-        logger.info("Fetching purchase history for buyer: {}", buyerId);
+        logger.info("Fetching purchase history for buyer");
         
         List<PurchaseRecord> history = purchaseRecordRepository.findByBuyer(buyerId).stream()
                 .sorted(Comparator.comparing(PurchaseRecord::purchaseTimestamp).reversed())
                 .collect(Collectors.toList());
 
-        logger.info("Found {} purchase records for buyer: {}", history.size(), buyerId);        
+        logger.info("Found {} purchase records for buyer", history.size());        
         return history;
     }
 

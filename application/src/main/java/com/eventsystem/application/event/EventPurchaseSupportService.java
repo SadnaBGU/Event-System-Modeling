@@ -9,6 +9,7 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.application.event.ZoneRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
