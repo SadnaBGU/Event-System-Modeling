@@ -14,9 +14,9 @@ public class ReportService {
 
     private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
 
-    private final PurchaseRecordRepository purchaseRecordRepository;
+    private final IPurchaseRecordRepository purchaseRecordRepository;
 
-    public ReportService(PurchaseRecordRepository purchaseRecordRepository) {
+    public ReportService(IPurchaseRecordRepository purchaseRecordRepository) {
         this.purchaseRecordRepository = purchaseRecordRepository;
     }
 

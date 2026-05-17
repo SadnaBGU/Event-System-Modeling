@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class ReportServiceTest {
 
     @Mock
-    private PurchaseRecordRepository purchaseRecordRepository;
+    private IPurchaseRecordRepository purchaseRecordRepository;
 
     @InjectMocks
     private ReportService reportService;

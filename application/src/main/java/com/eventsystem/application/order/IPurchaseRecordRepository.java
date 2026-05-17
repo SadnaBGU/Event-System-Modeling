@@ -4,7 +4,7 @@ import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import java.util.List;
 import java.util.Optional;
 
-public interface PurchaseRecordRepository {
+public interface IPurchaseRecordRepository {
     void append(PurchaseRecord record);
     Optional<PurchaseRecord> findById(String recordId);
     List<PurchaseRecord> findByBuyer(String buyerId);

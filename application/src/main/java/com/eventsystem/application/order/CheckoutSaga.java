@@ -7,7 +7,7 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
@@ -30,20 +30,20 @@ public class CheckoutSaga {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckoutSaga.class);
 
-    private final ActiveOrderRepository orderRepository;
-    private final PurchaseRecordRepository purchaseRecordRepository;
-    private final PaymentGatewayPort paymentGateway;
-    private final TicketIssuancePort ticketIssuance;
-    private final NotificationPort notificationPort;
+    private final IActiveOrderRepository orderRepository;
+    private final IPurchaseRecordRepository purchaseRecordRepository;
+    private final IPaymentGatewayPort paymentGateway;
+    private final ITicketIssuancePort ticketIssuance;
+    private final INotificationPort notificationPort;
     private final ZoneServicePort zoneService;
     
     private final EventQueryPort eventQueryPort; 
 
-    public CheckoutSaga(ActiveOrderRepository orderRepository,
-                        PurchaseRecordRepository purchaseRecordRepository,
-                        PaymentGatewayPort paymentGateway,
-                        TicketIssuancePort ticketIssuance,
-                        NotificationPort notificationPort,
+    public CheckoutSaga(IActiveOrderRepository orderRepository,
+                        IPurchaseRecordRepository purchaseRecordRepository,
+                        IPaymentGatewayPort paymentGateway,
+                        ITicketIssuancePort ticketIssuance,
+                        INotificationPort notificationPort,
                         ZoneServicePort zoneService,
                         EventQueryPort eventQueryPort) {
         this.orderRepository = orderRepository;

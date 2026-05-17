@@ -4,7 +4,7 @@ import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.application.lottery.ILotteryValidationPort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
@@ -25,14 +25,14 @@ public class OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
-    private final ActiveOrderRepository orderRepository;
+    private final IActiveOrderRepository orderRepository;
     private final ZoneServicePort zoneService;
     private final OrderFactory orderFactory;
-    private final LotteryValidationPort lotteryValidationPort;
+    private final ILotteryValidationPort lotteryValidationPort;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryValidationPort lotteryValidationPort) {
+    public OrderService(IActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, ILotteryValidationPort lotteryValidationPort) {
         this.orderRepository = orderRepository;
         this.zoneService = zoneService;
         this.orderFactory = orderFactory;

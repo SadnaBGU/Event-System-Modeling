@@ -12,10 +12,10 @@ import org.slf4j.LoggerFactory;
 
 public class PurchaseHistoryService {
 
-    private final PurchaseRecordRepository purchaseRecordRepository;
+    private final IPurchaseRecordRepository purchaseRecordRepository;
     private final Logger logger = LoggerFactory.getLogger(PurchaseHistoryService.class);
 
-    public PurchaseHistoryService(PurchaseRecordRepository purchaseRecordRepository) {
+    public PurchaseHistoryService(IPurchaseRecordRepository purchaseRecordRepository) {
         this.purchaseRecordRepository = purchaseRecordRepository;
     }
 

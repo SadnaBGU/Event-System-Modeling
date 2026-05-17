@@ -32,7 +32,7 @@ import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
@@ -48,11 +48,11 @@ import com.eventsystem.domain.zone.ZoneId;
 class CheckoutSagaTest {
 
     // Here we declare all the dependencies of the CheckoutSaga as Mocks
-    @Mock private ActiveOrderRepository orderRepository;
-    @Mock private PurchaseRecordRepository purchaseRecordRepository;
-    @Mock private PaymentGatewayPort paymentGateway;
-    @Mock private TicketIssuancePort ticketIssuance;
-    @Mock private NotificationPort notificationPort;
+    @Mock private IActiveOrderRepository orderRepository;
+    @Mock private IPurchaseRecordRepository purchaseRecordRepository;
+    @Mock private IPaymentGatewayPort paymentGateway;
+    @Mock private ITicketIssuancePort ticketIssuance;
+    @Mock private INotificationPort notificationPort;
     @Mock private ZoneServicePort zoneService;
     @Mock private EventQueryPort eventQueryPort;
 

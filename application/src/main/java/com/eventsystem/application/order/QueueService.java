@@ -1,7 +1,7 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.domain.queue.VirtualQueue;
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 
 import java.util.List;
@@ -13,13 +13,13 @@ import org.slf4j.LoggerFactory;
 public class QueueService {
     private final Logger logger = LoggerFactory.getLogger(QueueService.class);
     
-    private final VirtualQueueRepository queueRepository;
-    private final NotificationPort notificationPort;
+    private final IVirtualQueueRepository queueRepository;
+    private final INotificationPort notificationPort;
     private static final int QUEUE_LOAD_THRESHOLD = 100;
     private static final int MAX_CONCURRENT_ADMISSIONS = 100;
     private static final int TOKEN_VALIDITY_MINUTES = 10;
 
-    public QueueService(VirtualQueueRepository queueRepository, NotificationPort notificationPort) {
+    public QueueService(IVirtualQueueRepository queueRepository, INotificationPort notificationPort) {
         this.queueRepository = queueRepository;
         this.notificationPort = notificationPort;
     }

@@ -4,7 +4,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import java.math.BigDecimal;
 import java.util.List;
 
-public interface NotificationPort {
+public interface INotificationPort {
     
     void sendPurchaseSuccess(BuyerReference buyer, String receiptId);
     

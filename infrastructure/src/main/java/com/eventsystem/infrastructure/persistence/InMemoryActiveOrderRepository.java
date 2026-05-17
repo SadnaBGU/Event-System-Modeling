@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.order.ActiveOrderRepository;
+import com.eventsystem.application.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class InMemoryActiveOrderRepository implements ActiveOrderRepository {
+public class InMemoryActiveOrderRepository implements IActiveOrderRepository {
     
     private static final Logger logger = LoggerFactory.getLogger(InMemoryActiveOrderRepository.class);
     

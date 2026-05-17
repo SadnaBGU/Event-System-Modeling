@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.order.VirtualQueueRepository;
+import com.eventsystem.application.order.IVirtualQueueRepository;
 import com.eventsystem.domain.queue.VirtualQueue;
 
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class InMemoryVirtualQueueRepository implements VirtualQueueRepository {
+public class InMemoryVirtualQueueRepository implements IVirtualQueueRepository {
     
     private static final Logger logger = LoggerFactory.getLogger(InMemoryVirtualQueueRepository.class);
     

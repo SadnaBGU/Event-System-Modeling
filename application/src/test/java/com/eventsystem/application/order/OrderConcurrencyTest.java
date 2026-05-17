@@ -1,8 +1,9 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.application.lottery.ILotteryValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.*;
 import com.eventsystem.domain.shared.Money;
@@ -11,7 +12,6 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneRepository;
 import com.eventsystem.domain.zone.ZoneType;
 
 
@@ -50,13 +50,13 @@ import static org.mockito.Mockito.*;
 class OrderConcurrencyTest {
 
     @Mock
-    private ActiveOrderRepository orderRepository;
+    private IActiveOrderRepository orderRepository;
 
     @Mock
     private ZoneRepository zoneRepository;
 
     @Mock
-    private LotteryValidationPort lotteryValidationPort;
+    private ILotteryValidationPort lotteryValidationPort;
 
     private ZoneServicePort zoneService;
 

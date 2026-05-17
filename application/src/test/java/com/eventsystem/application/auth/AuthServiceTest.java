@@ -2,13 +2,13 @@ package com.eventsystem.application.auth;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
+import com.eventsystem.application.member.MemberRepository;
 import com.eventsystem.application.security.PasswordHasher;
 import com.eventsystem.application.security.TokenService;
 import com.eventsystem.application.security.TokenService.TokenClaims;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberRepository;
 import com.eventsystem.domain.member.PersonalDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

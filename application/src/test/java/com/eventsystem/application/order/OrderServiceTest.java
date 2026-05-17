@@ -26,7 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.application.lottery.ILotteryValidationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
@@ -40,7 +40,7 @@ import com.eventsystem.domain.zone.ZoneId;
 class OrderServiceTest {
 
     @Mock
-    private ActiveOrderRepository orderRepository;
+    private IActiveOrderRepository orderRepository;
     
     @Mock
     private ZoneServicePort zoneService;
@@ -49,7 +49,7 @@ class OrderServiceTest {
     private OrderFactory orderFactory;
 
     @Mock
-    private LotteryValidationPort lotteryValidationPort;
+    private ILotteryValidationPort lotteryValidationPort;
 
     @InjectMocks
     private OrderService orderService;
