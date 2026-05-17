@@ -121,4 +121,12 @@ public class VirtualQueue {
     public long getVersion() { 
         return version; 
     }
+
+    public int getLoadThreshold() { 
+        return loadThreshold; 
+    }
+
+    public int getMaxConcurrentAdmissions() { 
+        return maxConcurrentAdmissions; 
+    }
 }

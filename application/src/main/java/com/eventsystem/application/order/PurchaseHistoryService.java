@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.eventsystem.application.purchaserecorddto.PurchaseRecordDTO;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
 public class PurchaseHistoryService {
@@ -23,7 +24,7 @@ public class PurchaseHistoryService {
      * Extract the purchase history for a specific buyer. 
      * this method will be called from the web layer when a user accesses their purchase history page.
      */
-    public List<PurchaseRecord> getHistoryForBuyer(String buyerId) {
+    public List<PurchaseRecordDTO> getHistoryForBuyer(String buyerId) {
         logger.info("Fetching purchase history for buyer");
         
         List<PurchaseRecord> history = purchaseRecordRepository.findByBuyer(buyerId).stream()
@@ -31,14 +32,14 @@ public class PurchaseHistoryService {
                 .collect(Collectors.toList());
 
         logger.info("Found {} purchase records for buyer", history.size());        
-        return history;
+        return history.stream().map(PurchaseRecordDTO::fromDomain).collect(Collectors.toList());
     }
 
     /**
      * Extract details for a specific purchase receipt.
      * this method will be called when a user clicks on a purchase record to view its details.
      */
-    public Optional<PurchaseRecord> getReceiptDetails(String recordId) {
+    public Optional<PurchaseRecordDTO> getReceiptDetails(String recordId) {
         logger.info("Fetching receipt details for recordId: {}", recordId);
         
         Optional<PurchaseRecord> receipt = purchaseRecordRepository.findById(recordId);
@@ -48,10 +49,10 @@ public class PurchaseHistoryService {
         }
         
         logger.info("Found receipt for recordId: {}", recordId);
-        return receipt;
+        return receipt.map(PurchaseRecordDTO::fromDomain);
     }
 
-    public List<PurchaseRecord> getGlobalHistory() {
-        return purchaseRecordRepository.findAll(); 
+    public List<PurchaseRecordDTO> getGlobalHistory() {
+        return purchaseRecordRepository.findAll().stream().map(PurchaseRecordDTO::fromDomain).collect(Collectors.toList());
     }
 }

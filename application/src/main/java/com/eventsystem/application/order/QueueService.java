@@ -35,7 +35,7 @@ public class QueueService {
         VirtualQueue queue = queueRepository.findByEvent(eventId)
                 .orElseGet(() -> {
                     logger.info("No existing queue found for event {}. Creating a new one.", eventId);
-                    return createNewQueue(eventId);
+                    return VirtualQueueDTO.toDomain(createNewQueue(eventId));
                 });
 
         queue.enqueue(buyer);
@@ -99,7 +99,7 @@ public class QueueService {
         return status;
     }
     
-    private VirtualQueue createNewQueue(String eventId) {
+    private VirtualQueueDTO createNewQueue(String eventId) {
         VirtualQueue newQueue = new VirtualQueue(
                 UUID.randomUUID().toString(), 
                 eventId, 
@@ -110,7 +110,7 @@ public class QueueService {
 
         logger.info("Created and activated new VirtualQueue {} for event {}", newQueue.getQueueId(), eventId);
 
-        return newQueue;
+        return VirtualQueueDTO.fromDomain(newQueue);
     }
 
     public void handleEventSoldOut(String eventId) {

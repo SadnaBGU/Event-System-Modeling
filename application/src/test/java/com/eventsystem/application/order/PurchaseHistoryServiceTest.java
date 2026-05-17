@@ -1,5 +1,6 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.purchaserecorddto.PurchaseRecordDTO;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +41,7 @@ class PurchaseHistoryServiceTest {
         when(purchaseRecordRepository.findByBuyer(BUYER_ID)).thenReturn(List.of(oldRecord, newRecord));
 
         // Act
-        List<PurchaseRecord> history = purchaseHistoryService.getHistoryForBuyer(BUYER_ID);
+        List<PurchaseRecordDTO> history = purchaseHistoryService.getHistoryForBuyer(BUYER_ID);
 
         // Assert
         assertEquals(2, history.size());
@@ -56,7 +57,7 @@ class PurchaseHistoryServiceTest {
         when(purchaseRecordRepository.findById(recordId)).thenReturn(Optional.of(mockRecord));
 
         // Act
-        Optional<PurchaseRecord> result = purchaseHistoryService.getReceiptDetails(recordId);
+        Optional<PurchaseRecordDTO> result = purchaseHistoryService.getReceiptDetails(recordId);
 
         // Assert
         assertTrue(result.isPresent());
@@ -70,7 +71,7 @@ class PurchaseHistoryServiceTest {
         when(purchaseRecordRepository.findAll()).thenReturn(List.of(record));
 
         // Act
-        List<PurchaseRecord> history = purchaseHistoryService.getGlobalHistory();
+        List<PurchaseRecordDTO> history = purchaseHistoryService.getGlobalHistory();
 
         // Assert
         assertEquals(1, history.size());
@@ -82,7 +83,7 @@ class PurchaseHistoryServiceTest {
         when(purchaseRecordRepository.findAll()).thenReturn(List.of());
 
         // Act
-        List<PurchaseRecord> history = purchaseHistoryService.getGlobalHistory();
+        List<PurchaseRecordDTO> history = purchaseHistoryService.getGlobalHistory();
 
         // Assert
         assertTrue(history.isEmpty());
