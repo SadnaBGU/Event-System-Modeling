@@ -35,8 +35,29 @@ public class VirtualQueue {
         this.admittedSet = new ArrayList<>();
     }
 
+    public VirtualQueue(
+        String queueId,
+         String eventId,
+         QueueStatus status,
+         int loadThreshold,
+         int maxConcurrentAdmissions,
+         long version,
+         LinkedList<QueueEntry> waitingEntries,
+         List<AdmissionToken> admittedSet
+        ) {
+        this.queueId = queueId;
+        this.eventId = eventId;
+        this.status = status;
+        this.loadThreshold = loadThreshold;
+        this.maxConcurrentAdmissions = maxConcurrentAdmissions;
+        this.version = version;
+        this.waitingEntries = waitingEntries;
+        this.admittedSet = admittedSet;
+    }
+
     public void activate() {
         this.status = QueueStatus.ACTIVE;
+        this.version++;
     }
 
     public void enqueue(BuyerReference visitor) {
@@ -49,6 +70,7 @@ public class VirtualQueue {
         
         if (!alreadyWaiting && !isAdmitted(visitor)) {
             waitingEntries.add(new QueueEntry(visitor, nextPositionCounter++));
+            this.version++;
         }
     }
 
@@ -65,12 +87,15 @@ public class VirtualQueue {
             newlyAdmitted.add(nextInLine.getVisitorRef());
             openSlots--;
         }
-
+        if (!newlyAdmitted.isEmpty()) {
+            this.version++;
+        }
         return newlyAdmitted;
     }
 
     public void revokeAdmission(BuyerReference buyer) {
         admittedSet.removeIf(token -> token.getBuyerRef().equals(buyer));
+        this.version++;
     }
 
     public boolean isAdmitted(BuyerReference visitor) {
@@ -103,6 +128,7 @@ public class VirtualQueue {
                 .map(QueueEntry::getVisitorRef)
                 .toList();
         waitingEntries.clear();
+        this.version++;
         return waiting;
     }
 

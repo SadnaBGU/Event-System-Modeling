@@ -19,8 +19,12 @@ public record VirtualQueueDTO(String queueId, String eventId, QueueStatus status
         return new VirtualQueue(
                 dto.queueId(),
                 dto.eventId(),
+                dto.status(),
                 dto.loadThreshold(),
-                dto.maxConcurrentAdmissions()
+                dto.maxConcurrentAdmissions(),
+                dto.version(),
+                new java.util.LinkedList<>(),
+                new java.util.ArrayList<>()
         );
     }
 }
