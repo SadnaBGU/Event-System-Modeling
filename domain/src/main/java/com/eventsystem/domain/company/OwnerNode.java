@@ -11,12 +11,20 @@ import java.util.Optional;
 public final class OwnerNode {
     private final MemberId memberId;
     private final MemberId appointerId;
+    private boolean accepted = true;
     private final List<OwnerNode> appointedOwners = new ArrayList<>();
     private final List<ManagerNode> appointedManagers = new ArrayList<>();
 
     public OwnerNode(MemberId memberId, MemberId appointerId) {
         this.memberId = Objects.requireNonNull(memberId, "memberId must not be null");
         this.appointerId = appointerId;
+        this.accepted = true;
+    }
+
+    public OwnerNode(MemberId memberId, MemberId appointerId, boolean accepted) {
+        this.memberId = Objects.requireNonNull(memberId, "memberId must not be null");
+        this.appointerId = appointerId;
+        this.accepted = accepted;
     }
 
     public MemberId memberId() {
@@ -37,6 +45,14 @@ public final class OwnerNode {
 
     void addOwner(OwnerNode ownerNode) {
         appointedOwners.add(ownerNode);
+    }
+
+    void accept() {
+        this.accepted = true;
+    }
+
+    boolean isAccepted() {
+        return accepted;
     }
 
     void addManager(ManagerNode managerNode) {

@@ -68,6 +68,13 @@ public class ProductionCompanyService {
         productionCompanyRepository.save(company);
     }
 
+    public void relinquishOwnership(CompanyId companyId, MemberId memberId) {
+        requireMemberExists(memberId);
+        ProductionCompany company = loadCompany(companyId);
+        company.relinquishOwnership(memberId);
+        productionCompanyRepository.save(company);
+    }
+
     public void modifyManagerPermissions(
             CompanyId companyId,
             MemberId actor,
@@ -124,6 +131,12 @@ public class ProductionCompanyService {
     public void updateCompanyRating(CompanyId companyId, double newRating) {
         ProductionCompany company = loadCompany(companyId);
         company.updateRating(newRating);
+        productionCompanyRepository.save(company);
+    }
+
+    public void acceptAppointment(CompanyId companyId, MemberId target) {
+        ProductionCompany company = loadCompany(companyId);
+        company.acceptAppointment(target);
         productionCompanyRepository.save(company);
     }
 
