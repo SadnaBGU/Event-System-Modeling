@@ -60,7 +60,9 @@ class ProductionCompanyServiceTest {
 
         CompanyId companyId = service.createCompany(founder, "Cascade", "desc", 4.1);
         service.appointOwner(companyId, founder, owner);
+    service.acceptAppointment(companyId, owner);
         service.appointOwner(companyId, owner, childOwner);
+    service.acceptAppointment(companyId, childOwner);
 
         service.removeAppointee(companyId, founder, owner);
 
@@ -81,7 +83,9 @@ class ProductionCompanyServiceTest {
 
         CompanyId companyId = service.createCompany(founder, "ManagerHierarchy", "desc", 4.3);
         service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        service.acceptAppointment(companyId, manager1);
         service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+        service.acceptAppointment(companyId, manager2);
 
         ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
         assertThat(company.isManager(manager1)).isTrue();
@@ -101,8 +105,11 @@ class ProductionCompanyServiceTest {
 
         CompanyId companyId = service.createCompany(founder, "ReassignManagers", "desc", 4.0);
         service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+    service.acceptAppointment(companyId, manager1);
         service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+    service.acceptAppointment(companyId, manager2);
         service.appointManagerToManager(companyId, manager1, manager3, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+    service.acceptAppointment(companyId, manager3);
 
         service.removeAppointee(companyId, founder, manager1);
 
@@ -146,11 +153,12 @@ class ProductionCompanyServiceTest {
         service.suspendCompany(companyId);
         service.reopenCompany(companyId);
 
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
         MemberId newOwner = MemberId.random();
         memberRepository.save(new Member(newOwner));
-        
-        company.appointOwner(founder, newOwner);
+        service.appointOwner(companyId, founder, newOwner);
+        service.acceptAppointment(companyId, newOwner);
+
+        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
         assertThat(company.isOwner(newOwner)).isTrue();
     }
 
@@ -238,6 +246,13 @@ class ProductionCompanyServiceTest {
         public void save(ProductionCompany productionCompany) {
             names.put(productionCompany.companyDetails().name().toLowerCase(), productionCompany.companyId());
             companiesById.put(productionCompany.companyId(), productionCompany);
+        }
+
+        @Override
+        public boolean hasPermission(MemberId memberId, CompanyId companyId, Permission eventInventoryManagement) {
+            return findById(companyId)
+                    .map(company -> company.hasPermission(memberId, eventInventoryManagement))
+                    .orElse(false);
         }
     }
 }

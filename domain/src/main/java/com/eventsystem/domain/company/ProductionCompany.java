@@ -115,7 +115,12 @@ public final class ProductionCompany {
         return appointmentTree.getAppointmentSubTree(ownerId);
     }
 
-    // ג”€ג”€ Company Details Updates ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+    /** Accept a pending owner/manager appointment (target must call this) */
+    public synchronized void acceptAppointment(MemberId targetId) {
+        requireActive();
+        appointmentTree.acceptAppointment(targetId);
+    }
+
 
     public synchronized void updateName(String newName) {
         requireActive();

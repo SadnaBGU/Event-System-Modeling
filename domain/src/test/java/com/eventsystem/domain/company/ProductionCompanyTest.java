@@ -21,8 +21,11 @@ class ProductionCompanyTest {
         ProductionCompany company = ProductionCompany.create(founder, "Alpha", "desc", 4.5);
 
         company.appointOwner(founder, ownerA);
+        company.acceptAppointment(ownerA);
         company.appointOwner(ownerA, ownerB);
+        company.acceptAppointment(ownerB);
         company.appointManager(ownerB, manager, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+        company.acceptAppointment(manager);
 
         assertThat(company.isOwner(ownerB)).isTrue();
         assertThat(company.isManager(manager)).isTrue();
@@ -45,7 +48,9 @@ class ProductionCompanyTest {
         ProductionCompany company = ProductionCompany.create(founder, "Beta", "desc", 4.0);
 
         company.appointOwner(founder, owner);
+        company.acceptAppointment(owner);
         company.appointManager(owner, manager, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+        company.acceptAppointment(manager);
 
         assertThat(company.hasPermission(manager, Permission.VIEW_PURCHASE_HISTORY)).isTrue();
         assertThat(company.hasPermission(manager, Permission.MODIFY_POLICIES)).isFalse();
@@ -65,7 +70,9 @@ class ProductionCompanyTest {
         ProductionCompany company = ProductionCompany.create(founder, "Manager Hierarchy", "desc", 4.5);
 
         company.appointManager(founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        company.acceptAppointment(manager1);
         company.appointManagerToManager(manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+        company.acceptAppointment(manager2);
 
         assertThat(company.isManager(manager1)).isTrue();
         assertThat(company.isManager(manager2)).isTrue();
@@ -83,8 +90,11 @@ class ProductionCompanyTest {
         ProductionCompany company = ProductionCompany.create(founder, "Reassign Test", "desc", 4.2);
 
         company.appointManager(founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
+        company.acceptAppointment(manager1);
         company.appointManagerToManager(manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
+        company.acceptAppointment(manager2);
         company.appointManagerToManager(manager1, manager3, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+        company.acceptAppointment(manager3);
 
         // Remove manager1 - manager2 and manager3 should be reassigned to founder
         company.removeManager(founder, manager1);

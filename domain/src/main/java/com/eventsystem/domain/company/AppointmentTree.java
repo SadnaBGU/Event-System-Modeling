@@ -29,7 +29,7 @@ public final class AppointmentTree {
         queue.add(root);
         while (!queue.isEmpty()) {
             OwnerNode current = queue.removeFirst();
-            if (current.memberId().equals(memberId)) {
+            if (current.memberId().equals(memberId) && current.isAccepted()) {
                 return Optional.of(current);
             }
             queue.addAll(current.appointedOwners());
@@ -58,7 +58,7 @@ public final class AppointmentTree {
         managerQueue.addAll(ownerNode.appointedManagers());
         while (!managerQueue.isEmpty()) {
             ManagerNode current = managerQueue.removeFirst();
-            if (current.memberId().equals(targetId)) {
+            if (current.memberId().equals(targetId) && current.isAccepted()) {
                 return Optional.of(current);
             }
             managerQueue.addAll(current.appointedManagers());
@@ -72,23 +72,23 @@ public final class AppointmentTree {
 
     public void appointOwner(MemberId appointerId, MemberId targetId) {
         OwnerNode appointer = findOwner(appointerId)
-                .orElseThrow(() -> new CompanyDomainException("appointer is not an owner"));
+            .orElseThrow(() -> new CompanyDomainException("appointer is not an owner"));
         ensureNotAlreadyAppointed(targetId);
-        appointer.addOwner(new OwnerNode(targetId, appointerId));
+        appointer.addOwner(new OwnerNode(targetId, appointerId, false));
     }
 
     public void appointManager(MemberId ownerId, MemberId targetId, Set<Permission> permissions) {
         OwnerNode owner = findOwner(ownerId)
-                .orElseThrow(() -> new CompanyDomainException("actor is not an owner"));
+            .orElseThrow(() -> new CompanyDomainException("actor is not an owner"));
         ensureNotAlreadyAppointed(targetId);
-        owner.addManager(new ManagerNode(targetId, ownerId, permissions));
+        owner.addManager(new ManagerNode(targetId, ownerId, permissions, false));
     }
 
     public void appointManagerToManager(MemberId appointerId, MemberId targetId, Set<Permission> permissions) {
         ManagerNode appointer = findManager(appointerId)
-                .orElseThrow(() -> new CompanyDomainException("appointer is not a manager"));
+            .orElseThrow(() -> new CompanyDomainException("appointer is not a manager"));
         ensureNotAlreadyAppointed(targetId);
-        appointer.addManager(new ManagerNode(targetId, appointerId, permissions));
+        appointer.addManager(new ManagerNode(targetId, appointerId, permissions, false));
     }
 
     public void removeOwner(MemberId removerId, MemberId targetId) {
@@ -175,9 +175,71 @@ public final class AppointmentTree {
     }
 
     private void ensureNotAlreadyAppointed(MemberId targetId) {
-        if (findOwner(targetId).isPresent() || findManager(targetId).isPresent()) {
+        // check any existing appointment including pending ones
+        if (findAnyOwner(targetId).isPresent() || findAnyManager(targetId).isPresent()) {
             throw new CompanyDomainException("target already has an appointment in this company");
         }
+    }
+
+    private Optional<OwnerNode> findAnyOwner(MemberId memberId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        Deque<OwnerNode> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            OwnerNode current = queue.removeFirst();
+            if (current.memberId().equals(memberId)) {
+                return Optional.of(current);
+            }
+            queue.addAll(current.appointedOwners());
+        }
+        return Optional.empty();
+    }
+
+    private Optional<ManagerNode> findAnyManager(MemberId memberId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        Deque<OwnerNode> ownerQueue = new ArrayDeque<>();
+        ownerQueue.add(root);
+        while (!ownerQueue.isEmpty()) {
+            OwnerNode current = ownerQueue.removeFirst();
+            // Search in managers directly under this owner
+            Deque<ManagerNode> managerQueue = new ArrayDeque<>();
+            managerQueue.addAll(current.appointedManagers());
+            while (!managerQueue.isEmpty()) {
+                ManagerNode m = managerQueue.removeFirst();
+                if (m.memberId().equals(memberId)) {
+                    return Optional.of(m);
+                }
+                managerQueue.addAll(m.appointedManagers());
+            }
+            ownerQueue.addAll(current.appointedOwners());
+        }
+        return Optional.empty();
+    }
+
+    public void acceptAppointment(MemberId targetId) {
+        Objects.requireNonNull(targetId, "targetId must not be null");
+        // Try owners first
+        Optional<OwnerNode> owner = findAnyOwner(targetId);
+        if (owner.isPresent()) {
+            OwnerNode node = owner.get();
+            if (node.isAccepted()) {
+                throw new CompanyDomainException("appointment already accepted");
+            }
+            node.accept();
+            return;
+        }
+
+        Optional<ManagerNode> manager = findAnyManager(targetId);
+        if (manager.isPresent()) {
+            ManagerNode node = manager.get();
+            if (node.isAccepted()) {
+                throw new CompanyDomainException("appointment already accepted");
+            }
+            node.accept();
+            return;
+        }
+
+        throw new CompanyDomainException("no pending appointment found for target");
     }
 
     private Optional<OwnerNode> removeOwnerFromTree(OwnerNode current, MemberId targetId) {
