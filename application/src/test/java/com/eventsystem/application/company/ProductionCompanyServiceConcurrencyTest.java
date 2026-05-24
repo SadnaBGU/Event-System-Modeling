@@ -113,5 +113,12 @@ class ProductionCompanyServiceConcurrencyTest {
             names.put(productionCompany.companyDetails().name().toLowerCase(), productionCompany.companyId());
             companiesById.put(productionCompany.companyId(), productionCompany);
         }
+
+        @Override
+        public boolean hasPermission(MemberId memberId, CompanyId companyId, Permission eventInventoryManagement) {
+            return findById(companyId)
+                    .map(company -> company.hasPermission(memberId, eventInventoryManagement))
+                    .orElse(false);
+        }
     }
 }

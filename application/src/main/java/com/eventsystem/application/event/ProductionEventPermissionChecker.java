@@ -1,8 +1,8 @@
 package com.eventsystem.application.event;
 
-import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
+import com.eventsystem.domain.company.ProductionCompanyRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.springframework.stereotype.Service;
 
@@ -11,12 +11,12 @@ import java.util.Objects;
 @Service
 public class ProductionEventPermissionChecker implements EventPermissionChecker {
 
-    private final ProductionCompanyService productionCompanyService;
+    private final ProductionCompanyRepository productionCompanyRepository;
 
-    public ProductionEventPermissionChecker(ProductionCompanyService productionCompanyService) {
-        this.productionCompanyService = Objects.requireNonNull(
-                productionCompanyService,
-                "productionCompanyService must not be null"
+    public ProductionEventPermissionChecker(ProductionCompanyRepository productionCompanyRepository) {
+        this.productionCompanyRepository = Objects.requireNonNull(
+                productionCompanyRepository,
+                "productionCompanyRepository must not be null"
         );
     }
 
@@ -29,7 +29,7 @@ public class ProductionEventPermissionChecker implements EventPermissionChecker 
             return false;
         }
 
-        return productionCompanyService.hasPermission(
+        return productionCompanyRepository.hasPermission(
                 new MemberId(actorId),
                 new CompanyId(companyId),
                 Permission.EVENT_INVENTORY_MANAGEMENT

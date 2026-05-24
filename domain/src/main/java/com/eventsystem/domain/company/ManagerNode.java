@@ -14,6 +14,7 @@ public final class ManagerNode {
     private final MemberId memberId;
     private final MemberId appointerId;
     private final Set<Permission> permissions;
+    private boolean accepted = true;
     private final List<ManagerNode> appointedManagers = new ArrayList<>();
 
     public ManagerNode(MemberId memberId, MemberId appointerId, Set<Permission> permissions) {
@@ -21,6 +22,15 @@ public final class ManagerNode {
         this.appointerId = Objects.requireNonNull(appointerId, "appointerId must not be null");
         Objects.requireNonNull(permissions, "permissions must not be null");
         this.permissions = EnumSet.copyOf(permissions);
+        this.accepted = true;
+    }
+
+    public ManagerNode(MemberId memberId, MemberId appointerId, Set<Permission> permissions, boolean accepted) {
+        this.memberId = Objects.requireNonNull(memberId, "memberId must not be null");
+        this.appointerId = Objects.requireNonNull(appointerId, "appointerId must not be null");
+        Objects.requireNonNull(permissions, "permissions must not be null");
+        this.permissions = EnumSet.copyOf(permissions);
+        this.accepted = accepted;
     }
 
     public MemberId memberId() {
@@ -51,6 +61,14 @@ public final class ManagerNode {
 
     void addManager(ManagerNode managerNode) {
         appointedManagers.add(managerNode);
+    }
+
+    void accept() {
+        this.accepted = true;
+    }
+
+    boolean isAccepted() {
+        return accepted;
     }
 
     Optional<ManagerNode> removeManager(MemberId managerId) {
