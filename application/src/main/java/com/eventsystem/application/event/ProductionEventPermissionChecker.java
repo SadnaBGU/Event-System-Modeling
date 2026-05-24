@@ -29,8 +29,10 @@ public class ProductionEventPermissionChecker implements EventPermissionChecker 
             return false;
         }
 
-        return productionCompanyRepository.findById(new CompanyId(companyId))
-                .map(company -> company.hasPermission(new MemberId(actorId), Permission.EVENT_INVENTORY_MANAGEMENT))
-                .orElse(false);
+        return productionCompanyRepository.hasPermission(
+                new MemberId(actorId),
+                new CompanyId(companyId),
+                Permission.EVENT_INVENTORY_MANAGEMENT
+        );
     }
 }

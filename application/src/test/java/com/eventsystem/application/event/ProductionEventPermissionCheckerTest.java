@@ -3,6 +3,7 @@ package com.eventsystem.application.event;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
+import com.eventsystem.domain.company.ProductionCompanyRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,13 +28,13 @@ import static org.mockito.Mockito.*;
  */
 class ProductionEventPermissionCheckerTest {
 
-    private ProductionCompanyService productionCompanyService;
+    private ProductionCompanyRepository productionCompanyRepository;
     private ProductionEventPermissionChecker checker;
 
     @BeforeEach
     void setUp() {
-        productionCompanyService = mock(ProductionCompanyService.class);
-        checker = new ProductionEventPermissionChecker(productionCompanyService);
+        productionCompanyRepository = mock(ProductionCompanyRepository.class);
+        checker = new ProductionEventPermissionChecker(productionCompanyRepository);
     }
 
     // UAT-61: Authorized Action Success
@@ -44,7 +45,7 @@ class ProductionEventPermissionCheckerTest {
         String actorId = "member-1";
         String companyId = "company-1";
 
-        when(productionCompanyService.hasPermission(
+        when(productionCompanyRepository.hasPermission(
                 new MemberId(actorId),
                 new CompanyId(companyId),
                 Permission.EVENT_INVENTORY_MANAGEMENT
@@ -54,7 +55,7 @@ class ProductionEventPermissionCheckerTest {
 
         assertThat(result).isTrue();
 
-        verify(productionCompanyService).hasPermission(
+        verify(productionCompanyRepository).hasPermission(
                 new MemberId(actorId),
                 new CompanyId(companyId),
                 Permission.EVENT_INVENTORY_MANAGEMENT
@@ -69,7 +70,7 @@ class ProductionEventPermissionCheckerTest {
         String actorId = "member-1";
         String companyId = "company-1";
 
-        when(productionCompanyService.hasPermission(
+        when(productionCompanyRepository.hasPermission(
                 new MemberId(actorId),
                 new CompanyId(companyId),
                 Permission.EVENT_INVENTORY_MANAGEMENT
@@ -79,7 +80,7 @@ class ProductionEventPermissionCheckerTest {
 
         assertThat(result).isFalse();
 
-        verify(productionCompanyService).hasPermission(
+        verify(productionCompanyRepository).hasPermission(
                 new MemberId(actorId),
                 new CompanyId(companyId),
                 Permission.EVENT_INVENTORY_MANAGEMENT
@@ -94,7 +95,7 @@ class ProductionEventPermissionCheckerTest {
         boolean result = checker.canManageEvents("   ", "company-1");
 
         assertThat(result).isFalse();
-        verifyNoInteractions(productionCompanyService);
+        verifyNoInteractions(productionCompanyRepository);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -105,7 +106,7 @@ class ProductionEventPermissionCheckerTest {
         boolean result = checker.canManageEvents("member-1", "   ");
 
         assertThat(result).isFalse();
-        verifyNoInteractions(productionCompanyService);
+        verifyNoInteractions(productionCompanyRepository);
     }
 
     // Supporting validation test for UC20
@@ -117,7 +118,7 @@ class ProductionEventPermissionCheckerTest {
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("actorId must not be null");
 
-        verifyNoInteractions(productionCompanyService);
+        verifyNoInteractions(productionCompanyRepository);
     }
 
     // Supporting validation test for UC20
@@ -129,6 +130,6 @@ class ProductionEventPermissionCheckerTest {
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("companyId must not be null");
 
-        verifyNoInteractions(productionCompanyService);
+        verifyNoInteractions(productionCompanyRepository);
     }
 }

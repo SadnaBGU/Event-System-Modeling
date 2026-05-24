@@ -1,9 +1,11 @@
 package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.company.ProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
+import com.eventsystem.domain.member.MemberId;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -45,5 +47,12 @@ public class InMemoryProductionCompanyRepository implements ProductionCompanyRep
 
     private String normalize(String value) {
         return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    public boolean hasPermission(MemberId memberId, CompanyId companyId, Permission eventInventoryManagement) {
+        return findById(companyId)
+                .map(company -> company.hasPermission(memberId, eventInventoryManagement))
+                .orElse(false); 
     }
 }
