@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,6 +32,7 @@ import com.eventsystem.application.appexceptions.ActiveOrderHasExpiredException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.event.EventQueryPort;
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.member.NotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
@@ -42,6 +44,7 @@ import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +56,7 @@ class CheckoutSagaTest {
     @Mock private PaymentGatewayPort paymentGateway;
     @Mock private TicketIssuancePort ticketIssuance;
     @Mock private NotificationPort notificationPort;
-    @Mock private ZoneServicePort zoneService;
+    @Mock private ZoneRepository zoneRepository;
     @Mock private EventQueryPort eventQueryPort;
 
     // This is the class we are testing, and we want to inject the Mocks into it
@@ -76,6 +79,14 @@ class CheckoutSagaTest {
 
         // Define the behavior of the orderRepository mock to return our testOrder when findById is called with ORDER_ID
         lenient().when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+    }
+
+    private void mockWithLockExecution() {
+        doAnswer(invocation -> {
+            Runnable action = invocation.getArgument(1);
+            action.run();
+            return null;
+        }).when(zoneRepository).withLock(any(ZoneId.class), any(Runnable.class));
     }
 
     @Test
@@ -117,6 +128,11 @@ class CheckoutSagaTest {
         when(ticketIssuance.issueTickets(any(), any(), any(), any()))
                 .thenReturn(IssuanceResult.failed("Printer out of ink"));
 
+        mockWithLockExecution();
+        Zone mockZone = mock(Zone.class);
+        when(zoneRepository.findById(new ZoneId("VIP-ZONE"))).thenReturn(Optional.of(mockZone));
+        
+
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
@@ -126,7 +142,8 @@ class CheckoutSagaTest {
         verify(notificationPort, times(1)).sendPurchaseFailure(eq(testBuyer), anyString());
         verify(purchaseRecordRepository, never()).append(any());
 
-        verify(zoneService, times(1)).releaseSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42"));
+        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-42"));
+        verify(zoneRepository, times(1)).save(mockZone);
     }
 
     @Test
@@ -196,6 +213,10 @@ class CheckoutSagaTest {
         when(ticketIssuance.issueTickets(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Connection Timeout 504"));
 
+
+        mockWithLockExecution();
+        Zone mockZone = mock(Zone.class);
+        when(zoneRepository.findById(new ZoneId("VIP-ZONE"))).thenReturn(Optional.of(mockZone));
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
             checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
@@ -204,7 +225,8 @@ class CheckoutSagaTest {
         verify(paymentGateway).refund(eq("TXN-999"), any(), contains("Ticket issuance service crashed"));
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("System error"));
         
-        verify(zoneService, times(1)).releaseSeat(new ZoneId("VIP-ZONE"), new SeatId("SEAT-42"));
+        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-42"));
+        verify(zoneRepository, times(1)).save(mockZone);
     }
 
     @Test
