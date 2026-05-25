@@ -3,7 +3,7 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.application.lottery.LotteryRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.*;
 import com.eventsystem.domain.shared.Money;
@@ -48,7 +48,7 @@ class OrderConcurrencyTest {
     private ActiveOrderRepository orderRepository;
 
     @Mock
-    private LotteryValidationPort lotteryValidationPort;
+    private LotteryRepository lotteryRepository;
 
     private ZoneRepository zoneRepository;
     private ZoneServicePort zoneService;
@@ -66,7 +66,7 @@ class OrderConcurrencyTest {
         zoneRepository = new ThreadSafeZoneRepository();
         orderFactory = new OrderFactory();
         zoneService = new ZoneService(zoneRepository);
-        orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryValidationPort);
+        orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryRepository);
     }
 
     @Test

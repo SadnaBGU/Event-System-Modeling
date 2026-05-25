@@ -4,15 +4,19 @@ import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
+import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.lottery.Lottery;
+import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.application.lottery.LotteryRepository;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -28,15 +32,15 @@ public class OrderService {
     private final ActiveOrderRepository orderRepository;
     private final ZoneServicePort zoneService;
     private final OrderFactory orderFactory;
-    private final LotteryValidationPort lotteryValidationPort;
+    private final LotteryRepository lotteryRepository;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryValidationPort lotteryValidationPort) {
+    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.zoneService = zoneService;
         this.orderFactory = orderFactory;
-        this.lotteryValidationPort = lotteryValidationPort;
+        this.lotteryRepository = lotteryRepository;
     }
 
     /**
@@ -46,10 +50,15 @@ public class OrderService {
     public String createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
         logger.info("Requested active order for buyer {} and event {}", buyer.memberId(), eventId);
 
-        if (lotteryCode.isPresent() && lotteryValidationPort.isLotteryEvent(eventId)) {
-            boolean isValid = lotteryValidationPort.validateWinnerCode(eventId, buyer, lotteryCode.get());
-            if (!isValid) {
-                throw new SecurityException("Lottery authorization failed. Access denied.");
+        Optional<Lottery> lottery = lotteryRepository.findByEventId(new EventId(eventId));
+
+        if (lotteryCode.isPresent() && lottery.isPresent()) {
+            Optional<MemberId> memberId = lottery.get().validateCode(lotteryCode.get(), Clock.systemUTC().instant());
+            if (!memberId.isPresent()) {
+                throw new SecurityException("Invalid lottery code provided");
+            }
+            if (!memberId.get().value().equals(buyer.memberId())) {
+                throw new SecurityException("Lottery code does not belong to the buyer");
             }
         }
 
