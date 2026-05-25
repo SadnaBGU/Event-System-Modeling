@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class InMemoryZoneRepository implements ZoneRepository {
 
     private final Map<String, Zone> store = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ReentrantLock> zoneLocks = new ConcurrentHashMap<>();
 
     @Override
     public Optional<Zone> findById(ZoneId zoneId) {
@@ -29,5 +31,16 @@ public class InMemoryZoneRepository implements ZoneRepository {
     @Override
     public void save(Zone zone) {
         store.put(zone.zoneId().value(), zone);
+    }
+
+    @Override
+    public void withLock(ZoneId zoneId, Runnable action) {
+        ReentrantLock lock = zoneLocks.computeIfAbsent(zoneId.value(), k -> new ReentrantLock());
+        lock.lock();
+        try {
+            action.run();
+        } finally {
+            lock.unlock();
+        }
     }
 }
