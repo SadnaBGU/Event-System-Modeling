@@ -1,12 +1,13 @@
 package com.eventsystem.application.company;
 
+import com.eventsystem.application.member.MemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
-import com.eventsystem.domain.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.ProductionCompanyRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberRepository;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

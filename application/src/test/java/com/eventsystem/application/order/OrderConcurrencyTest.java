@@ -1,5 +1,6 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.lottery.LotteryValidationPort;
@@ -11,7 +12,6 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneRepository;
 import com.eventsystem.domain.zone.ZoneType;
 
 

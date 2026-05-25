@@ -4,7 +4,6 @@ import com.eventsystem.domain.event.*;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.domain.zone.ZoneRepository;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;

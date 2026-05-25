@@ -3,7 +3,7 @@ package com.eventsystem.application.lottery;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
-import com.eventsystem.domain.lottery.LotteryRepository;
+import com.eventsystem.application.lottery.LotteryRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,6 @@ package com.eventsystem.application.member;
 
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberRepository;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;
 import com.eventsystem.domain.order.BuyerReference;

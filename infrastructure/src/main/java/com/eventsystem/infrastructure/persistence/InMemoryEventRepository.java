@@ -2,7 +2,7 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.event.EventRepository;
+import com.eventsystem.application.event.EventRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

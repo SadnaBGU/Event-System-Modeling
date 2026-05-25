@@ -1,9 +1,10 @@
 package com.eventsystem.infrastructure.persistence;
 
+import com.eventsystem.application.venue.VenueRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.venue.Venue;
 import com.eventsystem.domain.venue.VenueId;
-import com.eventsystem.domain.venue.VenueRepository;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
