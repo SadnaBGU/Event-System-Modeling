@@ -1,7 +1,7 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.domain.queue.VirtualQueue;
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 
 import java.util.List;
@@ -13,13 +13,13 @@ import org.slf4j.LoggerFactory;
 public class QueueService {
     private final Logger logger = LoggerFactory.getLogger(QueueService.class);
     
-    private final VirtualQueueRepository queueRepository;
-    private final NotificationPort notificationPort;
+    private final IVirtualQueueRepository queueRepository;
+    private final INotificationPort notificationPort;
     private static final int QUEUE_LOAD_THRESHOLD = 100;
     private static final int MAX_CONCURRENT_ADMISSIONS = 100;
     private static final int TOKEN_VALIDITY_MINUTES = 10;
 
-    public QueueService(VirtualQueueRepository queueRepository, NotificationPort notificationPort) {
+    public QueueService(IVirtualQueueRepository queueRepository, INotificationPort notificationPort) {
         this.queueRepository = queueRepository;
         this.notificationPort = notificationPort;
     }
@@ -30,7 +30,7 @@ public class QueueService {
      * it will either create a new queue for the event or add the user to the existing queue. 
      */
     public void enqueueVisitor(String eventId, BuyerReference buyer) {
-        logger.info("Attempting to enqueue visitor {} for event {}", buyer.memberId(), eventId);
+        logger.info("Attempting to enqueue visitor for event {}", eventId);
 
         VirtualQueue queue = queueRepository.findByEvent(eventId)
                 .orElseGet(() -> {
@@ -41,7 +41,7 @@ public class QueueService {
         queue.enqueue(buyer);
         queueRepository.save(queue);
 
-        logger.info("Successfully enqueued visitor {} for event {}", buyer.memberId(), eventId);
+        logger.info("Successfully enqueued visitor for event {}", eventId);
     }
 
     /**
@@ -71,13 +71,13 @@ public class QueueService {
      * to complete the purchase within the token validity period, or if they violate some rules.
      */
     public void revokeAdmission(String eventId, BuyerReference buyer) {
-        logger.info("Attempting to revoke admission for buyer {} in event {}", buyer.memberId(), eventId);
+        logger.info("Attempting to revoke admission for buyer in event {}", eventId);
         
         queueRepository.findByEvent(eventId).ifPresentOrElse(queue -> {
             queue.revokeAdmission(buyer);
             queueRepository.save(queue);
             
-            logger.info("Successfully revoked admission for buyer {} in event {}", buyer.memberId(), eventId);
+            logger.info("Successfully revoked admission for buyer in event {}", eventId);
             
         }, () -> {
             logger.warn("Failed to revoke admission: No active queue found for event {}", eventId);
@@ -88,13 +88,13 @@ public class QueueService {
      * Check the admission status of a buyer for a specific event.
      */
     public boolean checkAdmissionStatus(String eventId, BuyerReference buyer) {
-        logger.info("Checking admission status for buyer {} in event {}", buyer.memberId(), eventId);
+        logger.info("Checking admission status for buyer in event {}", eventId);
         
         boolean status = queueRepository.findByEvent(eventId)
                 .map(queue -> queue.isAdmitted(buyer))
                 .orElse(false);
                 
-        logger.info("Admission status for buyer {} in event {}: {}", buyer.memberId(), eventId, status);
+        logger.info("Admission status for buyer in event {}: {}", eventId, status);
         
         return status;
     }

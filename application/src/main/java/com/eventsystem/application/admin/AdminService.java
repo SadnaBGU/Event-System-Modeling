@@ -1,10 +1,9 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
+import com.eventsystem.application.member.MemberRepository;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberRepository;
 import com.eventsystem.domain.platform.Platform;
-import com.eventsystem.domain.platform.PlatformRepository;
 import com.eventsystem.domain.shared.ProviderId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

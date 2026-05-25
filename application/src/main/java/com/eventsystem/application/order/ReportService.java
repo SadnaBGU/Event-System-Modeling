@@ -14,18 +14,18 @@ public class ReportService {
 
     private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
 
-    private final PurchaseRecordRepository purchaseRecordRepository;
+    private final IPurchaseRecordRepository purchaseRecordRepository;
 
-    public ReportService(PurchaseRecordRepository purchaseRecordRepository) {
+    public ReportService(IPurchaseRecordRepository purchaseRecordRepository) {
         this.purchaseRecordRepository = purchaseRecordRepository;
     }
 
-    public record SalesSummary(String eventId, int totalTicketsSold, Money totalRevenue) {}
+    public record SalesSummaryDTO(String eventId, int totalTicketsSold, Money totalRevenue) {}
 
     /**
      * Returns a sales summary for a given event, including total tickets sold and total revenue generated.
      */
-    public SalesSummary generateEventSalesReport(String eventId) {
+    public SalesSummaryDTO generateEventSalesReport(String eventId) {
         logger.info("Generating sales report for event: {}", eventId);
 
         List<PurchaseRecord> eventRecords = purchaseRecordRepository.findByEvent(eventId);
@@ -49,7 +49,7 @@ public class ReportService {
                 .map(PurchaseRecord::totalPaid)
                 .reduce(Money.of(BigDecimal.ZERO, currency), Money::add);
 
-        SalesSummary summary = new SalesSummary(eventId, totalTickets, totalRevenue);
+        SalesSummaryDTO summary = new SalesSummaryDTO(eventId, totalTickets, totalRevenue);
 
         logger.info("Successfully generated sales report for event: {}. Total Tickets: {}, Total Revenue: {}", 
                 eventId, totalTickets, totalRevenue);

@@ -1,6 +1,8 @@
-package com.eventsystem.domain.zone;
+package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.zone.Zone;
+import com.eventsystem.domain.zone.ZoneId;
 
 import java.util.List;
 import java.util.Optional;

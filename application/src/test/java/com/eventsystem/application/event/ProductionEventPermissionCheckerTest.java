@@ -3,7 +3,7 @@ package com.eventsystem.application.event;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
-import com.eventsystem.domain.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.ProductionCompanyRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

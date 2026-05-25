@@ -1,9 +1,9 @@
 package com.eventsystem.infrastructure.persistence;
 
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.domain.zone.ZoneRepository;
 
 import java.util.List;
 import java.util.Map;

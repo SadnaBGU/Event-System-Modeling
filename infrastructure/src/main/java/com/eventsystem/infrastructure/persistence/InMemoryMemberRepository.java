@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.persistence;
 
+import com.eventsystem.application.member.MemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberRepository;
 
 import java.util.Objects;
 import java.util.Optional;

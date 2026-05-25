@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class ReportServiceTest {
 
     @Mock
-    private PurchaseRecordRepository purchaseRecordRepository;
+    private IPurchaseRecordRepository purchaseRecordRepository;
 
     @InjectMocks
     private ReportService reportService;
@@ -34,7 +34,7 @@ class ReportServiceTest {
         when(purchaseRecordRepository.findByEvent(EVENT_ID)).thenReturn(List.of());
 
         // Act
-        ReportService.SalesSummary summary = reportService.generateEventSalesReport(EVENT_ID);
+        ReportService.SalesSummaryDTO summary = reportService.generateEventSalesReport(EVENT_ID);
 
         // Assert
         assertEquals(EVENT_ID, summary.eventId());
@@ -65,7 +65,7 @@ class ReportServiceTest {
         when(purchaseRecordRepository.findByEvent(EVENT_ID)).thenReturn(List.of(record1, record2));
 
         // Act
-        ReportService.SalesSummary summary = reportService.generateEventSalesReport(EVENT_ID);
+        ReportService.SalesSummaryDTO summary = reportService.generateEventSalesReport(EVENT_ID);
 
         // Assert
         assertEquals(EVENT_ID, summary.eventId());

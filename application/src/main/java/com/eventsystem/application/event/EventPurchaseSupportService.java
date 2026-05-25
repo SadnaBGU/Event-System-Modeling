@@ -2,7 +2,6 @@ package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.event.EventRepository;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -10,7 +9,7 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.domain.zone.ZoneRepository;
+import com.eventsystem.application.event.ZoneRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

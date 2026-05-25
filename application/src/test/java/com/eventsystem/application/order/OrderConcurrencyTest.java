@@ -1,8 +1,9 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryValidationPort;
+import com.eventsystem.application.lottery.ILotteryValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.*;
 import com.eventsystem.domain.shared.Money;
@@ -11,7 +12,9 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneRepository;
+import com.eventsystem.domain.zone.ZoneType;
+
+import com.eventsystem.application.event.ZoneRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,13 +45,12 @@ import static org.mockito.Mockito.*;
 class OrderConcurrencyTest {
 
     @Mock
-    private ActiveOrderRepository orderRepository;
+    private IActiveOrderRepository orderRepository;
 
     @Mock
-    private LotteryValidationPort lotteryValidationPort;
-
+    private ILotteryValidationPort lotteryValidationPort;
+    
     private ZoneRepository zoneRepository;
-    private ZoneServicePort zoneService;
     private OrderService orderService;
     private OrderFactory orderFactory;
 
@@ -62,8 +64,7 @@ class OrderConcurrencyTest {
         // use thread-safe fake instead of mockito
         zoneRepository = new ThreadSafeZoneRepository();
         orderFactory = new OrderFactory();
-        zoneService = new ZoneService(zoneRepository);
-        orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryValidationPort);
+        orderService = new OrderService(orderRepository, zoneRepository, orderFactory, lotteryValidationPort);
     }
 
     @Test
