@@ -64,7 +64,7 @@ class OrderConcurrencyTest {
         // use thread-safe fake instead of mockito
         zoneRepository = new ThreadSafeZoneRepository();
         orderFactory = new OrderFactory();
-        orderService = new OrderService(orderRepository, zoneRepository, orderFactory, lotteryValidationPort);
+        orderService = new OrderService(orderRepository, zoneRepository, orderFactory, lotteryRepository);
     }
 
     @Test

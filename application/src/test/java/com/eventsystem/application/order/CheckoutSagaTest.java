@@ -51,11 +51,11 @@ import com.eventsystem.domain.zone.ZoneId;
 class CheckoutSagaTest {
 
     // Here we declare all the dependencies of the CheckoutSaga as Mocks
-    @Mock private ActiveOrderRepository orderRepository;
-    @Mock private PurchaseRecordRepository purchaseRecordRepository;
-    @Mock private PaymentGatewayPort paymentGateway;
-    @Mock private TicketIssuancePort ticketIssuance;
-    @Mock private NotificationPort notificationPort;
+    @Mock private IActiveOrderRepository orderRepository;
+    @Mock private IPurchaseRecordRepository purchaseRecordRepository;
+    @Mock private IPaymentGatewayPort paymentGateway;
+    @Mock private ITicketIssuancePort ticketIssuance;
+    @Mock private INotificationPort notificationPort;
     @Mock private ZoneRepository zoneRepository;
     @Mock private EventQueryPort eventQueryPort;
 

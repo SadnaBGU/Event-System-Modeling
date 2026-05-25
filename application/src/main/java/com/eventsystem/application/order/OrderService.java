@@ -34,11 +34,11 @@ public class OrderService {
     private final IActiveOrderRepository orderRepository;
     private final ZoneRepository zoneRepository;
     private final OrderFactory orderFactory;
-    private final LotteryValidationPort lotteryValidationPort;
+    private final LotteryRepository lotteryRepository;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryValidationPort lotteryValidationPort) {
+    public OrderService(IActiveOrderRepository orderRepository, ZoneRepository zoneRepository, OrderFactory orderFactory, LotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;
@@ -113,21 +113,16 @@ public class OrderService {
                 });
 
         try {
-            // טריק פשוט כדי שנוכל לחלץ את ה-OrderItem מתוך הלמבדה (שמחזירה void)
             final OrderItem[] itemHolder = new OrderItem[1];
             ZoneId zId = new ZoneId(zoneId);
 
-            // step 1: try to lock the seat through the ZoneRepository
             zoneRepository.withLock(zId, () -> {
-                // משיכת האגרגייט מתוך הריפוזיטורי (בזמן הנעילה)
                 Zone zone = zoneRepository.findById(zId)
                         .orElseThrow(() -> new ZoneDomainException("Zone not found"));
                 
-                // קריאה לפעולה העסקית של האגרגייט ושמירתו
                 zone.reserveSeat(new SeatId(seatId));
                 zoneRepository.save(zone);
                 
-                // יצירת פריט ההזמנה ושמירתו במערך כדי שיהיה זמין מחוץ ללמבדה
                 itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, 1, zone.pricePerTicket());
             });
 
