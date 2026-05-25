@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Application service for zone lifecycle, seat reservations, and standing inventory.
@@ -23,24 +21,9 @@ public class ZoneService implements ZoneServicePort {
     private static final Logger log = LoggerFactory.getLogger(ZoneService.class);
 
     private final ZoneRepository zoneRepository;
-    private final ConcurrentHashMap<String, ReentrantLock> zoneLocks = new ConcurrentHashMap<>();
 
     public ZoneService(ZoneRepository zoneRepository) {
         this.zoneRepository = Objects.requireNonNull(zoneRepository, "zoneRepository must not be null");
-    }
-
-    private ReentrantLock lockFor(ZoneId zoneId) {
-        return zoneLocks.computeIfAbsent(zoneId.value(), k -> new ReentrantLock());
-    }
-
-    private void withLock(ZoneId zoneId, Runnable action) {
-        ReentrantLock lock = lockFor(zoneId);
-        lock.lock();
-        try {
-            action.run();
-        } finally {
-            lock.unlock();
-        }
     }
 
     // ── Zone creation ────────────────────────────────────────────────────────
@@ -81,7 +64,7 @@ public class ZoneService implements ZoneServicePort {
     public void updateZoneName(ZoneId zoneId, String newName) {
         log.info("updateZoneName: zoneId={}, newName={}", zoneId, newName);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.updateName(newName);
             zoneRepository.save(zone);
@@ -91,7 +74,7 @@ public class ZoneService implements ZoneServicePort {
     public void updateZonePrice(ZoneId zoneId, Money newPrice) {
         log.info("updateZonePrice: zoneId={}, newPrice={}", zoneId, newPrice);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.updatePrice(newPrice);
             zoneRepository.save(zone);
@@ -99,13 +82,14 @@ public class ZoneService implements ZoneServicePort {
     }
 
     // ── Seated reservation lifecycle ─────────────────────────────────────────
+
     @Override
     public OrderItem reserveSeat(ZoneId zoneId, SeatId seatId) {
         log.info("reserveSeat: zoneId={}, seatId={}", zoneId, seatId);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Objects.requireNonNull(seatId, "seatId must not be null");
         final Zone[] zoneHolder = new Zone[1];
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             zoneHolder[0] = loadZone(zoneId);
             zoneHolder[0].reserveSeat(seatId);
             zoneRepository.save(zoneHolder[0]);
@@ -118,7 +102,7 @@ public class ZoneService implements ZoneServicePort {
         log.info("releaseSeat: zoneId={}, seatId={}", zoneId, seatId);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Objects.requireNonNull(seatId, "seatId must not be null");
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.releaseSeat(seatId);
             zoneRepository.save(zone);
@@ -129,7 +113,7 @@ public class ZoneService implements ZoneServicePort {
         log.info("markSeatSold: zoneId={}, seatId={}", zoneId, seatId);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Objects.requireNonNull(seatId, "seatId must not be null");
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.markSold(seatId);
             zoneRepository.save(zone);
@@ -144,7 +128,7 @@ public class ZoneService implements ZoneServicePort {
         if (quantity < 1) {
             throw new IllegalArgumentException("quantity must be at least 1");
         }
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.reserveStanding(quantity);
             zoneRepository.save(zone);
@@ -157,7 +141,7 @@ public class ZoneService implements ZoneServicePort {
         if (quantity < 1) {
             throw new IllegalArgumentException("quantity must be at least 1");
         }
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.releaseStanding(quantity);
             zoneRepository.save(zone);
@@ -170,7 +154,7 @@ public class ZoneService implements ZoneServicePort {
         if (quantity < 1) {
             throw new IllegalArgumentException("quantity must be at least 1");
         }
-        withLock(zoneId, () -> {
+        zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
             zone.markSoldStanding(quantity);
             zoneRepository.save(zone);

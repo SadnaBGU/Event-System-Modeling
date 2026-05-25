@@ -29,6 +29,8 @@ class ZoneServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+                .when(zoneRepository).withLock(any(), any());
         service = new ZoneService(zoneRepository);
         eventId = EventId.random();
         price = new Money(new BigDecimal("20.00"), "ILS");
