@@ -12,8 +12,6 @@ import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneRepository;
-import com.eventsystem.domain.zone.ZoneType;
-
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -38,16 +37,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Track A: Concurrency Test for OrderService
- * 
- * Critical requirement: Proves that concurrent seat reservations are thread-safe.
- * 100 threads simultaneously attempt to reserve the same seat.
- * Expected: Only 1 succeeds, 99 fail with IllegalStateException.
- * 
- * This validates that the ZoneService's locking mechanism (optimistic or pessimistic)
- * prevents race conditions and seat double-booking.
- */
+// track a: concurrency test for orderservice. 100 threads attempt to reserve the same seat. expected: 1 succeeds, 99 fail.
 @ExtendWith(MockitoExtension.class)
 class OrderConcurrencyTest {
 
@@ -55,60 +45,29 @@ class OrderConcurrencyTest {
     private ActiveOrderRepository orderRepository;
 
     @Mock
-    private ZoneRepository zoneRepository;
-
-    @Mock
     private LotteryValidationPort lotteryValidationPort;
 
+    private ZoneRepository zoneRepository;
     private ZoneServicePort zoneService;
-
     private OrderService orderService;
     private OrderFactory orderFactory;
-    
+
     private final String ORDER_ID = "ORDER-CONCURRENT-TEST";
     private final String ZONE_ID = "VIP-ZONE";
-    private final String SEAT_ID = "SEAT-A1";  // All 100 threads target this seat
+    private final String SEAT_ID = "SEAT-A1";
     private final String EVENT_ID = "EVENT-2026";
 
     @BeforeEach
     void setUp() {
-        ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
-        doAnswer(inv -> {
-            ReentrantLock lock = locks.computeIfAbsent(
-                    ((com.eventsystem.domain.zone.ZoneId) inv.getArgument(0)).value(),
-                    k -> new ReentrantLock());
-            lock.lock();
-            try {
-                ((Runnable) inv.getArgument(1)).run();
-            } finally {
-                lock.unlock();
-            }
-            return null;
-        }).when(zoneRepository).withLock(any(), any());
-
+        // use thread-safe fake instead of mockito
+        zoneRepository = new ThreadSafeZoneRepository();
         orderFactory = new OrderFactory();
         zoneService = new ZoneService(zoneRepository);
         orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryValidationPort);
     }
 
-    /**
-     * CRITICAL TEST: 100 Threads Race Condition
-     * 
-     * Simulates 100 concurrent buyers attempting to reserve the same seat simultaneously.
-     * Uses CountDownLatch for synchronized start and end signals.
-     * 
-     * Expected behavior:
-     * - Exactly 1 thread successfully locks the seat
-     * - Exactly 99 threads receive IllegalStateException
-     * 
-     * This proves the system is protected against race conditions via:
-     * - Optimistic locking (version checking in Zone aggregate)
-     * - Or pessimistic locking (database locks)
-     * - Or both combined
-     */
     @Test
     void testConcurrentSeatReservation_100Threads_OnlyOneSucceeds() throws InterruptedException {
-        // 1. Arrange
         ActiveOrder testOrder = orderFactory.createOrder(
                 new BuyerReference(BuyerType.MEMBER, "session-master", "master-buyer"),
                 EVENT_ID,
@@ -122,28 +81,24 @@ class OrderConcurrencyTest {
         ZoneId zoneIdObj = new ZoneId(ZONE_ID);
         EventId eventIdObj = new EventId(EVENT_ID);
         SeatId seatIdObj = new SeatId(SEAT_ID);
-        
+
         Seat seat = new Seat(seatIdObj, "Row A", 1);
         Row row = new Row("Row A", List.of(seat));
-        
         Zone realZone = Zone.createSeated(zoneIdObj, eventIdObj, "VIP", price, List.of(row));
-
-        when(zoneRepository.findById(zoneIdObj)).thenReturn(Optional.of(realZone));
+        zoneRepository.save(realZone);
 
         ExecutorService executor = Executors.newFixedThreadPool(100);
         CountDownLatch startSignal = new CountDownLatch(1);
         CountDownLatch endSignal = new CountDownLatch(100);
-        
+
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
 
-        for (int threadNum = 0; threadNum < 100; threadNum++) {
+        for (int i = 0; i < 100; i++) {
             executor.submit(() -> {
                 try {
                     startSignal.await();
-                    
                     orderService.reserveSeat(ORDER_ID, ZONE_ID, SEAT_ID);
-                    
                     successCount.incrementAndGet();
                 } catch (RuntimeException e) {
                     failureCount.incrementAndGet();
@@ -155,33 +110,20 @@ class OrderConcurrencyTest {
                 }
             });
         }
-        
+
         startSignal.countDown();
         boolean completed = endSignal.await(5, TimeUnit.SECONDS);
         executor.shutdown();
 
-        // 4. Assert: Oonly 1 thread should succeed, 99 should fail
         assertThat(completed).isTrue();
-        
-        // Only 1 thread should have successfully reserved the seat
         assertThat(successCount.get()).isEqualTo(1);
-        
-        // 99 threads should have failed with an exception (seat already reserved)
         assertThat(failureCount.get()).isEqualTo(99);
-        
-
         verify(orderRepository, times(1)).save(testOrder);
-        
         assertThat(realZone.getAvailableCount()).isEqualTo(0);
     }
 
-    /**
-     * Secondary test: Verify behavior when different seats are reserved.
-     * This shows that the lock is seat-specific, not global.
-     */
     @Test
     void testConcurrentDifferentSeats_AllSucceed() throws InterruptedException {
-        // Arrange
         ActiveOrder testOrder = orderFactory.createOrder(
                 new BuyerReference(BuyerType.MEMBER, "session-master", "master-buyer"),
                 EVENT_ID,
@@ -194,48 +136,76 @@ class OrderConcurrencyTest {
 
         ZoneId zoneIdObj = new ZoneId(ZONE_ID);
         EventId eventIdObj = new EventId(EVENT_ID);
-        
+
         List<Seat> seats = new java.util.ArrayList<>();
         for (int i = 0; i < 10; i++) {
             seats.add(new Seat(new SeatId("SEAT-" + i), "Row A", i + 1));
         }
         Row row = new Row("Row A", seats);
-        
         Zone realZone = Zone.createSeated(zoneIdObj, eventIdObj, "VIP", price, List.of(row));
-        when(zoneRepository.findById(zoneIdObj)).thenReturn(Optional.of(realZone));
+        zoneRepository.save(realZone);
 
-        // Act
         ExecutorService executor = Executors.newFixedThreadPool(10);
         CountDownLatch startSignal = new CountDownLatch(1);
         CountDownLatch endSignal = new CountDownLatch(10);
-        
+
         AtomicInteger successCount = new AtomicInteger(0);
-        
+
         for (int i = 0; i < 10; i++) {
             final int seatNum = i;
             executor.submit(() -> {
                 try {
                     startSignal.await();
-                    
                     orderService.reserveSeat(ORDER_ID, ZONE_ID, "SEAT-" + seatNum);
                     successCount.incrementAndGet();
-                    
                 } catch (Exception e) {
                 } finally {
                     endSignal.countDown();
                 }
             });
         }
-        
+
         startSignal.countDown();
         endSignal.await(5, TimeUnit.SECONDS);
         executor.shutdown();
 
-        // Assert
-        assertThat(successCount.get()).isEqualTo(10); 
+        assertThat(successCount.get()).isEqualTo(10);
         verify(orderRepository, times(10)).save(testOrder);
-        
         assertThat(realZone.getAvailableCount()).isEqualTo(realZone.totalCapacity() - 10);
     }
 
+    // thread-safe zone repository stub for concurrent testing
+    private static class ThreadSafeZoneRepository implements ZoneRepository {
+        private final Map<String, Zone> store = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+
+        @Override
+        public Optional<Zone> findById(ZoneId zoneId) {
+            return Optional.ofNullable(store.get(zoneId.value()));
+        }
+
+        @Override
+        public List<Zone> findByEventId(EventId eventId) {
+            return store.values().stream()
+                    .filter(z -> z.eventId().equals(eventId))
+                    .toList();
+        }
+
+        @Override
+        public void save(Zone zone) {
+            store.put(zone.zoneId().value(), zone);
+        }
+
+        @Override
+        public void withLock(ZoneId zoneId, Runnable action) {
+            ReentrantLock lock = locks.computeIfAbsent(zoneId.value(), k -> new ReentrantLock());
+            lock.lock();
+            try {
+                // execute action safely so zoneHolder gets populated
+                action.run(); 
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
 }
