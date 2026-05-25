@@ -26,11 +26,13 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -70,6 +72,20 @@ class OrderConcurrencyTest {
 
     @BeforeEach
     void setUp() {
+        ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+        doAnswer(inv -> {
+            ReentrantLock lock = locks.computeIfAbsent(
+                    ((com.eventsystem.domain.zone.ZoneId) inv.getArgument(0)).value(),
+                    k -> new ReentrantLock());
+            lock.lock();
+            try {
+                ((Runnable) inv.getArgument(1)).run();
+            } finally {
+                lock.unlock();
+            }
+            return null;
+        }).when(zoneRepository).withLock(any(), any());
+
         orderFactory = new OrderFactory();
         zoneService = new ZoneService(zoneRepository);
         orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryValidationPort);
