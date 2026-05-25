@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.application.lottery.ILotteryValidationPort;
 import com.eventsystem.domain.order.ActiveOrder;
@@ -34,6 +36,7 @@ import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,7 +46,7 @@ class OrderServiceTest {
     private IActiveOrderRepository orderRepository;
     
     @Mock
-    private ZoneServicePort zoneService;
+    private ZoneRepository zoneRepository;
     
     @Mock
     private OrderFactory orderFactory;
@@ -65,6 +68,14 @@ class OrderServiceTest {
         testOrder = mock(ActiveOrder.class);
         lenient().when(testOrder.getOrderId()).thenReturn(ORDER_ID);
         lenient().when(testOrder.getBuyerRef()).thenReturn(testBuyer);
+    }
+
+    private void mockWithLockExecution() {
+        doAnswer(invocation -> {
+            Runnable action = invocation.getArgument(1);
+            action.run();
+            return null;
+        }).when(zoneRepository).withLock(any(ZoneId.class), any(Runnable.class));
     }
 
     @Test
@@ -113,16 +124,22 @@ class OrderServiceTest {
     void reserveSeat_ValidOrder_AddsItemAndSaves() {
         // Arrange
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        mockWithLockExecution();
+
+
         
-        OrderItem mockItem = new OrderItem("ZONE-A", "SEAT-1", 1, Money.of(new BigDecimal("100.0"), "USD"));
-        when(zoneService.reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"))).thenReturn(mockItem);
+       Zone mockZone = mock(Zone.class);
+        when(mockZone.zoneId()).thenReturn(new ZoneId("ZONE-A"));
+        when(mockZone.pricePerTicket()).thenReturn(Money.of(new BigDecimal("100.0"), "USD"));
+        when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
 
         // Act
         orderService.reserveSeat(ORDER_ID, "ZONE-A", "SEAT-1");
 
         // Assert
-        verify(zoneService, times(1)).reserveSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"));
-        verify(testOrder, times(1)).addItem(mockItem);
+        verify(mockZone, times(1)).reserveSeat(new SeatId("SEAT-1"));
+        verify(zoneRepository, times(1)).save(mockZone);
+        verify(testOrder, times(1)).addItem(any(OrderItem.class));
         verify(orderRepository, times(1)).save(testOrder);
     }
 
@@ -133,6 +150,10 @@ class OrderServiceTest {
         
         OrderItem expiredItem = new OrderItem("ZONE-VIP", "SEAT-9", 1, Money.of(new BigDecimal("200.0"), "USD"));
         when(testOrder.expire()).thenReturn(List.of(expiredItem));
+        mockWithLockExecution();
+
+        Zone mockZone = mock(Zone.class);
+        when(zoneRepository.findById(new ZoneId("ZONE-VIP"))).thenReturn(Optional.of(mockZone));
 
         // Act
         orderService.sweepExpiredOrders();
@@ -140,13 +161,18 @@ class OrderServiceTest {
         // Assert
         verify(testOrder, times(1)).expire();
         verify(orderRepository, times(1)).save(testOrder);
-        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-VIP"), new SeatId("SEAT-9"));
+        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-9"));
+        verify(zoneRepository, times(1)).save(mockZone);
     }
 
     @Test
     void releaseSeat_ValidOrder_RemovesItemAndUnlocks() {
         // Arrange
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        mockWithLockExecution();
+
+        Zone mockZone = mock(Zone.class);
+        when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
 
         // Act
         orderService.releaseSeat(ORDER_ID, "ZONE-A", "SEAT-1");
@@ -154,7 +180,8 @@ class OrderServiceTest {
         // Assert
         verify(testOrder, times(1)).removeItem("ZONE-A", "SEAT-1");
         verify(orderRepository, times(1)).save(testOrder);
-        verify(zoneService, times(1)).releaseSeat(new ZoneId("ZONE-A"), new SeatId("SEAT-1"));
+        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-1"));
+        verify(zoneRepository, times(1)).save(mockZone);
     }
 
     @Test
