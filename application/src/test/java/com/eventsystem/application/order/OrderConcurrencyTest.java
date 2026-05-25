@@ -45,13 +45,12 @@ import static org.mockito.Mockito.*;
 class OrderConcurrencyTest {
 
     @Mock
-    private ActiveOrderRepository orderRepository;
+    private IActiveOrderRepository orderRepository;
 
     @Mock
     private LotteryRepository lotteryRepository;
 
     private ZoneRepository zoneRepository;
-    private ZoneServicePort zoneService;
     private OrderService orderService;
     private OrderFactory orderFactory;
 
@@ -65,8 +64,7 @@ class OrderConcurrencyTest {
         // use thread-safe fake instead of mockito
         zoneRepository = new ThreadSafeZoneRepository();
         orderFactory = new OrderFactory();
-        zoneService = new ZoneService(zoneRepository);
-        orderService = new OrderService(orderRepository, zoneService, orderFactory, lotteryRepository);
+        orderService = new OrderService(orderRepository, zoneRepository, orderFactory, lotteryValidationPort);
     }
 
     @Test

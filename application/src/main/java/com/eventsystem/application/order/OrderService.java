@@ -3,6 +3,7 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
+import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneServicePort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
@@ -13,6 +14,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.application.lottery.LotteryRepository;
 
@@ -29,16 +31,16 @@ public class OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
-    private final ActiveOrderRepository orderRepository;
-    private final ZoneServicePort zoneService;
+    private final IActiveOrderRepository orderRepository;
+    private final ZoneRepository zoneRepository;
     private final OrderFactory orderFactory;
-    private final LotteryRepository lotteryRepository;
+    private final LotteryValidationPort lotteryValidationPort;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryRepository lotteryRepository) {
+    public OrderService(ActiveOrderRepository orderRepository, ZoneServicePort zoneService, OrderFactory orderFactory, LotteryValidationPort lotteryValidationPort) {
         this.orderRepository = orderRepository;
-        this.zoneService = zoneService;
+        this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;
         this.lotteryRepository = lotteryRepository;
     }
@@ -47,8 +49,8 @@ public class OrderService {
      * Create a new active order for the buyer and event, 
      * or return the existing active order if it exists and is not expired.
      */
-    public String createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
-        logger.info("Requested active order for buyer {} and event {}", buyer.memberId(), eventId);
+    public ActiveOrderDTO createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
+        logger.info("Requested active order for event");
 
         Optional<Lottery> lottery = lotteryRepository.findByEventId(new EventId(eventId));
 
@@ -66,7 +68,7 @@ public class OrderService {
         
         if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
             logger.info("Found existing active order: {}", existingOrder.get().getOrderId());
-            return existingOrder.get().getOrderId();
+            return ActiveOrderDTO.fromDomain(existingOrder.get());
         }
 
         ActiveOrder newOrder = orderFactory.createOrder(
@@ -76,14 +78,14 @@ public class OrderService {
         );
         orderRepository.save(newOrder);
         logger.info("Created new active order: {}", newOrder.getOrderId());
-        return newOrder.getOrderId();
+        return ActiveOrderDTO.fromDomain(newOrder);
     }
 
-    public String createNewOrderStrict(BuyerReference buyer, String eventId) {
+    public ActiveOrderDTO createNewOrderStrict(BuyerReference buyer, String eventId) {
         Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
         
         if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
-            logger.warn("Reservation Rejected_Existing_Order: Buyer {} already has active order for event {}", buyer.memberId(), eventId);
+            logger.warn("Reservation Rejected_Existing_Order: Buyer already has active order for event {}", eventId);
             throw new AlreadyExistsOrderException("An active order for this buyer and event already exists.");
         }
 
@@ -93,12 +95,12 @@ public class OrderService {
                 Instant.now().plus(TIMEOUT_MINUTES, ChronoUnit.MINUTES)
         );
         orderRepository.save(newOrder);
-        return newOrder.getOrderId();
+        return ActiveOrderDTO.fromDomain(newOrder);
     }
 
     /**
      * Add a seat to the active order. This involves:
-     * 1. Locking the seat through the ZoneService (which will throw an exception if the seat is already taken).
+     * 1. Locking the seat through the ZoneRepository.
      * 2. If the lock is successful, adding the item to our order aggregate and saving it.
      */
     public void reserveSeat(String orderId, String zoneId, String seatId) {
@@ -107,17 +109,34 @@ public class OrderService {
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     logger.warn("Failed to reserve seat: Order {} not found", orderId);
-                    return new OrderNotFoundException("Active order" + orderId + "not found");
+                    return new OrderNotFoundException("Active order " + orderId + " not found");
                 });
 
-        try{
-            // step 1: try to lock the seat through the ZoneService
-            OrderItem lockedItem = zoneService.reserveSeat(new ZoneId(zoneId), new SeatId(seatId));
+        try {
+            // טריק פשוט כדי שנוכל לחלץ את ה-OrderItem מתוך הלמבדה (שמחזירה void)
+            final OrderItem[] itemHolder = new OrderItem[1];
+            ZoneId zId = new ZoneId(zoneId);
+
+            // step 1: try to lock the seat through the ZoneRepository
+            zoneRepository.withLock(zId, () -> {
+                // משיכת האגרגייט מתוך הריפוזיטורי (בזמן הנעילה)
+                Zone zone = zoneRepository.findById(zId)
+                        .orElseThrow(() -> new ZoneDomainException("Zone not found"));
+                
+                // קריאה לפעולה העסקית של האגרגייט ושמירתו
+                zone.reserveSeat(new SeatId(seatId));
+                zoneRepository.save(zone);
+                
+                // יצירת פריט ההזמנה ושמירתו במערך כדי שיהיה זמין מחוץ ללמבדה
+                itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, 1, zone.pricePerTicket());
+            });
 
             // step 2: if the lock is successful, add the item to our order aggregate and save it
-            order.addItem(lockedItem);
+            order.addItem(itemHolder[0]);
             orderRepository.save(order);
+            
             logger.info("Successfully reserved seat {} for order {}", seatId, orderId);
+            
         } catch (ZoneDomainException e) {
             logger.warn("Failed to reserve seat {} for order {}: {}", seatId, orderId, e.getMessage());
             throw new ZoneApplicationException("Failed to reserve seat: " + e.getMessage());
@@ -130,7 +149,7 @@ public class OrderService {
     /**
      * Release a seat from the active order. This involves:
      * 1. Removing the item from our order aggregate and saving it.
-     * 2. Unlocking the seat through the ZoneService to make it available again.
+     * 2. Unlocking the seat through the ZoneRepository to make it available again.
      */
     public void releaseSeat(String orderId, String zoneId, String seatId) {
         logger.info("Attempting to release seat {} from order {}", seatId, orderId);
@@ -144,8 +163,16 @@ public class OrderService {
         order.removeItem(zoneId, seatId);
         orderRepository.save(order);
 
-        // unlock the seat through the ZoneService to make it available again
-        zoneService.releaseSeat(new ZoneId(zoneId), new SeatId(seatId));
+        // unlock the seat through the ZoneRepository to make it available again
+        ZoneId zId = new ZoneId(zoneId);
+        zoneRepository.withLock(zId, () -> {
+            Zone zone = zoneRepository.findById(zId)
+                    .orElseThrow(() -> new ZoneDomainException("Zone not found"));
+            
+            zone.releaseSeat(new SeatId(seatId));
+            zoneRepository.save(zone);
+        });
+        
         logger.info("Successfully released seat {} and unlocked it in zone {}", seatId, zoneId);
     }
 
@@ -170,8 +197,15 @@ public class OrderService {
         for (ActiveOrder order : expiredOrders) {
             List<OrderItem> expiredItems = order.expire();
             orderRepository.save(order);
+            
             for (OrderItem item : expiredItems) {
-                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
+                ZoneId zId = new ZoneId(item.getZoneId());
+                zoneRepository.withLock(zId, () -> {
+                    zoneRepository.findById(zId).ifPresent(zone -> {
+                        zone.releaseSeat(new SeatId(item.getSeatId()));
+                        zoneRepository.save(zone);
+                    });
+                });
             }
             logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
             count++;

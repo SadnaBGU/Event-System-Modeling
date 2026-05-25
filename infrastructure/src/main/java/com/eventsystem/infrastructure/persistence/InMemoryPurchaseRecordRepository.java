@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.order.PurchaseRecordRepository;
+import com.eventsystem.application.order.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class InMemoryPurchaseRecordRepository implements PurchaseRecordRepository {
+public class InMemoryPurchaseRecordRepository implements IPurchaseRecordRepository {
     
     private static final Logger logger = LoggerFactory.getLogger(InMemoryPurchaseRecordRepository.class);
     

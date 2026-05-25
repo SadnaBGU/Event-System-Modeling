@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class NotificationService implements NotificationPort {
+public class NotificationService implements INotificationPort {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
     

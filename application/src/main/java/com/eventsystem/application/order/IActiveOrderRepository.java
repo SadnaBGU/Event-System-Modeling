@@ -5,7 +5,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import java.util.Optional;
 import java.util.List;
 
-public interface ActiveOrderRepository {
+public interface IActiveOrderRepository {
     Optional<ActiveOrder> findById(String orderId);
     Optional<ActiveOrder> findByBuyerAndEvent(BuyerReference buyer, String eventId);
     Optional<List<ActiveOrder>> findExpired();

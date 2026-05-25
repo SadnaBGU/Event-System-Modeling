@@ -1,5 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
+import com.eventsystem.application.lottery.LotteryRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;

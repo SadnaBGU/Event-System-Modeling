@@ -1,6 +1,6 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.queue.VirtualQueue;
@@ -23,10 +23,10 @@ import static org.mockito.Mockito.*;
 class QueueServiceTest {
 
     @Mock
-    private VirtualQueueRepository queueRepository;
+    private IVirtualQueueRepository queueRepository;
 
     @Mock
-    private NotificationPort notificationPort;
+    private INotificationPort notificationPort;
 
     @InjectMocks
     private QueueService queueService;

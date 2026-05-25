@@ -34,7 +34,7 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.event.EventQueryPort;
 import com.eventsystem.application.event.ZoneRepository;
 import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.member.NotificationPort;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;

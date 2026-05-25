@@ -1,5 +1,7 @@
 package com.eventsystem.application.lottery;
 
+import com.eventsystem.application.appexceptions.InvalidLotteryCodeException;
+import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
