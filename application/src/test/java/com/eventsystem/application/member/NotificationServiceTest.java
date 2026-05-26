@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 class NotificationServiceTest {
 
     @Mock
-    private MemberRepository memberRepository;
+    private IMemberRepository memberRepository;
 
     @InjectMocks
     private NotificationService notificationService;

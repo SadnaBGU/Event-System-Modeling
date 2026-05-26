@@ -5,7 +5,7 @@ import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
-import com.eventsystem.application.lottery.LotteryRepository;
+import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,12 +22,12 @@ public class LotteryService {
 
     private static final Logger log = LoggerFactory.getLogger(LotteryService.class);
 
-    private final LotteryRepository lotteries;
+    private final ILotteryRepository lotteries;
     private final RandomGenerator rng;
     private final Clock clock;
     private final Duration codeValidity;
 
-    public LotteryService(LotteryRepository lotteries,
+    public LotteryService(ILotteryRepository lotteries,
                           RandomGenerator rng,
                           Clock clock,
                           Duration codeValidity) {

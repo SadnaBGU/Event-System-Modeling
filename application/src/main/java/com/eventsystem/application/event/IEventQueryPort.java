@@ -9,7 +9,7 @@ import com.eventsystem.domain.shared.Money;
 import java.math.BigDecimal;
 import java.util.List;
 
-public interface EventQueryPort {
+public interface IEventQueryPort {
     boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items);
     DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal);
     EventSnapshot getEventSnapshot(String eventId);

@@ -60,10 +60,10 @@ import static org.mockito.Mockito.*;
 class EventPurchaseSupportServiceTest {
 
     @Mock
-    private EventRepository eventRepository;
+    private IEventRepository eventRepository;
 
     @Mock
-    private ZoneRepository zoneRepository;
+    private IZoneRepository zoneRepository;
 
     private EventPurchaseSupportService service;
 

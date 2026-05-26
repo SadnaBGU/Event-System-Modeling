@@ -1,10 +1,10 @@
 package com.eventsystem.application.company;
 
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
-import com.eventsystem.application.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 
@@ -12,12 +12,12 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ProductionCompanyService {
-    private final ProductionCompanyRepository productionCompanyRepository;
-    private final MemberRepository memberRepository;
+    private final IProductionCompanyRepository productionCompanyRepository;
+    private final IMemberRepository memberRepository;
 
     public ProductionCompanyService(
-            ProductionCompanyRepository productionCompanyRepository,
-            MemberRepository memberRepository) {
+            IProductionCompanyRepository productionCompanyRepository,
+            IMemberRepository memberRepository) {
         this.productionCompanyRepository = Objects.requireNonNull(
                 productionCompanyRepository,
                 "productionCompanyRepository must not be null");

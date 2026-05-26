@@ -27,9 +27,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryRepository;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
+import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.member.MemberId;
@@ -50,13 +50,13 @@ class OrderServiceTest {
     private IActiveOrderRepository orderRepository;
     
     @Mock
-    private ZoneRepository zoneRepository;
+    private IZoneRepository zoneRepository;
     
     @Mock
     private OrderFactory orderFactory;
 
     @Mock
-    private LotteryRepository lotteryRepository;
+    private ILotteryRepository lotteryRepository;
 
     @InjectMocks
     private OrderService orderService;

@@ -7,7 +7,7 @@ import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.member.MemberId;
 
-public interface ProductionCompanyRepository {
+public interface IProductionCompanyRepository {
     Optional<ProductionCompany> findById(CompanyId companyId);
 
     Optional<ProductionCompany> findByName(String companyName);

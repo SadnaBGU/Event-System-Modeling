@@ -3,7 +3,7 @@ package com.eventsystem.application.event;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
-import com.eventsystem.application.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +28,12 @@ import static org.mockito.Mockito.*;
  */
 class ProductionEventPermissionCheckerTest {
 
-    private ProductionCompanyRepository productionCompanyRepository;
+    private IProductionCompanyRepository productionCompanyRepository;
     private ProductionEventPermissionChecker checker;
 
     @BeforeEach
     void setUp() {
-        productionCompanyRepository = mock(ProductionCompanyRepository.class);
+        productionCompanyRepository = mock(IProductionCompanyRepository.class);
         checker = new ProductionEventPermissionChecker(productionCompanyRepository);
     }
 

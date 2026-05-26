@@ -9,7 +9,7 @@ import com.eventsystem.domain.member.MemberId;
  * Repository interface (port) for the {@link Member} aggregate.
  * Implementations live in the infrastructure layer.
  */
-public interface MemberRepository {
+public interface IMemberRepository {
 
     Optional<Member> findById(MemberId memberId);
 

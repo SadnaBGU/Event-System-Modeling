@@ -31,9 +31,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.eventsystem.application.appexceptions.ActiveOrderHasExpiredException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
-import com.eventsystem.application.event.EventQueryPort;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.event.IEventQueryPort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
@@ -56,8 +56,8 @@ class CheckoutSagaTest {
     @Mock private IPaymentGatewayPort paymentGateway;
     @Mock private ITicketIssuancePort ticketIssuance;
     @Mock private INotificationPort notificationPort;
-    @Mock private ZoneRepository zoneRepository;
-    @Mock private EventQueryPort eventQueryPort;
+    @Mock private IZoneRepository zoneRepository;
+    @Mock private IEventQueryPort eventQueryPort;
 
     // This is the class we are testing, and we want to inject the Mocks into it
     @InjectMocks private CheckoutSaga checkoutSaga;

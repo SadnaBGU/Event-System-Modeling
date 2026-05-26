@@ -16,11 +16,11 @@ public class NotificationService implements INotificationPort {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
     
-    private final MemberRepository memberRepository;
+    private final IMemberRepository memberRepository;
 
     private final Set<String> onlineUsers = ConcurrentHashMap.newKeySet();
 
-    public NotificationService(MemberRepository memberRepository) {
+    public NotificationService(IMemberRepository memberRepository) {
         this.memberRepository = memberRepository;
     }
 

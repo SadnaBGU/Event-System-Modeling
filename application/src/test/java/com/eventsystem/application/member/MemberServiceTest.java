@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
 
-    @Mock private MemberRepository members;
+    @Mock private IMemberRepository members;
     @InjectMocks private MemberService service;
 
     private static final HashedCredentials CREDS = new HashedCredentials("h", "s", "BCrypt");

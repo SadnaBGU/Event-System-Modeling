@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 
@@ -10,12 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * In-memory adapter for {@link MemberRepository}.
+ * In-memory adapter for {@link IMemberRepository}.
  *
  * Backed by two {@link ConcurrentHashMap} instances (id-keyed + username-keyed).
  * Username uniqueness is enforced atomically via {@link ConcurrentMap#putIfAbsent}.
  */
-public class InMemoryMemberRepository implements MemberRepository {
+public class InMemoryMemberRepository implements IMemberRepository {
 
     private final ConcurrentMap<MemberId, Member> byId = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, MemberId> idByUsername = new ConcurrentHashMap<>();

@@ -1,10 +1,10 @@
 package com.eventsystem.application.company;
 
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
-import com.eventsystem.application.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 
@@ -70,7 +70,7 @@ class ProductionCompanyServiceConcurrencyTest {
         assertThat(successCount.get()).isEqualTo(1);
     }
 
-    private static final class InMemoryMemberRepository implements MemberRepository {
+    private static final class InMemoryMemberRepository implements IMemberRepository {
         private final Map<MemberId, Member> members = new ConcurrentHashMap<>();
 
         @Override
@@ -91,7 +91,7 @@ class ProductionCompanyServiceConcurrencyTest {
         }
     }
 
-    private static final class InMemoryProductionCompanyRepository implements ProductionCompanyRepository {
+    private static final class InMemoryProductionCompanyRepository implements IProductionCompanyRepository {
         private final Map<CompanyId, ProductionCompany> companiesById = new ConcurrentHashMap<>();
         private final Map<String, CompanyId> names = new ConcurrentHashMap<>();
 

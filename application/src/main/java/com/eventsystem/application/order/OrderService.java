@@ -3,8 +3,8 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
@@ -16,7 +16,7 @@ import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.application.lottery.LotteryRepository;
+import com.eventsystem.application.lottery.ILotteryRepository;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -32,13 +32,13 @@ public class OrderService {
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     private final IActiveOrderRepository orderRepository;
-    private final ZoneRepository zoneRepository;
+    private final IZoneRepository zoneRepository;
     private final OrderFactory orderFactory;
-    private final LotteryRepository lotteryRepository;
+    private final ILotteryRepository lotteryRepository;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(IActiveOrderRepository orderRepository, ZoneRepository zoneRepository, OrderFactory orderFactory, LotteryRepository lotteryRepository) {
+    public OrderService(IActiveOrderRepository orderRepository, IZoneRepository zoneRepository, OrderFactory orderFactory, ILotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;

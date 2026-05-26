@@ -21,7 +21,7 @@ import static org.mockito.Mockito.*;
 class ZoneServiceTest {
 
     @Mock
-    private ZoneRepository zoneRepository;
+    private IZoneRepository zoneRepository;
 
     private ZoneService service;
     private EventId eventId;

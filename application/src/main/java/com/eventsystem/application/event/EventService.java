@@ -13,10 +13,10 @@ import org.slf4j.LoggerFactory;
 public class EventService {
 
     private static final Logger logger = LoggerFactory.getLogger(EventService.class);
-    private final EventRepository eventRepository;
-    private final EventPermissionChecker permissionChecker;
+    private final IEventRepository eventRepository;
+    private final IEventPermissionChecker permissionChecker;
 
-    public EventService(EventRepository eventRepository, EventPermissionChecker permissionChecker ) {
+    public EventService(IEventRepository eventRepository, IEventPermissionChecker permissionChecker ) {
         this.eventRepository = Objects.requireNonNull( eventRepository, "eventRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker,"permissionChecker must not be null");
     }

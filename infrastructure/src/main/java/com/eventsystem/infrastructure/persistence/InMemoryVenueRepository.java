@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.venue.VenueRepository;
+import com.eventsystem.application.venue.IVenueRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.venue.Venue;
 import com.eventsystem.domain.venue.VenueId;
@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class InMemoryVenueRepository implements VenueRepository {
+public class InMemoryVenueRepository implements IVenueRepository {
     private final ConcurrentHashMap<VenueId, Venue> venues = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<CompanyId, List<VenueId>> companyVenues = new ConcurrentHashMap<>();
 

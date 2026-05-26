@@ -16,13 +16,13 @@ import java.util.Objects;
  * <p>Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is handled
  * by the Event team's EventService, which owns the Event aggregate boundary.
  */
-public class ZoneService implements ZoneServicePort {
+public class ZoneService implements IZoneServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(ZoneService.class);
 
-    private final ZoneRepository zoneRepository;
+    private final IZoneRepository zoneRepository;
 
-    public ZoneService(ZoneRepository zoneRepository) {
+    public ZoneService(IZoneRepository zoneRepository) {
         this.zoneRepository = Objects.requireNonNull(zoneRepository, "zoneRepository must not be null");
     }
 

@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.security;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
-import com.eventsystem.application.security.TokenService;
+import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,9 +12,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class AuthenticationInterceptor implements HandlerInterceptor {
 
-    private final TokenService tokenService;
+    private final ITokenService tokenService;
 
-    public AuthenticationInterceptor(TokenService tokenService) {
+    public AuthenticationInterceptor(ITokenService tokenService) {
         this.tokenService = tokenService;
     }
 
@@ -35,7 +35,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 
         try {
             // 3. Verify the token and extract claims (like MemberId)
-            TokenService.TokenClaims claims = tokenService.verifyToken(token);
+            ITokenService.TokenClaims claims = tokenService.verifyToken(token);
             
             // 4. Inject the MemberId into the request!
             // Now every controller can use @RequestAttribute("authenticatedMemberId")
@@ -43,7 +43,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             
             return true;
             
-        } catch (TokenService.InvalidTokenException e) {
+        } catch (ITokenService.InvalidTokenException e) {
             // If token verification fails, throw an AuthenticationException that will be handled globally
             throw new AuthenticationException("Invalid or expired token: " + e.getMessage());
         }

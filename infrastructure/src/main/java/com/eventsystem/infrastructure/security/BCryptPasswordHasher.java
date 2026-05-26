@@ -1,20 +1,20 @@
 package com.eventsystem.infrastructure.security;
 
-import com.eventsystem.application.security.PasswordHasher;
+import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.domain.member.HashedCredentials;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Objects;
 
 /**
- * BCrypt-backed adapter for {@link PasswordHasher}.
+ * BCrypt-backed adapter for {@link IPasswordHasher}.
  *
  * Note: {@link BCryptPasswordEncoder} produces a self-contained hash string that already
  * embeds the algorithm version, cost, and salt. We therefore store the full encoded value
  * in {@link HashedCredentials#hash()}, leave {@link HashedCredentials#salt()} as a marker
  * (kept for VO shape compatibility), and tag the algorithm as {@code "BCrypt"}.
  */
-public class BCryptPasswordHasher implements PasswordHasher {
+public class BCryptPasswordHasher implements IPasswordHasher {
 
     public static final String ALGORITHM = "BCrypt";
     private static final String EMBEDDED_SALT_MARKER = "embedded";

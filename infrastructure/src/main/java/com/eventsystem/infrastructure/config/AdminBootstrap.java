@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.config;
 
-import com.eventsystem.application.admin.PlatformRepository;
-import com.eventsystem.application.member.MemberRepository;
-import com.eventsystem.application.security.PasswordHasher;
+import com.eventsystem.application.admin.IPlatformRepository;
+import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
@@ -21,14 +21,14 @@ public class AdminBootstrap {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);
 
-    private final PlatformRepository platformRepo;
-    private final MemberRepository memberRepo;
-    private final PasswordHasher passwordHasher;
+    private final IPlatformRepository platformRepo;
+    private final IMemberRepository memberRepo;
+    private final IPasswordHasher passwordHasher;
     private final BootstrapProperties props;
 
-    public AdminBootstrap(PlatformRepository platformRepo,
-                          MemberRepository memberRepo,
-                          PasswordHasher passwordHasher,
+    public AdminBootstrap(IPlatformRepository platformRepo,
+                          IMemberRepository memberRepo,
+                          IPasswordHasher passwordHasher,
                           BootstrapProperties props) {
         this.platformRepo = platformRepo;
         this.memberRepo = memberRepo;

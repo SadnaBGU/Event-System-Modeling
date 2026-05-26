@@ -5,7 +5,7 @@ import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
-import com.eventsystem.application.lottery.LotteryRepository;
+import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class LotteryServiceTest {
     private static final Duration CODE_VALIDITY = Duration.ofMinutes(15);
 
     @Mock
-    private LotteryRepository repo;
+    private ILotteryRepository repo;
 
     private LotteryService service;
 

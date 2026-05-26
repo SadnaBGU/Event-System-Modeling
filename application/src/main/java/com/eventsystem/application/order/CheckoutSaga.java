@@ -6,9 +6,9 @@ import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.appexceptions.PriceCalcException;
-import com.eventsystem.application.event.EventQueryPort;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.event.IEventQueryPort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
@@ -37,17 +37,17 @@ public class CheckoutSaga {
     private final IPaymentGatewayPort paymentGateway;
     private final ITicketIssuancePort ticketIssuance;
     private final INotificationPort notificationPort;
-    private final ZoneRepository zoneRepository;
+    private final IZoneRepository zoneRepository;
     
-    private final EventQueryPort eventQueryPort; 
+    private final IEventQueryPort eventQueryPort; 
 
     public CheckoutSaga(IActiveOrderRepository orderRepository,
                         IPurchaseRecordRepository purchaseRecordRepository,
                         IPaymentGatewayPort paymentGateway,
                         ITicketIssuancePort ticketIssuance,
                         INotificationPort notificationPort,
-                        ZoneRepository zoneRepository,
-                        EventQueryPort eventQueryPort) {
+                        IZoneRepository zoneRepository,
+                        IEventQueryPort eventQueryPort) {
         this.orderRepository = orderRepository;
         this.purchaseRecordRepository = purchaseRecordRepository;
         this.paymentGateway = paymentGateway;

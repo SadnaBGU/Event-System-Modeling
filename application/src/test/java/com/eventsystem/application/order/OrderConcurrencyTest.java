@@ -1,9 +1,9 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.application.event.ZoneRepository;
+import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.event.ZoneService;
-import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.LotteryRepository;
+import com.eventsystem.application.event.IZoneServicePort;
+import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.*;
 import com.eventsystem.domain.shared.Money;
@@ -14,7 +14,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneType;
 
-import com.eventsystem.application.event.ZoneRepository;
+import com.eventsystem.application.event.IZoneRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,9 +48,9 @@ class OrderConcurrencyTest {
     private IActiveOrderRepository orderRepository;
 
     @Mock
-    private LotteryRepository lotteryRepository;
+    private ILotteryRepository lotteryRepository;
 
-    private ZoneRepository zoneRepository;
+    private IZoneRepository zoneRepository;
     private OrderService orderService;
     private OrderFactory orderFactory;
 
@@ -176,7 +176,7 @@ class OrderConcurrencyTest {
     }
 
     // thread-safe zone repository stub for concurrent testing
-    private static class ThreadSafeZoneRepository implements ZoneRepository {
+    private static class ThreadSafeZoneRepository implements IZoneRepository {
         private final Map<String, Zone> store = new ConcurrentHashMap<>();
         private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 

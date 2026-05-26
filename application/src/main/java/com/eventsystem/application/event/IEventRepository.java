@@ -6,7 +6,7 @@ import java.util.Optional;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
 
-public interface EventRepository {
+public interface IEventRepository {
 
     Optional<Event> findById(EventId id);
 

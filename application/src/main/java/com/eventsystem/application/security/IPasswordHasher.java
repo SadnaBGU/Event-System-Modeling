@@ -6,7 +6,7 @@ import com.eventsystem.domain.member.HashedCredentials;
  * Port — hashes plaintext passwords and verifies them against {@link HashedCredentials}.
  * The application layer depends on this abstraction; infrastructure provides the BCrypt impl.
  */
-public interface PasswordHasher {
+public interface IPasswordHasher {
 
     /** Hash a plaintext password into storable {@link HashedCredentials}. */
     HashedCredentials hash(String plaintext);

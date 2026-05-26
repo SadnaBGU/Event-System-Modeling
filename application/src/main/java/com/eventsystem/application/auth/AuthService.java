@@ -2,10 +2,10 @@ package com.eventsystem.application.auth;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
-import com.eventsystem.application.member.MemberRepository;
-import com.eventsystem.application.security.PasswordHasher;
-import com.eventsystem.application.security.TokenService;
-import com.eventsystem.application.security.TokenService.TokenClaims;
+import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.application.security.IPasswordHasher;
+import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
@@ -28,14 +28,14 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    private final MemberRepository members;
-    private final PasswordHasher passwordHasher;
-    private final TokenService tokenService;
+    private final IMemberRepository members;
+    private final IPasswordHasher passwordHasher;
+    private final ITokenService tokenService;
     private final Duration tokenValidity;
 
-    public AuthService(MemberRepository members,
-                       PasswordHasher passwordHasher,
-                       TokenService tokenService,
+    public AuthService(IMemberRepository members,
+                       IPasswordHasher passwordHasher,
+                       ITokenService tokenService,
                        Duration tokenValidity) {
         this.members = members;
         this.passwordHasher = passwordHasher;

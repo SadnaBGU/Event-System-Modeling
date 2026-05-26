@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.security;
 
-import com.eventsystem.application.security.TokenService;
-import com.eventsystem.application.security.TokenService.InvalidTokenException;
-import com.eventsystem.application.security.TokenService.TokenClaims;
+import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.security.ITokenService.InvalidTokenException;
+import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.Test;
 
