@@ -153,8 +153,8 @@ public class AppConfig {
     }
 
     @Bean
-    public QueueService queueService(IVirtualQueueRepository virtualQueueRepo) {
-        return new QueueService(virtualQueueRepo, notificationService(memberRepository()));
+    public QueueService queueService(IVirtualQueueRepository virtualQueueRepo, INotificationPort notificationService) {
+        return new QueueService(virtualQueueRepo, notificationService);
     }
 
     @Bean
@@ -245,8 +245,6 @@ public class AppConfig {
                 eventQueryPort
         );
     }
-
-
 
     // ==========================================
     // 3. Bootstrap Runner

@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-@Repository
 public class InMemoryEventRepository implements IEventRepository {
 
     private final ConcurrentMap<EventId, Event> events = new ConcurrentHashMap<>();
