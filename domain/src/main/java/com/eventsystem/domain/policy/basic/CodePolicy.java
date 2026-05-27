@@ -25,7 +25,7 @@ public final class CodePolicy implements IPolicy{
     public void require(PurchaseContext context) {
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
-                "Wrong code for Event %s", context.getEventName()));
+                "Wrong code for Event %s", context.eventId().toString()));
         }
     }
     

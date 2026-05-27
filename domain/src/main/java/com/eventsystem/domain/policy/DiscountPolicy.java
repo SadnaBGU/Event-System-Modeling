@@ -116,7 +116,7 @@ public final class DiscountPolicy {
             return false;
         }
 
-        return scope.appliesTo(new EventId(context.getEventId()));
+        return scope.appliesTo(context.eventId());
     }
 
     public void setCompanyWide() {

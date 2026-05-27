@@ -26,7 +26,7 @@ public final class MinTicketPolicy implements IPolicy{
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
                 "Cannot Purchase less than %d tickets to Event %s",
-                 minTickets, context.getEventName()
+                 minTickets, context.eventId().toString()
             ));
         }
 

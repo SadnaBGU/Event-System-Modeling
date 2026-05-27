@@ -19,9 +19,9 @@ public class EventService {
     private static final Logger logger = LoggerFactory.getLogger(EventService.class);
     private final IEventRepository eventRepository;
     private final IPurchasePolicyRepository ppolicyRepository;
-    private final EventPermissionChecker permissionChecker;
+    private final IEventPermissionChecker permissionChecker;
 
-    public EventService(IEventRepository eventRepository, IPurchasePolicyRepository ppolicyRepository,  EventPermissionChecker permissionChecker) {
+    public EventService(IEventRepository eventRepository, IPurchasePolicyRepository ppolicyRepository,  IEventPermissionChecker permissionChecker) {
         this.eventRepository = Objects.requireNonNull( eventRepository, "eventRepository must not be null");
         this.ppolicyRepository = Objects.requireNonNull( ppolicyRepository, "purchasePolicyRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker,"permissionChecker must not be null");
@@ -55,7 +55,6 @@ public class EventService {
         ppolicyRepository.saveForEvent(event.id(), PurchasePolicy.AllowAll());
         logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
             event.id().value(), companyId, actorId);
-        ppolicyRepository.saveForEvent(event.id(), policy);
         return event.id();
     }
 
@@ -122,7 +121,7 @@ public class EventService {
     public void setPurchasePolicy(String actorId, EventId eventId, PurchasePolicy policy) {
         requireValidActor(actorId);
         Objects.requireNonNull(eventId, "eventId must not be null");
-        Objects.requireNonNull(policy, "zoneId must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
         Event event = loadEvent(eventId);
         requireManageEventsPermission(actorId, event.companyId());
         ppolicyRepository.saveForEvent(eventId, policy);

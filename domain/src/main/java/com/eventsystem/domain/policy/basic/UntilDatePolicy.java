@@ -24,7 +24,7 @@ public final class UntilDatePolicy implements IPolicy{
     public void require(PurchaseContext context) {
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
-                "Cannot Purchase tickets to Event %s after Date %s", context.getEventName(), deadlineDate.toString()
+                "Cannot Purchase tickets to Event %s after Date %s", context.eventId().toString(), deadlineDate.toString()
             ));
         }
     }

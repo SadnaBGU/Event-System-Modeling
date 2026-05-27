@@ -16,7 +16,7 @@ public class NoSingleEmptySeatPolicy implements IPolicy{
     public void require(PurchaseContext context) {
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
-                "Cannot leave nearby single empty seats to Event %s", context.getEventName()));
+                "Cannot leave nearby single empty seats to Event %s", context.eventId().toString()));
         }
 
     }

@@ -26,7 +26,7 @@ public final class MaxTicketPolicy implements IPolicy{
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
                 "Cannot Purchase more than %d tickets to Event %s",
-                 maxTickets, context.getEventName()
+                 maxTickets, context.eventId().toString()
             ));
         }
 

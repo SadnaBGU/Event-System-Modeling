@@ -10,10 +10,14 @@ import com.eventsystem.domain.policy.DiscountSummary;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
+import com.eventsystem.domain.zone.ZoneId;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,15 +28,15 @@ public class DiscountPolicyService {
     private static final Logger logger = LoggerFactory.getLogger(DiscountPolicyService.class);
 
     private final IDiscountPolicyRepository discountPolicyRepository;
+    private final IDiscountPermissionChecker permissionChecker;
 
-    public DiscountPolicyService(IDiscountPolicyRepository discountPolicyRepository) {
-        this.discountPolicyRepository = Objects.requireNonNull(
-                discountPolicyRepository,
-                "discountPolicyRepository must not be null"
-        );
+    public DiscountPolicyService(IDiscountPolicyRepository discountPolicyRepository, IDiscountPermissionChecker permissionChecker) {
+        this.discountPolicyRepository = Objects.requireNonNull(discountPolicyRepository,"discountPolicyRepository must not be null");
+        this.permissionChecker = Objects.requireNonNull(permissionChecker,"permisiionChecker must not be null");
     }
 
-    public void saveDiscountPolicy(DiscountPolicy discountPolicy) {
+    public void saveDiscountPolicy(String actorId, String companyId ,DiscountPolicy discountPolicy) {
+        requireManageDiscountsPermission(actorId,companyId);
         Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
 
         logger.info(
@@ -98,7 +102,9 @@ public class DiscountPolicyService {
         return discountPolicyRepository.findApplicableToPurchase(companyId, eventId);
     }
 
-    public void activateDiscountPolicy(DiscountPolicyId policyId) {
+    public void activateDiscountPolicy(String actorId, String companyId, DiscountPolicyId policyId) {
+        requireManageDiscountsPermission(actorId,companyId);
+        requireCompanyOwnsDiscountPolicy(policyId, new CompanyId(companyId));
         Objects.requireNonNull(policyId, "policyId must not be null");
 
         logger.info("Activating discount policy. policyId={}", policyId);
@@ -110,7 +116,10 @@ public class DiscountPolicyService {
         logger.info("Discount policy activated. policyId={}, companyId={}", policy.id(), policy.companyId());
     }
 
-    public void deactivateDiscountPolicy(DiscountPolicyId policyId) {
+    public void deactivateDiscountPolicy(String actorId, String companyId, DiscountPolicyId policyId) {
+        requireManageDiscountsPermission(actorId,companyId);
+        requireCompanyOwnsDiscountPolicy(policyId, new CompanyId(companyId));
+
         Objects.requireNonNull(policyId, "policyId must not be null");
 
         logger.info("Deactivating discount policy. policyId={}", policyId);
@@ -122,7 +131,10 @@ public class DiscountPolicyService {
         logger.info("Discount policy deactivated. policyId={}, companyId={}", policy.id(), policy.companyId());
     }
 
-    public void addDiscountToPolicy(DiscountPolicyId policyId, Discount discount) {
+    public void addDiscountToPolicy(String actorId, String companyId, DiscountPolicyId policyId, Discount discount) {
+        requireManageDiscountsPermission(actorId,companyId);
+        requireCompanyOwnsDiscountPolicy(policyId, new CompanyId(companyId));
+
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(discount, "discount must not be null");
 
@@ -143,7 +155,9 @@ public class DiscountPolicyService {
         );
     }
 
-    public void deleteDiscountPolicy(DiscountPolicyId policyId) {
+    public void deleteDiscountPolicy(String actorId, String companyId, DiscountPolicyId policyId) {
+        requireManageDiscountsPermission(actorId, companyId);
+        requireCompanyOwnsDiscountPolicy(policyId, new CompanyId(companyId));
         Objects.requireNonNull(policyId, "policyId must not be null");
 
         logger.info("Deleting discount policy. policyId={}", policyId);
@@ -163,12 +177,7 @@ public class DiscountPolicyService {
         return exists;
     }
 
-    public DiscountSummary calculateDiscountSummary(
-            CompanyId companyId,
-            EventId eventId,
-            PurchaseContext context,
-            Money baseCost
-    ) {
+    public DiscountSummary calculateDiscountSummary(CompanyId companyId, EventId eventId, PurchaseContext context, Money baseCost) {
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(context, "context must not be null");
@@ -205,12 +214,8 @@ public class DiscountPolicyService {
         return bestSummary;
     }
 
-    public DiscountSnapshot generateDiscountSnapshot(
-            CompanyId companyId,
-            EventId eventId,
-            PurchaseContext context,
-            Money baseCost
-    ) {
+    public DiscountSnapshot generateDiscountSnapshot(CompanyId companyId, EventId eventId,
+                                                     PurchaseContext context, Money baseCost ) {
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(context, "context must not be null");
@@ -233,11 +238,7 @@ public class DiscountPolicyService {
         return snapshot;
     }
 
-    private DiscountSummary calculateBestSummary(
-            List<DiscountPolicy> policies,
-            PurchaseContext context,
-            Money baseCost
-    ) {
+    private DiscountSummary calculateBestSummary( List<DiscountPolicy> policies, PurchaseContext context,Money baseCost) {
         DiscountSummary bestSummary = DiscountSummary.NoDiscountSummary();
 
         for (DiscountPolicy policy : policies) {
@@ -247,7 +248,66 @@ public class DiscountPolicyService {
                 bestSummary = currentSummary;
             }
         }
-
         return bestSummary;
+    }
+
+    private void requireManageDiscountsPermission(String actorId, String companyId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+
+        if (!permissionChecker.canManagePolicies(actorId, companyId)) {
+            logger.warn("Permission denied for Discount management. actorId={}, companyId={}",
+                actorId, companyId);
+            throw new SecurityException("actor is not allowed to manage events for company: " + companyId);
+        }
+    }
+
+    private void requireCompanyOwnsDiscountPolicy(DiscountPolicyId dpId, CompanyId companyId) {
+        Objects.requireNonNull(dpId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+
+        DiscountPolicy p = loadDiscountPolicy(dpId);
+        if(!(p.companyId() .equals(companyId))) {
+            throw new SecurityException("Cannot modify Discount policies of other comapnies");
+        }
+    }
+
+    public PurchaseContext fromPurchaseInfo(EventId eventId, CompanyId compId, List<ZoneId> zoneOfEachTicket,
+                                             LocalDate buyerBirthdate) {
+        //TODO- get buyer birthday date and replace the placeholder!
+        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,placeholderBuyerBirthDate(), normalizeDiscountCode(null));
+    }
+
+    public PurchaseContext fromPurchaseInfo(EventId eventId, CompanyId compId, List<ZoneId> zoneOfEachTicket,
+                                             LocalDate buyerBirthdate, String discountCode) {
+        //TODO- get buyer birthday date and replace the placeholder!
+        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,placeholderBuyerBirthDate(), normalizeDiscountCode(discountCode));
+    }
+
+    private DiscountPolicy loadDiscountPolicy(DiscountPolicyId dpId) {
+        return discountPolicyRepository.findById(dpId)
+                .orElseThrow(() -> {
+                    logger.warn("Discount Policy not found. eventId={}", dpId.value());
+                    return new IllegalArgumentException("Discount Policy not found: " + dpId.value());
+                });
+    }
+
+
+    private String normalizeDiscountCode(String discountCode) {
+        return discountCode == null || discountCode.isBlank()
+                ? null
+                : discountCode.trim();
+    }
+
+    private LocalDate placeholderBuyerBirthDate() {
+        /*
+         * TODO:
+         * Replace once checkout saga passes buyer birth date or member profile data.
+         * This placeholder prevents null context and keeps current EventQueryPort working.
+         *
+         * Chosen as 18 years old so MinAgePolicy(18) can pass during placeholder integration.
+         * This must not be treated as real production logic.
+         */
+        return LocalDate.now().minusYears(18);
     }
 }

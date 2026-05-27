@@ -42,7 +42,7 @@ class BasicPolicyTest {
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("Cannot Purchase more than 2 tickets")
-                .hasMessageContaining("Test Event");
+                .hasMessageContaining(EVENT_ID.toString());
     }
 
     @Test
@@ -69,7 +69,7 @@ class BasicPolicyTest {
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("Cannot Purchase less than 2 tickets")
-                .hasMessageContaining("Test Event");
+                .hasMessageContaining(EVENT_ID.toString());
     }
 
     @Test
@@ -97,7 +97,7 @@ class BasicPolicyTest {
         assertThatThrownBy(() -> policy.require(contextWithCode("WRONG", REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("Wrong code")
-                .hasMessageContaining("Test Event");
+                .hasMessageContaining(EVENT_ID.toString());
     }
 
     @Test
@@ -127,7 +127,7 @@ class BasicPolicyTest {
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("Buyer must be over age 18")
-                .hasMessageContaining("Test Event");
+                .hasMessageContaining(EVENT_ID.toString());
     }
 
     @Test

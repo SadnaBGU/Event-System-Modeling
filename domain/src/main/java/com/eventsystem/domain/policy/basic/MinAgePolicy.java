@@ -29,7 +29,7 @@ public final class MinAgePolicy implements IPolicy{
     public void require(PurchaseContext context) {
         if (!validate(context)) {
             throw new PurchasePolicyException(String.format(
-                "Buyer must be over age %d to buy tickets for %s", minAge, context.getEventName()
+                "Buyer must be over age %d to buy tickets for %s", minAge, context.eventId().toString()
             ));
         }
 

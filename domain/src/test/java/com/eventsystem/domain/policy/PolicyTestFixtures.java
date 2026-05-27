@@ -56,13 +56,7 @@ public final class PolicyTestFixtures {
             String discountCode,
             List<ZoneId> zones
     ) {
-        return new PurchaseContext(
-                buyerBirthDate,
-                snapshot(eventId),
-                companyId,
-                discountCode,
-                zones
-        );
+        return new PurchaseContext( eventId, companyId, zones, buyerBirthDate, discountCode);
     }
 
     public static EventSnapshot snapshot(EventId eventId) {

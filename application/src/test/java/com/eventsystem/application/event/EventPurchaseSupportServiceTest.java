@@ -7,9 +7,12 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
+
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 
 import java.math.BigDecimal;
 
@@ -65,11 +68,15 @@ class EventPurchaseSupportServiceTest {
     @Mock
     private ZoneRepository zoneRepository;
 
+    @Mock
+    private IPurchasePolicyRepository ppRepository;
+
+
     private EventPurchaseSupportService service;
 
     @BeforeEach
     void setUp() {
-        service = new EventPurchaseSupportService(eventRepository, zoneRepository);
+        service = new EventPurchaseSupportService(eventRepository, zoneRepository, ppRepository );
     }
 
     private EventDetails defaultDetails() {

@@ -60,13 +60,8 @@ public final class ZoneSpecificPolicy implements IPolicy {
     }
 
     private PurchaseContext generateContextForAffectedZones(PurchaseContext context) {
-        return new PurchaseContext(
-                context.buyerBirthDate(),
-                context.eventSnapshot(),
-                context.companyId(),
-                context.discountCode(),
-                listOnlyTicketsOfAffectedZones(context)
-        );
+        return new PurchaseContext(context.eventId(), context.companyId(), listOnlyTicketsOfAffectedZones(context),
+                                     context.buyerBirthDate(), context.discountCode());
     }
 
     @Override

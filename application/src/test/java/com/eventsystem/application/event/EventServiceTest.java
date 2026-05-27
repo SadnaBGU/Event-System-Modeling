@@ -75,7 +75,7 @@ class EventServiceTest {
     private IPurchasePolicyRepository ppRepository;
 
     @Mock
-    private EventPermissionChecker permissionChecker;
+    private IEventPermissionChecker permissionChecker;
     
 
     private EventService service;
