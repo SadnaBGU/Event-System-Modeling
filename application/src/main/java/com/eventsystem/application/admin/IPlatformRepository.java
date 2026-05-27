@@ -8,7 +8,7 @@ import com.eventsystem.domain.platform.Platform;
  * Repository interface (port) for the singleton {@link Platform} aggregate.
  * Implementations live in the infrastructure layer.
  */
-public interface PlatformRepository {
+public interface IPlatformRepository {
 
     Optional<Platform> findInstance();
 

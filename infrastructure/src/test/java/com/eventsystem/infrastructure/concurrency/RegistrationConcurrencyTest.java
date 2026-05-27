@@ -4,7 +4,7 @@ import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.RegisterMemberRequest;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
-import com.eventsystem.application.security.TokenService;
+import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
@@ -41,7 +41,7 @@ class RegistrationConcurrencyTest {
     void setUp() {
         repo = new InMemoryMemberRepository();
         BCryptPasswordHasher hasher = new BCryptPasswordHasher(4); // low cost = fast tests
-        TokenService tokens = new JwtTokenService(SECRET);
+        ITokenService tokens = new JwtTokenService(SECRET);
         auth = new AuthService(repo, hasher, tokens, Duration.ofHours(1));
     }
 

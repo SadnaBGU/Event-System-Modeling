@@ -6,8 +6,9 @@ import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.appexceptions.PriceCalcException;
-import com.eventsystem.application.event.EventQueryPort;
-import com.eventsystem.application.event.ZoneServicePort;
+import com.eventsystem.application.event.IEventQueryPort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
@@ -36,23 +37,23 @@ public class CheckoutSaga {
     private final IPaymentGatewayPort paymentGateway;
     private final ITicketIssuancePort ticketIssuance;
     private final INotificationPort notificationPort;
-    private final ZoneServicePort zoneService;
+    private final IZoneRepository zoneRepository;
     
-    private final EventQueryPort eventQueryPort; 
+    private final IEventQueryPort eventQueryPort; 
 
     public CheckoutSaga(IActiveOrderRepository orderRepository,
                         IPurchaseRecordRepository purchaseRecordRepository,
                         IPaymentGatewayPort paymentGateway,
                         ITicketIssuancePort ticketIssuance,
                         INotificationPort notificationPort,
-                        ZoneServicePort zoneService,
-                        EventQueryPort eventQueryPort) {
+                        IZoneRepository zoneRepository,
+                        IEventQueryPort eventQueryPort) {
         this.orderRepository = orderRepository;
         this.purchaseRecordRepository = purchaseRecordRepository;
         this.paymentGateway = paymentGateway;
         this.ticketIssuance = ticketIssuance;
         this.notificationPort = notificationPort;
-        this.zoneService = zoneService;
+        this.zoneRepository = zoneRepository;
         this.eventQueryPort = eventQueryPort;
     }
 
@@ -135,9 +136,7 @@ public class CheckoutSaga {
             logger.error("System crash during ticket issuance. Triggering compensating actions (Refund & Unlock).", e);
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance service crashed: " + e.getMessage());
             
-            for (OrderItem item : order.getItems()) {
-                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
-            }
+            releaseReservedSeats(order.getItems());
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "System error during ticket issuance. You have been refunded.");
             throw new IssuanceFailedException("Ticket issuance failed for order " + orderId + ": " + e.getMessage());
@@ -148,9 +147,7 @@ public class CheckoutSaga {
             // If ticket issuance fails (e.g., due to business logic), we also need to compensate by refunding the payment and unlocking any reserved seats
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, "Ticket issuance failed: " + issuanceResult.errorMessage());
             
-            for (OrderItem item : order.getItems()) {
-                zoneService.releaseSeat(new ZoneId(item.getZoneId()), new SeatId(item.getSeatId()));
-            }
+            releaseReservedSeats(order.getItems());
             
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Technical error during ticket issuance. You have been refunded.");
             throw new IssuanceFailedException("Ticket issuance failed for order " + orderId + ": " + issuanceResult.errorMessage());
@@ -182,5 +179,17 @@ public class CheckoutSaga {
         
         notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.recordId());
         logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.recordId());
+    }
+
+    private void releaseReservedSeats(List<OrderItem> items) {
+        for (OrderItem item : items) {
+            ZoneId zId = new ZoneId(item.getZoneId());
+            zoneRepository.withLock(zId, () -> {
+                zoneRepository.findById(zId).ifPresent(zone -> {
+                    zone.releaseSeat(new SeatId(item.getSeatId()));
+                    zoneRepository.save(zone);
+                });
+            });
+        }
     }
 }

@@ -1,7 +1,7 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
@@ -30,8 +30,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
 
-    @Mock private PlatformRepository platformRepo;
-    @Mock private MemberRepository memberRepo;
+    @Mock private IPlatformRepository platformRepo;
+    @Mock private IMemberRepository memberRepo;
     @InjectMocks private AdminService service;
 
     private final MemberId admin = MemberId.generate();

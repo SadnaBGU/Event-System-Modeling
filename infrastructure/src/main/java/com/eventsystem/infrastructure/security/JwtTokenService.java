@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.security;
 
-import com.eventsystem.application.security.TokenService;
+import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -17,12 +17,12 @@ import java.util.Date;
 import java.util.Objects;
 
 /**
- * JWT-backed adapter for {@link TokenService}.
+ * JWT-backed adapter for {@link ITokenService}.
  *
  * Uses HS256 with a symmetric secret. Secret must be at least 32 bytes (256 bits)
  * per RFC 7518 §3.2.
  */
-public class JwtTokenService implements TokenService {
+public class JwtTokenService implements ITokenService {
 
     private static final String ISSUER = "event-system";
 

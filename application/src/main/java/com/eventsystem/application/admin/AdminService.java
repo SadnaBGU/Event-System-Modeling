@@ -1,9 +1,10 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.platform.Platform;
+import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.domain.shared.ProviderId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +22,10 @@ public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
 
-    private final PlatformRepository platformRepo;
-    private final MemberRepository memberRepo;
+    private final IPlatformRepository platformRepo;
+    private final IMemberRepository memberRepo;
 
-    public AdminService(PlatformRepository platformRepo, MemberRepository memberRepo) {
+    public AdminService(IPlatformRepository platformRepo, IMemberRepository memberRepo) {
         this.platformRepo = platformRepo;
         this.memberRepo = memberRepo;
     }

@@ -68,10 +68,10 @@ class EventServiceTest {
     private static final String COMPANY_ID = "company-1";
 
     @Mock
-    private EventRepository eventRepository;
+    private IEventRepository eventRepository;
 
     @Mock
-    private EventPermissionChecker permissionChecker;
+    private IEventPermissionChecker permissionChecker;
 
     private EventService service;
 

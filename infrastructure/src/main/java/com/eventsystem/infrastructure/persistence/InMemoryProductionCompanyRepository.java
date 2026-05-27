@@ -1,9 +1,10 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.company.ProductionCompanyRepository;
+import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
+import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 
@@ -12,7 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class InMemoryProductionCompanyRepository implements ProductionCompanyRepository {
+public class InMemoryProductionCompanyRepository implements IProductionCompanyRepository {
     private final ConcurrentMap<CompanyId, ProductionCompany> companiesById = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CompanyId> companyNameToId = new ConcurrentHashMap<>();
 

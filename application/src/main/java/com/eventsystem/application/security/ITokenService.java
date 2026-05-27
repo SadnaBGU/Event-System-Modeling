@@ -8,7 +8,7 @@ import java.time.Instant;
 /**
  * Port — issues and validates stateless authentication tokens (JWT).
  */
-public interface TokenService {
+public interface ITokenService {
 
     /** Issue a token for the given subject member, valid for the given duration. */
     String issueToken(MemberId subject, Duration validity);

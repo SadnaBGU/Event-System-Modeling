@@ -16,12 +16,20 @@ public class NotificationService implements INotificationPort {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
     
-    private final MemberRepository memberRepository;
+    private final IMemberRepository memberRepository;
 
-    private final Set<String> onlineUsers = ConcurrentHashMap.newKeySet();
+    // map memberId -> set of sessionIds to support multi-tab/multi-session
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.Set<String>> memberSessions = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public NotificationService(MemberRepository memberRepository) {
+    private final NotificationBroadcaster broadcaster;
+
+    public NotificationService(IMemberRepository memberRepository) {
+        this(memberRepository, null);
+    }
+
+    public NotificationService(IMemberRepository memberRepository, NotificationBroadcaster broadcaster) {
         this.memberRepository = memberRepository;
+        this.broadcaster = broadcaster;
     }
 
     /**
@@ -30,7 +38,15 @@ public class NotificationService implements INotificationPort {
      * system. When a user comes online, any pending notifications will be dispatched immediately.
      */
     public void clientConnected(String memberId) {
-        onlineUsers.add(memberId);
+        clientConnected(memberId, "default");
+    }
+
+    public void clientConnected(String memberId, String sessionId) {
+        memberSessions.compute(memberId, (k, set) -> {
+            if (set == null) set = java.util.concurrent.ConcurrentHashMap.newKeySet();
+            set.add(sessionId);
+            return set;
+        });
         dispatchDelayedNotifications(memberId);
     }
 
@@ -40,7 +56,14 @@ public class NotificationService implements INotificationPort {
      * system.
      */
     public void clientDisconnected(String memberId) {
-        onlineUsers.remove(memberId);
+        clientDisconnected(memberId, "default");
+    }
+
+    public void clientDisconnected(String memberId, String sessionId) {
+        memberSessions.computeIfPresent(memberId, (k, set) -> {
+            set.remove(sessionId);
+            return set.isEmpty() ? null : set;
+        });
     }
 
     private void dispatchDelayedNotifications(String memberIdStr) {
@@ -49,6 +72,9 @@ public class NotificationService implements INotificationPort {
             if (!pending.isEmpty()) {
                 for (Notification n : pending) {
                     logger.info("Notification Dispatched_Delayed to {}: {}", memberIdStr, n.getContent());
+                    if (broadcaster != null) {
+                        broadcaster.broadcastToUser(memberIdStr, n);
+                    }
                 }
                 member.markNotificationsDelivered();
                 memberRepository.save(member);
@@ -63,9 +89,13 @@ public class NotificationService implements INotificationPort {
         memberRepository.findById(new MemberId(memberIdStr)).ifPresentOrElse(member -> {
             member.addNotification(notification);
             
-            if (onlineUsers.contains(memberIdStr)) {
+            boolean isOnline = memberSessions.containsKey(memberIdStr);
+            if (isOnline) {
                 logger.info("Notification Dispatched_Realtime to {}: {}", memberIdStr, message);
-                member.markNotificationsDelivered(); 
+                if (broadcaster != null) {
+                    broadcaster.broadcastToUser(memberIdStr, notification);
+                }
+                member.markNotificationsDelivered();
             } else {
                 logger.info("Notification Saved for offline user {}", memberIdStr);
             }

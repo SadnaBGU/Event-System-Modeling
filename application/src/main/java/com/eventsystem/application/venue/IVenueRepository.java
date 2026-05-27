@@ -7,7 +7,7 @@ import com.eventsystem.domain.venue.VenueId;
 import java.util.List;
 import java.util.Optional;
 
-public interface VenueRepository {
+public interface IVenueRepository {
     Optional<Venue> findById(VenueId venueId);
 
     List<Venue> findByCompanyId(CompanyId companyId);

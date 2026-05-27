@@ -7,8 +7,6 @@
 spring:
   application:
     name: event-system
-  main:
-    web-application-type: none   # V1 has no web layer; tests only
 
 eventsystem:
   security:

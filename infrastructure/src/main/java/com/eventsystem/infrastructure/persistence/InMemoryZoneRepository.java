@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.event.ZoneRepository;
+import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class InMemoryZoneRepository implements ZoneRepository {
+public class InMemoryZoneRepository implements IZoneRepository {
 
     private final Map<String, Zone> store = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReentrantLock> zoneLocks = new ConcurrentHashMap<>();

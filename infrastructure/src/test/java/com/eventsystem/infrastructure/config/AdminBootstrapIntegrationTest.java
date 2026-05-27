@@ -2,11 +2,11 @@ package com.eventsystem.infrastructure.config;
 
 import com.eventsystem.application.admin.AdminService;
 import com.eventsystem.application.admin.PlatformDto;
-import com.eventsystem.application.admin.PlatformRepository;
+import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.platform.PlatformStatus;
 import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryPlatformRepository;
@@ -32,8 +32,8 @@ class AdminBootstrapIntegrationTest {
     private static final String ADMIN_USERNAME = "testadmin";
     private static final String ADMIN_PASSWORD = "testadmin123";
 
-    private PlatformRepository platformRepo;
-    private MemberRepository memberRepo;
+    private IPlatformRepository platformRepo;
+    private IMemberRepository memberRepo;
     private AuthService authService;
     private AdminService adminService;
 

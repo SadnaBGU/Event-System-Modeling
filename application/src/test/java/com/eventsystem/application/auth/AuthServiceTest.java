@@ -2,10 +2,10 @@ package com.eventsystem.application.auth;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
-import com.eventsystem.application.member.MemberRepository;
-import com.eventsystem.application.security.PasswordHasher;
-import com.eventsystem.application.security.TokenService;
-import com.eventsystem.application.security.TokenService.TokenClaims;
+import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.application.security.IPasswordHasher;
+import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
@@ -34,9 +34,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock private MemberRepository members;
-    @Mock private PasswordHasher hasher;
-    @Mock private TokenService tokens;
+    @Mock private IMemberRepository members;
+    @Mock private IPasswordHasher hasher;
+    @Mock private ITokenService tokens;
 
     private AuthService service;
 

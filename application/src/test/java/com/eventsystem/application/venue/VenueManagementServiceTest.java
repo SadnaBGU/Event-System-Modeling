@@ -1,6 +1,6 @@
 package com.eventsystem.application.venue;
 
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
 import com.eventsystem.domain.member.Member;
@@ -24,10 +24,10 @@ import static org.mockito.Mockito.*;
 class VenueManagementServiceTest {
 
     @Mock
-    private VenueRepository venueRepository;
+    private IVenueRepository venueRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private IMemberRepository memberRepository;
 
     private VenueManagementService venueManagementService;
     private CompanyId companyId;

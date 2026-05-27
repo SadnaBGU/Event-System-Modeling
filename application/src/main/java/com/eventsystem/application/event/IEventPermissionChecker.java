@@ -1,6 +1,6 @@
 package com.eventsystem.application.event;
 
-public interface EventPermissionChecker {
+public interface IEventPermissionChecker {
 
     boolean canManageEvents(String actorId, String companyId);
 }

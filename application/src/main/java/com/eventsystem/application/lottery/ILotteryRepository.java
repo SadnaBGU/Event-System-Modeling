@@ -7,7 +7,7 @@ import com.eventsystem.domain.lottery.LotteryId;
 import java.util.Optional;
 
 /** Persistence for {@link Lottery}. */
-public interface LotteryRepository {
+public interface ILotteryRepository {
 
     Optional<Lottery> findById(LotteryId lotteryId);
 

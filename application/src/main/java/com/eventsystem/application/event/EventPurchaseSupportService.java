@@ -2,6 +2,7 @@ package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.application.event.IEventRepository;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -9,7 +10,6 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.application.event.ZoneRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +24,14 @@ import java.util.Set;
 
 
 @Service
-public class EventPurchaseSupportService implements EventQueryPort{
+public class EventPurchaseSupportService implements IEventQueryPort{
 
-    private final EventRepository eventRepository;
-    private final ZoneRepository zoneRepository;
+    private final IEventRepository eventRepository;
+    private final IZoneRepository zoneRepository;
     private static final Logger logger = LoggerFactory.getLogger(EventPurchaseSupportService.class);
 
 
-    public EventPurchaseSupportService( EventRepository eventRepository, ZoneRepository zoneRepository) {
+    public EventPurchaseSupportService( IEventRepository eventRepository, IZoneRepository zoneRepository) {
         this.eventRepository = Objects.requireNonNull(eventRepository, "eventRepository must not be null");
         this.zoneRepository = Objects.requireNonNull(zoneRepository, "zoneRepository must not be null" );
     }

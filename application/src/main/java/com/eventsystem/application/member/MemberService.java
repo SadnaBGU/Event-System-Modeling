@@ -19,9 +19,9 @@ public class MemberService {
 
     private static final Logger log = LoggerFactory.getLogger(MemberService.class);
 
-    private final MemberRepository members;
+    private final IMemberRepository members;
 
-    public MemberService(MemberRepository members) {
+    public MemberService(IMemberRepository members) {
         this.members = members;
     }
 

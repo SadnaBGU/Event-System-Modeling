@@ -3,10 +3,12 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.ILotteryValidationPort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
+import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.lottery.Lottery;
+import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
@@ -14,7 +16,9 @@ import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.application.lottery.ILotteryRepository;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -28,17 +32,17 @@ public class OrderService {
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     private final IActiveOrderRepository orderRepository;
-    private final ZoneRepository zoneRepository;
+    private final IZoneRepository zoneRepository;
     private final OrderFactory orderFactory;
-    private final ILotteryValidationPort lotteryValidationPort;
+    private final ILotteryRepository lotteryRepository;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
-    public OrderService(IActiveOrderRepository orderRepository, ZoneRepository zoneRepository, OrderFactory orderFactory, ILotteryValidationPort lotteryValidationPort) {
+    public OrderService(IActiveOrderRepository orderRepository, IZoneRepository zoneRepository, OrderFactory orderFactory, ILotteryRepository lotteryRepository) {
         this.orderRepository = orderRepository;
         this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;
-        this.lotteryValidationPort = lotteryValidationPort;
+        this.lotteryRepository = lotteryRepository;
     }
 
     /**
@@ -48,10 +52,15 @@ public class OrderService {
     public ActiveOrderDTO createOrGetActiveOrder(BuyerReference buyer, String eventId, Optional<String> lotteryCode) {
         logger.info("Requested active order for event");
 
-        if (lotteryCode.isPresent() && lotteryValidationPort.isLotteryEvent(eventId)) {
-            boolean isValid = lotteryValidationPort.validateWinnerCode(eventId, buyer, lotteryCode.get());
-            if (!isValid) {
-                throw new SecurityException("Lottery authorization failed. Access denied.");
+        Optional<Lottery> lottery = lotteryRepository.findByEventId(new EventId(eventId));
+
+        if (lotteryCode.isPresent() && lottery.isPresent()) {
+            Optional<MemberId> memberId = lottery.get().validateCode(lotteryCode.get(), Clock.systemUTC().instant());
+            if (!memberId.isPresent()) {
+                throw new SecurityException("Invalid lottery code provided");
+            }
+            if (!memberId.get().value().equals(buyer.memberId())) {
+                throw new SecurityException("Lottery code does not belong to the buyer");
             }
         }
 
@@ -104,21 +113,16 @@ public class OrderService {
                 });
 
         try {
-            // טריק פשוט כדי שנוכל לחלץ את ה-OrderItem מתוך הלמבדה (שמחזירה void)
             final OrderItem[] itemHolder = new OrderItem[1];
             ZoneId zId = new ZoneId(zoneId);
 
-            // step 1: try to lock the seat through the ZoneRepository
             zoneRepository.withLock(zId, () -> {
-                // משיכת האגרגייט מתוך הריפוזיטורי (בזמן הנעילה)
                 Zone zone = zoneRepository.findById(zId)
                         .orElseThrow(() -> new ZoneDomainException("Zone not found"));
                 
-                // קריאה לפעולה העסקית של האגרגייט ושמירתו
                 zone.reserveSeat(new SeatId(seatId));
                 zoneRepository.save(zone);
                 
-                // יצירת פריט ההזמנה ושמירתו במערך כדי שיהיה זמין מחוץ ללמבדה
                 itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, 1, zone.pricePerTicket());
             });
 

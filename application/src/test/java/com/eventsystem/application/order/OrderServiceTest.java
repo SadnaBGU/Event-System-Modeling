@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,9 +27,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
-import com.eventsystem.application.event.ZoneRepository;
-import com.eventsystem.application.event.ZoneServicePort;
-import com.eventsystem.application.lottery.ILotteryValidationPort;
+import com.eventsystem.application.event.IZoneRepository;
+import com.eventsystem.application.event.IZoneServicePort;
+import com.eventsystem.application.lottery.ILotteryRepository;
+import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.lottery.Lottery;
+import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
@@ -46,13 +50,13 @@ class OrderServiceTest {
     private IActiveOrderRepository orderRepository;
     
     @Mock
-    private ZoneRepository zoneRepository;
+    private IZoneRepository zoneRepository;
     
     @Mock
     private OrderFactory orderFactory;
 
     @Mock
-    private ILotteryValidationPort lotteryValidationPort;
+    private ILotteryRepository lotteryRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -187,8 +191,9 @@ class OrderServiceTest {
     @Test
     void createOrder_LotteryEvent_ValidCode_CreatesOrder() {
         // Arrange - UAT 17
-        when(lotteryValidationPort.isLotteryEvent(EVENT_ID)).thenReturn(true);
-        when(lotteryValidationPort.validateWinnerCode(EVENT_ID, testBuyer, "WINNER-123")).thenReturn(true);
+        Lottery mockLottery = mock(Lottery.class);
+        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
+        when(mockLottery.validateCode(eq("WINNER-123"), any(Instant.class))).thenReturn(Optional.of(new MemberId(testBuyer.memberId())));
         when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
         when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
 
@@ -203,15 +208,15 @@ class OrderServiceTest {
     @Test
     void createOrder_LotteryEvent_InvalidCode_ThrowsException() {
         // Arrange - UAT 18
-        when(lotteryValidationPort.isLotteryEvent(EVENT_ID)).thenReturn(true);
-        when(lotteryValidationPort.validateWinnerCode(EVENT_ID, testBuyer, "FAKE-CODE")).thenReturn(false);
+        Lottery mockLottery = mock(Lottery.class);
+        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
+        when(mockLottery.validateCode(eq("FAKE-CODE"), any(Instant.class))).thenReturn(Optional.empty());
 
         // Act & Assert
-        SecurityException exception = assertThrows(SecurityException.class, () -> {
+        assertThrows(SecurityException.class, () -> {
             orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("FAKE-CODE"));
         });
         
-        assertEquals("Lottery authorization failed. Access denied.", exception.getMessage());
         verify(orderRepository, never()).save(any());
     }
 

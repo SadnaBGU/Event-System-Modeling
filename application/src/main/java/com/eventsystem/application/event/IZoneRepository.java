@@ -7,7 +7,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
-public interface ZoneRepository {
+public interface IZoneRepository {
     Optional<Zone> findById(ZoneId zoneId);
     List<Zone> findByEventId(EventId eventId);
     void save(Zone zone);

@@ -1,6 +1,6 @@
 package com.eventsystem.application.venue;
 
-import com.eventsystem.application.member.MemberRepository;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
 import com.eventsystem.domain.member.MemberId;
@@ -15,10 +15,10 @@ import java.util.List;
 import java.util.Objects;
 
 public class VenueManagementService {
-    private final VenueRepository venueRepository;
-    private final MemberRepository memberRepository;
+    private final IVenueRepository venueRepository;
+    private final IMemberRepository memberRepository;
 
-    public VenueManagementService(VenueRepository venueRepository, MemberRepository memberRepository) {
+    public VenueManagementService(IVenueRepository venueRepository, IMemberRepository memberRepository) {
         this.venueRepository = Objects.requireNonNull(venueRepository, "VenueRepository cannot be null");
         this.memberRepository = Objects.requireNonNull(memberRepository, "MemberRepository cannot be null");
     }

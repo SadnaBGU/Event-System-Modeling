@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.admin.PlatformRepository;
+import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 
 import java.util.Objects;
@@ -8,12 +8,12 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * In-memory adapter for the singleton {@link PlatformRepository}.
+ * In-memory adapter for the singleton {@link IPlatformRepository}.
  *
  * Holds a single {@link Platform} instance behind an {@link AtomicReference}
  * so that reads and writes are visible across threads without a lock.
  */
-public class InMemoryPlatformRepository implements PlatformRepository {
+public class InMemoryPlatformRepository implements IPlatformRepository {
 
     private final AtomicReference<Platform> instance = new AtomicReference<>();
 
