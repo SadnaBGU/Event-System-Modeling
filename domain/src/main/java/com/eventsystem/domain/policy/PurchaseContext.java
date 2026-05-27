@@ -15,7 +15,7 @@ public record PurchaseContext(LocalDate buyerBirthDate, EventSnapshot eventSnaps
 
     public PurchaseContext {
         Objects.requireNonNull(eventSnapshot, "eventSnapshot must not be null");
-        Objects.requireNonNull(buyerBirthDate, "eventSnapshot must not be null");
+        Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(zonesOfEachEventTicket, "zonesOfEachEventTicket must not be null");
 
@@ -24,6 +24,10 @@ public record PurchaseContext(LocalDate buyerBirthDate, EventSnapshot eventSnaps
 
     public String getEventName() {
         return eventSnapshot.eventName();
+    }
+
+    public int ticketCount() {
+        return zonesOfEachEventTicket.size();
     }
 
     public String getEventId() {

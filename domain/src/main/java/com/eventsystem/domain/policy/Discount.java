@@ -9,7 +9,7 @@ import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
 import com.eventsystem.domain.policy.composite.AndPolicy;
 
 
-public class Discount {
+public final class Discount {
 
     private final String discountName;
     private final BigDecimal discountPrecent;
@@ -17,11 +17,10 @@ public class Discount {
 
 
     public Discount(String discountName, BigDecimal discountPercent, IPolicy policy) {
-        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0 
-                                    || discountPercent.compareTo(BigDecimal.valueOf(100)) > 0) {
+        if (!isValidDiscountPercent(discountPercent)) {
             throw new DiscountPolicyException("Discount percent must be between 0 and 100");
         }
-        if (discountName == null || discountName.isBlank() || discountName.isEmpty()) {
+        if (!isValidDiscountName(discountName)) {
             throw new DiscountPolicyException("Discount Name must be non null and non blank/empty");
         }
         this.discountName = Objects.requireNonNull(discountName, "Discount Name must not be null");
@@ -36,6 +35,7 @@ public class Discount {
 
 
     public boolean validateDiscount(PurchaseContext context) {
+        Objects.requireNonNull(context, "Purchase Context cannot be null");
         return this.discountPolicy.validate(context);
     }
 
@@ -51,6 +51,16 @@ public class Discount {
     public String getDiscountName() {
         return discountName;
     }
+
+    private boolean isValidDiscountPercent(BigDecimal discountPercent) {
+        return !(discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) <= 0 
+                                    || discountPercent.compareTo(BigDecimal.valueOf(100)) > 0);
+    }
+
+    private boolean isValidDiscountName(String discountName) {
+        return !(discountName == null || discountName.isBlank() || discountName.isEmpty());
+    }
+    
 
     public static Discount GeneralDiscount(String discountName, BigDecimal discountPercent) {
         IPolicy truePolicy = AlwaysTruePolicy.INSTANCE;

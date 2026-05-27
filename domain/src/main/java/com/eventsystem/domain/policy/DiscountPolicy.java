@@ -25,6 +25,8 @@ public final class DiscountPolicy {
     private boolean stackable;
     private boolean companyWide;
 
+    private static final BigDecimal HUNDREAD = BigDecimal.valueOf(100);
+
     public DiscountPolicy(CompanyId companyId) {
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.discounts = new ArrayList<>();
@@ -61,6 +63,14 @@ public final class DiscountPolicy {
         discounts.add(Objects.requireNonNull(discount, "discount must not be null"));
     }
 
+    public List<Discount> discounts() {
+        return List.copyOf(discounts);
+    }
+
+    public Set<String> discountedEventIds() {
+        return Set.copyOf(discountedEventsIds);
+    }
+
     public boolean appliesTo(PurchaseContext context) {
         Objects.requireNonNull(context, "context must not be null");
 
@@ -71,79 +81,164 @@ public final class DiscountPolicy {
         return companyWide || discountedEventsIds.contains(context.getEventId());
     }
 
-    public boolean doesDiscountApplyForPurchase(PurchaseContext context) {
-        return getDiscountPercent(context).compareTo(BigDecimal.ZERO) > 0;
-    }
-
-    private DiscountInfo getDiscountInfo(PurchaseContext context) {
+    public boolean isPurchaseEligibleForSpecificDiscount(PurchaseContext context, String discountName) {
         if (!appliesTo(context)) {
-            return new DiscountInfo("None" ,BigDecimal.ZERO);
+            return false;
+        }
+            Discount foundDiscount = null;
+        for (Discount discount : discounts) {
+            if (discount.getDiscountName().equals(discountName)) {
+                foundDiscount = discount;
+                break;
+            }
+        }
+        if (foundDiscount == null) {
+            return false;
         }
 
-        return stackable
-                ? getStackedDiscountInfo(context)
-                : getBestDiscountInfo(context);
+        return foundDiscount.validateDiscount(context);
     }
 
-
-    public BigDecimal getDiscountPercent(PurchaseContext context) {
-        return getDiscountInfo(context).discountPercent();
+    private BigDecimal capAt100(BigDecimal percent) {
+        return percent.min(HUNDREAD);
     }
 
+    public boolean isPurchaseEligibleForDiscount(PurchaseContext context) {
+        if (!appliesTo(context)) {
+            return false;
+        }
+        for (Discount discount : discounts) {
+            if (discount.validateDiscount(context) && discount.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    private DiscountInfo getBestDiscountInfo(PurchaseContext context) {
+    private DiscountSummary getBestDiscountSummary(PurchaseContext context) {
         BigDecimal best = BigDecimal.ZERO;
-        String bestDiscountName = "";
+        ArrayList<String> bestDiscountName = new ArrayList<>();
+        ArrayList<BigDecimal> bestDiscountPrecent = new ArrayList<>();
+        ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
+
 
         for (Discount discount : discounts) {
             BigDecimal current = discount.getValidDiscountAmount(context);
 
             if (current.compareTo(best) > 0) {
                 best = current;
-                bestDiscountName = discount.getDiscountName();
-                if (best.compareTo(BigDecimal.valueOf(100)) > 0) {
+                if (bestDiscountName.isEmpty()) {
+                    bestDiscountName.add(discount.getDiscountName());
+                    bestDiscountPrecent.add(current);
+                    actualAmountPlaceholder.add(BigDecimal.ZERO);
+                }
+                else {
+                    bestDiscountName.set(0, discount.getDiscountName());
+                    bestDiscountPrecent.set(0, current);
+                }
+
+                if (best.compareTo(HUNDREAD) > 0) {
                     break;
                 }
             }
         }
 
-        return new DiscountInfo(bestDiscountName ,capAt100(best));
+
+        DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
+                                                             bestDiscountPrecent,
+                                                             actualAmountPlaceholder,
+                                                             BigDecimal.ZERO);
+        return noActualAmounts;
     }
 
-    private DiscountInfo getStackedDiscountInfo(PurchaseContext context) {
-        List <DiscountInfo> validDiscounts= new ArrayList<>();
+    private DiscountSummary getStackedDiscountSummary(PurchaseContext context) {
+        BigDecimal totalPercents = BigDecimal.ZERO;
+        ArrayList<String> bestDiscountName = new ArrayList<>();
+        ArrayList<BigDecimal> bestDiscountPrecent = new ArrayList<>();
+        ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
 
         for (Discount discount : discounts) {
-            if (discount.getValidDiscountAmount(context).compareTo(BigDecimal.ZERO) > 0) {
-                validDiscounts.add(new DiscountInfo(discount.getDiscountName(), discount.getDiscountPercent()));
+            BigDecimal current = discount.getValidDiscountAmount(context);
+
+            if (current.compareTo(BigDecimal.ZERO) > 0) {
+                totalPercents = totalPercents.add(current);
+                bestDiscountName.add(discount.getDiscountName());
+                bestDiscountPrecent.add(current);
+                actualAmountPlaceholder.add(BigDecimal.ZERO);
+
+                if (totalPercents.compareTo(HUNDREAD) > 0) {
+                    break;
+                }
             }
         }
-        
-        BigDecimal total = BigDecimal.ZERO;
-        String stackedDiscountsNames = "";
-        for (DiscountInfo discountInfo : validDiscounts) {
-            total = total.add(discountInfo.discountPercent());
-            stackedDiscountsNames = stackedDiscountsNames.concat(discountInfo.discountName() +"; ");
-            if (total.compareTo(BigDecimal.valueOf(100)) > 0) {
-                break;
-            }
+
+        DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
+                                                             bestDiscountPrecent,
+                                                             actualAmountPlaceholder,
+                                                             BigDecimal.ZERO);
+        return noActualAmounts;
+    }
+
+    public DiscountSummary getFullDiscountSummary(PurchaseContext context, Money baseCost) {
+        Objects.requireNonNull(baseCost, "baseCost must not be null");
+
+        if (!appliesTo(context)) {
+            return DiscountSummary.NoDiscountSummary();
         }
 
-        return new DiscountInfo(stackedDiscountsNames ,  capAt100(total));
+        DiscountSummary noActualAmounts =  stackable ? getStackedDiscountSummary(context) : getBestDiscountSummary(context);
+
+        if (noActualAmounts.appliedDiscountsNames().isEmpty()) {
+            return DiscountSummary.NoDiscountSummary();
+        }
+
+        List<BigDecimal> newActualAmounts = new ArrayList<>();
+        BigDecimal totalPercent = BigDecimal.ZERO;
+
+        for (int i = 0; i < noActualAmounts.appliedDiscountsNames().size(); i++) {
+            BigDecimal currPercent = noActualAmounts.appliedDiscountPercents().get(i);
+            totalPercent = capAt100(totalPercent.add(currPercent));
+            BigDecimal mult = currPercent.divide(HUNDREAD);
+            newActualAmounts.add(mult.multiply(baseCost.amount()));
+        }
+
+        BigDecimal temp =  totalPercent.divide(HUNDREAD);
+
+        return noActualAmounts.ReplaceActualAmounts(newActualAmounts, temp.multiply(baseCost.amount()));
     }
 
-    private BigDecimal capAt100(BigDecimal percent) {
-        return percent.min(BigDecimal.valueOf(100));
+    public BigDecimal getFullDiscountPercent(PurchaseContext context) {
+        if (!appliesTo(context)) {
+            return BigDecimal.ZERO;
+        }
+
+        DiscountSummary summary =
+                stackable ? getStackedDiscountSummary(context) : getBestDiscountSummary(context);
+
+        return summary.appliedDiscountPercents()
+                .stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .min(HUNDREAD);
     }
 
-    private record DiscountInfo(String discountName, BigDecimal discountPercent) {}
+    public DiscountSnapshot generateDiscountSnapshot(DiscountSummary summary, Money baseCost) {
 
-    public DiscountSnapshot getDiscountSnapshot(PurchaseContext context, Money baseCost) {
-        DiscountInfo info = getDiscountInfo(context);
-        BigDecimal discountPercent = info.discountPercent();
-        BigDecimal multiplier = discountPercent.divide(BigDecimal.valueOf(100));
-        Money discountMoneyAmount = new Money(baseCost.amount().multiply(multiplier), baseCost.currency());
-
-        return new DiscountSnapshot(info.discountName(), discountMoneyAmount);
+        Objects.requireNonNull(baseCost, "baseCost must not be null");
+        Money discountMoneyAmount = new Money(summary.totalDiscount(), baseCost.currency());
+        int discountAmount = summary.appliedDiscountsNames().size();
+        String discountNames = "";
+        for (int i = 0; i < discountAmount; i++) {
+            discountNames = discountNames.concat(summary.appliedDiscountsNames().get(i));
+            if (i < discountAmount - 1) {
+                discountNames = discountNames.concat( " ; ");
+            }
+        }
+        return new DiscountSnapshot(discountNames, discountMoneyAmount);
     }
+
+    public DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseCost) {
+        DiscountSummary summary = getFullDiscountSummary(context, baseCost);
+        return generateDiscountSnapshot(summary, baseCost);
+    }
+
 }

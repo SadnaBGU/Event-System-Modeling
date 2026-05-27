@@ -18,7 +18,7 @@ public final class MinTicketPolicy implements IPolicy{
 
     @Override
     public boolean validate(PurchaseContext context) {
-        return context.zonesOfEachEventTicket().size() >= minTickets;
+        return context.ticketCount() >= minTickets;
     }
 
     @Override

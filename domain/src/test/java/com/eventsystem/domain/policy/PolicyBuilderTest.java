@@ -10,6 +10,8 @@ import java.util.Set;
 
 import static com.eventsystem.domain.policy.PolicyTestFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 
 /**
  * PolicyBuilder tests.
@@ -91,5 +93,32 @@ class PolicyBuilderTest {
         assertThat(policy.validate(contextWithTickets(REGULAR_ZONE, BALCONY_ZONE))).isFalse();
         assertThat(policy.validate(contextWithTickets(VIP_ZONE))).isFalse();
         assertThat(policy.validate(contextWithTickets(VIP_ZONE, VIP_ZONE, REGULAR_ZONE))).isTrue();
+    }
+
+    @Test
+    void staticAndRejectsNullPolicy() {
+        assertThatThrownBy(() -> PolicyBuilder.and(new MaxTicketPolicy(1), null))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void staticOrRejectsEmptyPolicies() {
+        assertThatThrownBy(() -> PolicyBuilder.or())
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void builderAddRejectsNullPolicy() {
+        assertThatThrownBy(() -> PolicyBuilder.start().add(null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void zoneSpecificBuilderRejectsInvalidArguments() {
+        assertThatThrownBy(() -> PolicyBuilder.PolicyRestrictToZones(Set.of(), new MaxTicketPolicy(1)))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThatThrownBy(() -> PolicyBuilder.PolicyRestrictToZones(Set.of(VIP_ZONE), (IPolicy) null))
+                .isInstanceOf(RuntimeException.class);
     }
 }

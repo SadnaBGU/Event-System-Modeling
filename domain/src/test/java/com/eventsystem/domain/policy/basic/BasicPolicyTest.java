@@ -184,4 +184,47 @@ class BasicPolicyTest {
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessageContaining("Unimplemented");
     }
+
+    @Test
+    void minAgePolicy_rejectsBuyerWhoseBirthdayIsTomorrow() {
+        MinAgePolicy policy = new MinAgePolicy(18);
+
+        PurchaseContext context = contextWithBirthDate(
+                LocalDate.now().minusYears(18).plusDays(1),
+                REGULAR_ZONE
+        );
+
+        assertThat(policy.validate(context)).isFalse();
+    }
+
+    @Test
+    void minAgePolicy_acceptsBuyerAfterBirthday() {
+        MinAgePolicy policy = new MinAgePolicy(18);
+
+        PurchaseContext context = contextWithBirthDate(
+                LocalDate.now().minusYears(18).minusDays(1),
+                REGULAR_ZONE
+        );
+
+        assertThat(policy.validate(context)).isTrue();
+    }
+
+    @Test
+    void datePolicyRequireDoesNotThrowWhenValid() {
+        assertThatCode(() -> new UntilDatePolicy(LocalDate.now().plusDays(1))
+                .require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+
+        assertThatCode(() -> new AfterDatePolicy(LocalDate.now().minusDays(1))
+                .require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void afterDatePolicy_requireThrowsWhenBeforeStartDate() {
+        AfterDatePolicy policy = new AfterDatePolicy(LocalDate.now().plusDays(1));
+
+        assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(PurchasePolicyException.class);
+    }
 }

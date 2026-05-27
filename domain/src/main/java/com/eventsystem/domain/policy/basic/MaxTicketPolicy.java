@@ -18,7 +18,7 @@ public final class MaxTicketPolicy implements IPolicy{
 
     @Override
     public boolean validate(PurchaseContext context) {
-        return context.zonesOfEachEventTicket().size() <= maxTickets;
+        return context.ticketCount() <= maxTickets;
     }
 
     @Override

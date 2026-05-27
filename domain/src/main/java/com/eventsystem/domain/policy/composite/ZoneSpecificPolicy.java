@@ -20,7 +20,7 @@ public final class ZoneSpecificPolicy implements IPolicy {
     private final Set<ZoneId> affectedZones;
     private final boolean noAffectedTicketsPass;
 
-    public ZoneSpecificPolicy(Set<ZoneId> affectedZones, IPolicy policy, boolean noAffectedTicketsPass) {
+    public ZoneSpecificPolicy(Set<ZoneId> affectedZones, IPolicy policy, boolean passWhenNoAffectedTickets) {
         Objects.requireNonNull(affectedZones, "affectedZones must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 
@@ -34,7 +34,7 @@ public final class ZoneSpecificPolicy implements IPolicy {
 
         this.affectedZones = Set.copyOf(affectedZones);
         this.policy = policy;
-        this.noAffectedTicketsPass = noAffectedTicketsPass;
+        this.noAffectedTicketsPass = passWhenNoAffectedTickets;
     }
 
     public ZoneSpecificPolicy(Set<ZoneId> affectedZones, List<IPolicy> policies, boolean noAffectedTicketsPass) {

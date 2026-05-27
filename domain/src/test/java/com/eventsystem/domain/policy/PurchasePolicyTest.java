@@ -73,4 +73,27 @@ class PurchasePolicyTest {
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("null policies");
     }
+
+    @Test
+    void purchasePolicyRequireDoesNotThrowWhenAllRulesPass_UAT44() {
+        PurchasePolicy policy = new PurchasePolicy(List.of(
+                new MinTicketPolicy(2),
+                new MaxTicketPolicy(4)
+        ));
+
+        assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void purchasePolicyListConstructorDefensivelyCopiesPolicies() {
+        java.util.ArrayList<IPolicy> policies = new java.util.ArrayList<>();
+        policies.add(new MaxTicketPolicy(1));
+
+        PurchasePolicy policy = new PurchasePolicy(policies);
+
+        policies.clear();
+
+        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
+    }
 }

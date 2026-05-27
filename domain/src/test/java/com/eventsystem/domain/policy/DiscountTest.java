@@ -92,4 +92,32 @@ class DiscountTest {
         assertThatThrownBy(() -> new Discount("Invalid", BigDecimal.TEN, Arrays.asList(new CodePolicy("A"), null)))
                 .isInstanceOf(RuntimeException.class);
     }
+
+    @Test
+    void discountAllowsExactly100Percent() {
+        Discount discount = Discount.GeneralDiscount("Free", BigDecimal.valueOf(100));
+
+        assertThat(discount.getDiscountPercent()).isEqualByComparingTo("100");
+        assertThat(discount.validateDiscount(contextWithTickets(REGULAR_ZONE))).isTrue();
+    }
+
+    @Test
+    void discountCreatedFromPolicyListDefensivelyCopiesPolicies() {
+        java.util.ArrayList<IPolicy> policies = new java.util.ArrayList<>();
+        policies.add(new CodePolicy("SAVE"));
+
+        Discount discount = new Discount("Coupon", BigDecimal.TEN, policies);
+
+        policies.clear();
+
+        assertThat(discount.validateDiscount(contextWithCode("SAVE", REGULAR_ZONE))).isTrue();
+    }
+
+    @Test
+    void discountRejectsNullContextDuringEvaluation() {
+        Discount discount = Discount.GeneralDiscount("Visible", BigDecimal.TEN);
+
+        assertThatThrownBy(() -> discount.validateDiscount(null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

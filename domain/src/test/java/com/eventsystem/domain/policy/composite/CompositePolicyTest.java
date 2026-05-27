@@ -182,11 +182,70 @@ class CompositePolicyTest {
         assertThat(discountRequiresFive.validate(fiveTickets)).isTrue();
     }
 
+
+    @Test
+    void andPolicyRequireStopsAtFirstFailure() {
+        java.util.concurrent.atomic.AtomicBoolean secondEvaluated = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        IPolicy first = failingPolicy("first failed");
+        IPolicy second = new IPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                secondEvaluated.set(true);
+                return true;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                secondEvaluated.set(true);
+            }
+        };
+
+        IPolicy policy = new AndPolicy(List.of(first, second));
+
+        assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(PurchasePolicyException.class);
+
+        assertThat(secondEvaluated).isFalse();
+    }
+
+    @Test
+    void zoneSpecificPolicy_passModeDoesNotEvaluateInnerPolicyWhenNoAffectedTickets() {
+        IPolicy explodingPolicy = new IPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                throw new AssertionError("inner policy should not be evaluated");
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                throw new AssertionError("inner policy should not be evaluated");
+            }
+        };
+
+        IPolicy policy = new ZoneSpecificPolicy(Set.of(VIP_ZONE), explodingPolicy, true);
+
+        assertThat(policy.validate(contextWithTickets(REGULAR_ZONE))).isTrue();
+        assertThatCode(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void zoneSpecificPolicyRejectsNullZoneElement() {
+        java.util.Set<com.eventsystem.domain.zone.ZoneId> zones = new java.util.HashSet<>();
+        zones.add(VIP_ZONE);
+        zones.add(null);
+
+        assertThatThrownBy(() -> new ZoneSpecificPolicy(zones, passingPolicy(), true))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("null zones");
+    }
+
     private static IPolicy countedTicketsMustEqual(int expected) {
         return new IPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
-                return context.zonesOfEachEventTicket().size() == expected;
+                return context.ticketCount() == expected;
             }
 
             @Override
@@ -202,7 +261,7 @@ class CompositePolicyTest {
         return new IPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
-                return context.zonesOfEachEventTicket().size() <= max;
+                return context.ticketCount() <= max;
             }
 
             @Override
@@ -218,7 +277,7 @@ class CompositePolicyTest {
         return new IPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
-                return context.zonesOfEachEventTicket().size() >= min;
+                return context.ticketCount() >= min;
             }
 
             @Override

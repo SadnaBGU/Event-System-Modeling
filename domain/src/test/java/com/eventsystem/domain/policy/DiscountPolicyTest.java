@@ -31,8 +31,8 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
 
         assertThat(policy.appliesTo(contextWithTickets(REGULAR_ZONE))).isFalse();
-        assertThat(policy.getDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(policy.doesDiscountApplyForPurchase(contextWithTickets(REGULAR_ZONE))).isFalse();
+        assertThat(policy.getFullDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(policy.isPurchaseEligibleForDiscount(contextWithTickets(REGULAR_ZONE))).isFalse();
     }
 
     @Test
@@ -43,7 +43,7 @@ class DiscountPolicyTest {
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isTrue();
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE))).isTrue();
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo("20");
     }
 
@@ -54,7 +54,7 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(OTHER_COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isFalse();
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(OTHER_COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(OTHER_COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo(BigDecimal.ZERO);
     }
 
@@ -65,11 +65,11 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Event only", BigDecimal.valueOf(10)));
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isTrue();
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo("10");
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE))).isFalse();
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo(BigDecimal.ZERO);
     }
 
@@ -80,14 +80,14 @@ class DiscountPolicyTest {
         policy.activateForEvent(EVENT_ID.toString());
         policy.addDiscount(Discount.GeneralDiscount("Discount", BigDecimal.valueOf(10)));
 
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo("10");
 
         policy.deactivateCompanyWide();
         policy.deactivateForEvent(EVENT_ID.toString());
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isFalse();
-        assertThat(policy.getDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo(BigDecimal.ZERO);
     }
 
@@ -97,11 +97,11 @@ class DiscountPolicyTest {
         policy.activateCompanyWide();
         policy.addDiscount(new Discount("Coupon", BigDecimal.valueOf(15), new CodePolicy("SAVE15")));
 
-        assertThat(policy.getDiscountPercent(contextWithCode("SAVE15", REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextWithCode("SAVE15", REGULAR_ZONE)))
                 .isEqualByComparingTo("15");
-        assertThat(policy.getDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE)))
+        assertThat(policy.getFullDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE)))
                 .isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(policy.doesDiscountApplyForPurchase(contextWithCode("WRONG", REGULAR_ZONE))).isFalse();
+        assertThat(policy.isPurchaseEligibleForDiscount(contextWithCode("WRONG", REGULAR_ZONE))).isFalse();
     }
 
     @Test
@@ -112,7 +112,7 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Small", BigDecimal.valueOf(10)));
         policy.addDiscount(Discount.GeneralDiscount("Large", BigDecimal.valueOf(25)));
 
-        assertThat(policy.getDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo("25");
+        assertThat(policy.getFullDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo("25");
     }
 
     @Test
@@ -123,7 +123,7 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(10)));
         policy.addDiscount(new Discount("Wrong coupon", BigDecimal.valueOf(80), new CodePolicy("SECRET")));
 
-        assertThat(policy.getDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE))).isEqualByComparingTo("10");
+        assertThat(policy.getFullDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE))).isEqualByComparingTo("10");
     }
 
     @Test
@@ -136,7 +136,7 @@ class DiscountPolicyTest {
         policy.addDiscount(new Discount("Invalid coupon", BigDecimal.valueOf(50), new CodePolicy("NOPE")));
         policy.addDiscount(Discount.GeneralDiscount("Cap", BigDecimal.valueOf(30)));
 
-        assertThat(policy.getDiscountPercent(contextWithCode("STACK", REGULAR_ZONE))).isEqualByComparingTo("100");
+        assertThat(policy.getFullDiscountPercent(contextWithCode("STACK", REGULAR_ZONE))).isEqualByComparingTo("100");
     }
 
     @Test
@@ -146,7 +146,7 @@ class DiscountPolicyTest {
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
         Money baseCost = Money.of(BigDecimal.valueOf(250), "ILS");
 
-        DiscountSnapshot snapshot = policy.getDiscountSnapshot(contextWithTickets(REGULAR_ZONE), baseCost);
+        DiscountSnapshot snapshot = policy.generateDiscountSnapshot(contextWithTickets(REGULAR_ZONE), baseCost);
 
         assertThat(snapshot.discountName()).isEqualTo("Early bird");
         assertThat(snapshot.discountAmount().currency()).isEqualTo("ILS");
@@ -185,4 +185,117 @@ class DiscountPolicyTest {
         assertThat(requiresFiveTickets.validateDiscount(contextWithTickets(VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE)))
                 .isTrue();
     }
+
+    @Test
+    void fullDiscountSummaryReturnsNoDiscountWhenPolicyDoesNotApply() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
+
+        DiscountSummary summary = policy.getFullDiscountSummary(
+                contextWithTickets(REGULAR_ZONE),
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        assertThat(summary.appliedDiscountsNames()).isEmpty();
+        assertThat(summary.appliedDiscountPercents()).isEmpty();
+        assertThat(summary.actualDiscountAmount()).isEmpty();
+        assertThat(summary.totalDiscount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+
+    @Test
+    void nonStackableSummaryIncludesOnlyBestValidDiscount() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.activateCompanyWide();
+        policy.disallowStacking();
+        policy.addDiscount(Discount.GeneralDiscount("Small", BigDecimal.valueOf(10)));
+        policy.addDiscount(Discount.GeneralDiscount("Large", BigDecimal.valueOf(25)));
+
+        DiscountSummary summary = policy.getFullDiscountSummary(
+                contextWithTickets(REGULAR_ZONE),
+                Money.of(BigDecimal.valueOf(200), "ILS")
+        );
+
+        assertThat(summary.appliedDiscountsNames()).containsExactly("Large");
+        assertThat(summary.appliedDiscountPercents())
+         .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .containsExactly(BigDecimal.valueOf(25));
+        assertThat(summary.actualDiscountAmount().get(0)).isEqualByComparingTo("50");
+        assertThat(summary.totalDiscount()).isEqualByComparingTo("50");
+    }
+
+    @Test
+    void stackableSummaryIncludesOnlyValidAppliedDiscounts() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.activateCompanyWide();
+        policy.allowStacking();
+        policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
+        policy.addDiscount(new Discount("Valid coupon", BigDecimal.valueOf(15), new CodePolicy("OK")));
+        policy.addDiscount(new Discount("Invalid coupon", BigDecimal.valueOf(50), new CodePolicy("NOPE")));
+
+        DiscountSummary summary = policy.getFullDiscountSummary(
+                contextWithCode("OK", REGULAR_ZONE),
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        assertThat(summary.appliedDiscountsNames()).containsExactly("Visible", "Valid coupon");
+        assertThat(summary.appliedDiscountPercents())
+         .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .containsExactly(BigDecimal.valueOf(20), BigDecimal.valueOf(15));
+        assertThat(summary.actualDiscountAmount())
+         .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .containsExactly(BigDecimal.valueOf(20), BigDecimal.valueOf(15));
+        assertThat(summary.totalDiscount()).isEqualByComparingTo("35");
+    }
+
+    @Test
+    void stackableSummaryCapsFinalContributionAt100Percent() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.activateCompanyWide();
+        policy.allowStacking();
+        policy.addDiscount(Discount.GeneralDiscount("Seventy", BigDecimal.valueOf(70)));
+        policy.addDiscount(Discount.GeneralDiscount("Fifty", BigDecimal.valueOf(50)));
+
+        DiscountSummary summary = policy.getFullDiscountSummary(
+                contextWithTickets(REGULAR_ZONE),
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        assertThat(summary.appliedDiscountsNames()).containsExactly("Seventy", "Fifty");
+        assertThat(summary.appliedDiscountPercents())
+         .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .containsExactly(BigDecimal.valueOf(70), BigDecimal.valueOf(50));
+        assertThat(summary.actualDiscountAmount())
+         .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .containsExactly(BigDecimal.valueOf(70), BigDecimal.valueOf(50));
+        assertThat(summary.totalDiscount()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void discountSnapshotForNoDiscountHasZeroAmount() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.activateCompanyWide();
+        policy.addDiscount(new Discount("Coupon", BigDecimal.valueOf(20), new CodePolicy("SAVE")));
+
+        DiscountSnapshot snapshot = policy.generateDiscountSnapshot(
+                contextWithCode("WRONG", REGULAR_ZONE),
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void discountsAndDiscountedEventIdsAccessorsReturnDefensiveCopies() {
+        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.TEN));
+        policy.activateForEvent(EVENT_ID.toString());
+
+        assertThatThrownBy(() -> policy.discounts().add(Discount.GeneralDiscount("Other", BigDecimal.ONE)))
+                .isInstanceOf(UnsupportedOperationException.class);
+
+        assertThatThrownBy(() -> policy.discountedEventIds().add("other-event"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
 }
