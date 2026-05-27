@@ -7,6 +7,7 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.composite.AndPolicy;
 import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
+import com.eventsystem.domain.policy.basic.NeverAllowPolicy;
 
 
 
@@ -36,7 +37,11 @@ public class PurchasePolicy{
         return new PurchasePolicy(AlwaysTruePolicy.INSTANCE);
     }
 
-    public boolean validatePurchasePolicy(PurchaseContext context) {
+    public static PurchasePolicy NotAllowed() {
+        return new PurchasePolicy(NeverAllowPolicy.INSTANCE);
+    }
+
+    public boolean isPurchaseAllowedInContext(PurchaseContext context) {
         return policy.validate(context);
     }
 

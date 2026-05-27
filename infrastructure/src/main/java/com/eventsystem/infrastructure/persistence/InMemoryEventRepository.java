@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.event.EventRepository;
+import com.eventsystem.application.event.IEventRepository;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
 
@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @Repository
-public class InMemoryEventRepository implements EventRepository {
+public class InMemoryEventRepository implements IEventRepository {
 
     private final ConcurrentMap<EventId, Event> events = new ConcurrentHashMap<>();
 

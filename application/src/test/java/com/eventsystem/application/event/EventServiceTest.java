@@ -1,6 +1,7 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.*;
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -68,16 +69,20 @@ class EventServiceTest {
     private static final String COMPANY_ID = "company-1";
 
     @Mock
-    private EventRepository eventRepository;
+    private IEventRepository eventRepository;
+
+    @Mock
+    private IPurchasePolicyRepository ppRepository;
 
     @Mock
     private EventPermissionChecker permissionChecker;
+    
 
     private EventService service;
 
     @BeforeEach
     void setUp() {
-        service = new EventService(eventRepository, permissionChecker);
+        service = new EventService(eventRepository, ppRepository ,permissionChecker);
     }
 
     private EventDetails defaultDetails() {

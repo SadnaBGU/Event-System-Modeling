@@ -28,7 +28,7 @@ class PurchasePolicyTest {
     void allowAllPolicyAcceptsAnyPurchase() {
         PurchasePolicy policy = PurchasePolicy.AllowAll();
 
-        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
         assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
                 .doesNotThrowAnyException();
     }
@@ -37,7 +37,7 @@ class PurchasePolicyTest {
     void purchasePolicyCreatedFromSinglePolicyValidatesPurchase_UAT44() {
         PurchasePolicy policy = new PurchasePolicy(new MaxTicketPolicy(4));
 
-        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
     }
 
     @Test
@@ -47,8 +47,8 @@ class PurchasePolicyTest {
                 new MaxTicketPolicy(4)
         ));
 
-        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
-        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE))).isFalse();
+        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isFalse();
     }
 
     @Test
@@ -94,6 +94,6 @@ class PurchasePolicyTest {
 
         policies.clear();
 
-        assertThat(policy.validatePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
+        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
     }
 }

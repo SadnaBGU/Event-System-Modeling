@@ -204,7 +204,7 @@ class DiscountPolicyTest {
         PurchasePolicy purchasePolicy = new PurchasePolicy(new com.eventsystem.domain.policy.basic.MaxTicketPolicy(4));
         Discount requiresFiveTickets = new Discount("Buy five", BigDecimal.valueOf(20), new MinTicketPolicy(5));
 
-        assertThat(purchasePolicy.validatePurchasePolicy(contextWithTickets(VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE)))
+        assertThat(purchasePolicy.isPurchaseAllowedInContext(contextWithTickets(VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE)))
                 .isFalse();
         assertThat(requiresFiveTickets.validateDiscount(contextWithTickets(VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE)))
                 .isTrue();
