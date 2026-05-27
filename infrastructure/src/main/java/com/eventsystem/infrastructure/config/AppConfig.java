@@ -194,8 +194,8 @@ public class AppConfig {
     }
 
     @Bean
-    public NotificationService notificationService(IMemberRepository memberRepo) {
-        return new NotificationService(memberRepo);
+    public NotificationService notificationService(IMemberRepository memberRepo, com.eventsystem.application.member.NotificationBroadcaster broadcaster) {
+        return new NotificationService(memberRepo, broadcaster);
     }
 
     @Bean
