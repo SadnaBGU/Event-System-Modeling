@@ -1,7 +1,7 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
@@ -19,36 +19,78 @@ import java.math.BigDecimal;
 
 public final class DiscountPolicy {
 
+    private final DiscountPolicyId id;
     private final CompanyId companyId;
+    private DiscountPolicyScope scope;
     private final List<Discount> discounts;
-    private final Set<String> discountedEventsIds;
     private boolean stackable;
-    private boolean companyWide;
+    private boolean active;
 
     private static final BigDecimal HUNDREAD = BigDecimal.valueOf(100);
 
-    public DiscountPolicy(CompanyId companyId) {
+        public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, DiscountPolicyScope scope) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
+        this.scope = Objects.requireNonNull(scope, "scope must not be null");
         this.discounts = new ArrayList<>();
-        this.discountedEventsIds = new HashSet<>();
         this.stackable = false;
-        this.companyWide = false;
+        this.active = false; //inactive by default
     }
 
-    public void activateCompanyWide() {
-        this.companyWide = true;
+    public DiscountPolicy(CompanyId cid) {
+        this(DiscountPolicyId.random(), cid, DiscountPolicyScope.clearScope());
     }
 
-    public void deactivateCompanyWide() {
-        this.companyWide = false;
+    public static DiscountPolicy clearScope(CompanyId companyId) {
+        return new DiscountPolicy( DiscountPolicyId.random(), companyId, DiscountPolicyScope.clearScope());
     }
 
-    public void activateForEvent(String eventId) {
-        discountedEventsIds.add(Objects.requireNonNull(eventId, "eventId must not be null"));
+    public static DiscountPolicy inactiveCompanyWide(CompanyId companyId) {
+        return new DiscountPolicy( DiscountPolicyId.random(), companyId, DiscountPolicyScope.companyWideScope());
     }
 
-    public void deactivateForEvent(String eventId) {
-        discountedEventsIds.remove(Objects.requireNonNull(eventId, "eventId must not be null"));
+    public static DiscountPolicy inactiveForEvents(CompanyId companyId, Set<EventId> eventIds) {
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, DiscountPolicyScope.forEvents(eventIds));
+    }
+
+    public static DiscountPolicy inactiveForSingleEvent(CompanyId companyId, EventId eventId) {
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, DiscountPolicyScope.forSingleEvent(eventId));
+    }
+
+    public DiscountPolicyId id() {
+        return id;
+    }
+
+    public CompanyId companyId() {
+        return companyId;
+    }
+
+    public DiscountPolicyScope scope() {
+        return scope;
+    }
+
+    public boolean isStackable() {
+        return stackable;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void activate() {
+        requireValidDiscountPolicy();
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void changeScope(DiscountPolicyScope scope) {
+        this.scope = Objects.requireNonNull(scope, "scope must not be null");
+        if(!scope.isScopedToEventsOrCompany()) {
+            deactivate();
+        }
     }
 
     public void allowStacking() {
@@ -63,23 +105,76 @@ public final class DiscountPolicy {
         discounts.add(Objects.requireNonNull(discount, "discount must not be null"));
     }
 
-    public List<Discount> discounts() {
-        return List.copyOf(discounts);
-    }
-
-    public Set<String> discountedEventIds() {
-        return Set.copyOf(discountedEventsIds);
-    }
-
     public boolean appliesTo(PurchaseContext context) {
         Objects.requireNonNull(context, "context must not be null");
+
+        if (!active) {
+            return false;
+        }
 
         if (!companyId.equals(context.companyId())) {
             return false;
         }
 
-        return companyWide || discountedEventsIds.contains(context.getEventId());
+        return scope.appliesTo(new EventId(context.getEventId()));
     }
+
+    public void setCompanyWide() {
+        Set<EventId> affectedEvents = scope.eventIds();
+        this.scope = new DiscountPolicyScope(true, affectedEvents);
+    }
+
+    public void deactivateCompanyWide() {
+        Set<EventId> affectedEvents = scope.eventIds();
+        this.scope = new DiscountPolicyScope(false, affectedEvents);
+        if(!scope.isScopedToEventsOrCompany()) {
+            deactivate();
+        }
+    }
+
+    public void activateForEvent(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
+        affectedEvents.add(eventId);
+
+        this.scope = new DiscountPolicyScope(scope.isCompanyWide(), affectedEvents);
+    }
+
+    public void deactivateForEvent(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
+        affectedEvents.remove(eventId);
+
+        this.scope = new DiscountPolicyScope(scope.isCompanyWide(), affectedEvents);
+        if(!scope.isScopedToEventsOrCompany()) {
+            deactivate();
+        }
+    }
+
+    public List<Discount> discounts() {
+        return List.copyOf(discounts);
+    }
+
+    public Set<String> discountedEventIds() {
+        return Set.of(scope.eventIds().toString());
+    }
+
+    public boolean isValidDiscountPolicy() {
+        return scope.isScopedToEventsOrCompany() && !discounts.isEmpty();
+    }
+
+    public void requireValidDiscountPolicy() {
+        if(!scope.isScopedToEventsOrCompany()) {
+            throw new DiscountPolicyException("Discount is not related to an Event or Company wide");
+        }
+        if(discounts.isEmpty()) {
+            throw new DiscountPolicyException("No Discounts are related to this Discount Policy");
+        }
+    }
+
+    
 
     public boolean isPurchaseEligibleForSpecificDiscount(PurchaseContext context, String discountName) {
         if (!appliesTo(context)) {

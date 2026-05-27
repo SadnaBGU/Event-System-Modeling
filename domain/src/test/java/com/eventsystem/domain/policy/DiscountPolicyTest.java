@@ -1,5 +1,6 @@
 package com.eventsystem.domain.policy;
 
+import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.basic.CodePolicy;
 import com.eventsystem.domain.policy.basic.MinTicketPolicy;
@@ -8,10 +9,14 @@ import com.eventsystem.domain.shared.Money;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Set;
+
 
 import static com.eventsystem.domain.policy.PolicyTestFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * DiscountPolicy aggregate-level tests.
@@ -26,8 +31,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DiscountPolicyTest {
 
     @Test
-    void newDiscountPolicyDoesNotApplyUntilActivatedForCompanyOrEvent() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+    void newCompanyWideDiscountPolicyDoesNotApplyUntilActivatedForCompanyOrEvent() {
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
+
+        assertThat(policy.appliesTo(contextWithTickets(REGULAR_ZONE))).isFalse();
+        assertThat(policy.getFullDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(policy.isPurchaseEligibleForDiscount(contextWithTickets(REGULAR_ZONE))).isFalse();
+    }
+
+    @Test
+    void NoDiscountPolicyCannotBeActivated() {
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        assertThrows(DiscountPolicyException.class, () -> {policy.activate();});
+    }
+
+    @Test
+    void newEventDiscountPolicyDoesNotApplyUntilActivatedForCompanyOrEvent() {
+        DiscountPolicy policy = DiscountPolicy.inactiveForEvents(COMPANY_ID, Set.of(EVENT_ID));
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
 
         assertThat(policy.appliesTo(contextWithTickets(REGULAR_ZONE))).isFalse();
@@ -37,10 +58,9 @@ class DiscountPolicyTest {
 
     @Test
     void companyWideVisibleDiscountAppliesToAnyEventOfSameCompany_UAT45() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
-
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isTrue();
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE))).isTrue();
         assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, OTHER_EVENT_ID, null, REGULAR_ZONE)))
@@ -49,10 +69,10 @@ class DiscountPolicyTest {
 
     @Test
     void companyWideDiscountDoesNotApplyToDifferentCompany() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
-
+        
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.appliesTo(contextForCompanyAndEvent(OTHER_COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isFalse();
         assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(OTHER_COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo(BigDecimal.ZERO);
@@ -60,10 +80,10 @@ class DiscountPolicyTest {
 
     @Test
     void eventSpecificDiscountAppliesOnlyToActivatedEvent_UAT45() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateForEvent(EVENT_ID.toString());
+        DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, EVENT_ID);
         policy.addDiscount(Discount.GeneralDiscount("Event only", BigDecimal.valueOf(10)));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isTrue();
         assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo("10");
@@ -75,16 +95,16 @@ class DiscountPolicyTest {
 
     @Test
     void deactivatingCompanyWideAndEventSpecificDiscountStopsApplication() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
-        policy.activateForEvent(EVENT_ID.toString());
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        policy.activateForEvent(EVENT_ID);
         policy.addDiscount(Discount.GeneralDiscount("Discount", BigDecimal.valueOf(10)));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                 .isEqualByComparingTo("10");
 
         policy.deactivateCompanyWide();
-        policy.deactivateForEvent(EVENT_ID.toString());
+        policy.deactivateForEvent(EVENT_ID);
 
         assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE))).isFalse();
         assertThat(policy.getFullDiscountPercent(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
@@ -93,10 +113,10 @@ class DiscountPolicyTest {
 
     @Test
     void couponCodeDiscountAppliesOnlyForCorrectCode_UAT46_UAT47() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(new Discount("Coupon", BigDecimal.valueOf(15), new CodePolicy("SAVE15")));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.getFullDiscountPercent(contextWithCode("SAVE15", REGULAR_ZONE)))
                 .isEqualByComparingTo("15");
         assertThat(policy.getFullDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE)))
@@ -106,45 +126,49 @@ class DiscountPolicyTest {
 
     @Test
     void nonStackablePolicyChoosesBestValidDiscount() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.disallowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Small", BigDecimal.valueOf(10)));
         policy.addDiscount(Discount.GeneralDiscount("Large", BigDecimal.valueOf(25)));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.getFullDiscountPercent(contextWithTickets(REGULAR_ZONE))).isEqualByComparingTo("25");
     }
 
     @Test
     void nonStackablePolicyIgnoresInvalidDiscountEvenWhenItsPercentIsHigher_UAT47() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        policy.setCompanyWide();
         policy.disallowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(10)));
         policy.addDiscount(new Discount("Wrong coupon", BigDecimal.valueOf(80), new CodePolicy("SECRET")));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.getFullDiscountPercent(contextWithCode("WRONG", REGULAR_ZONE))).isEqualByComparingTo("10");
     }
 
     @Test
     void stackablePolicySumsOnlyValidDiscountsAndCapsAt100_UAT45() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        policy.setCompanyWide();
         policy.allowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(40)));
         policy.addDiscount(new Discount("Valid coupon", BigDecimal.valueOf(50), new CodePolicy("STACK")));
         policy.addDiscount(new Discount("Invalid coupon", BigDecimal.valueOf(50), new CodePolicy("NOPE")));
         policy.addDiscount(Discount.GeneralDiscount("Cap", BigDecimal.valueOf(30)));
 
+        assertDoesNotThrow(() -> {policy.activate();});
         assertThat(policy.getFullDiscountPercent(contextWithCode("STACK", REGULAR_ZONE))).isEqualByComparingTo("100");
     }
 
     @Test
     void discountSnapshotCalculatesMoneyAmountByPercent_UAT26() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
+        policy.setCompanyWide();
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
         Money baseCost = Money.of(BigDecimal.valueOf(250), "ILS");
+
+        assertDoesNotThrow(() -> {policy.activate();});
 
         DiscountSnapshot snapshot = policy.generateDiscountSnapshot(contextWithTickets(REGULAR_ZONE), baseCost);
 
@@ -155,11 +179,11 @@ class DiscountPolicyTest {
 
     @Test
     void eventSpecificNullActivationArgumentsAreRejected() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
 
-        assertThatThrownBy(() -> policy.activateForEvent((String) null))
+        assertThatThrownBy(() -> policy.activateForEvent((EventId) null))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> policy.deactivateForEvent((String) null))
+        assertThatThrownBy(() -> policy.deactivateForEvent((EventId) null))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -168,7 +192,7 @@ class DiscountPolicyTest {
         assertThatThrownBy(() -> new DiscountPolicy(null))
                 .isInstanceOf(NullPointerException.class);
 
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         assertThatThrownBy(() -> policy.addDiscount(null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> policy.appliesTo(null))
@@ -188,8 +212,9 @@ class DiscountPolicyTest {
 
     @Test
     void fullDiscountSummaryReturnsNoDiscountWhenPolicyDoesNotApply() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(Discount.GeneralDiscount("Early bird", BigDecimal.valueOf(20)));
+
 
         DiscountSummary summary = policy.getFullDiscountSummary(
                 contextWithTickets(REGULAR_ZONE),
@@ -205,12 +230,11 @@ class DiscountPolicyTest {
 
     @Test
     void nonStackableSummaryIncludesOnlyBestValidDiscount() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.disallowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Small", BigDecimal.valueOf(10)));
         policy.addDiscount(Discount.GeneralDiscount("Large", BigDecimal.valueOf(25)));
-
+        policy.activate();
         DiscountSummary summary = policy.getFullDiscountSummary(
                 contextWithTickets(REGULAR_ZONE),
                 Money.of(BigDecimal.valueOf(200), "ILS")
@@ -226,12 +250,12 @@ class DiscountPolicyTest {
 
     @Test
     void stackableSummaryIncludesOnlyValidAppliedDiscounts() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.allowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
         policy.addDiscount(new Discount("Valid coupon", BigDecimal.valueOf(15), new CodePolicy("OK")));
         policy.addDiscount(new Discount("Invalid coupon", BigDecimal.valueOf(50), new CodePolicy("NOPE")));
+        policy.activate();
 
         DiscountSummary summary = policy.getFullDiscountSummary(
                 contextWithCode("OK", REGULAR_ZONE),
@@ -250,11 +274,11 @@ class DiscountPolicyTest {
 
     @Test
     void stackableSummaryCapsFinalContributionAt100Percent() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.allowStacking();
         policy.addDiscount(Discount.GeneralDiscount("Seventy", BigDecimal.valueOf(70)));
         policy.addDiscount(Discount.GeneralDiscount("Fifty", BigDecimal.valueOf(50)));
+        policy.activate();
 
         DiscountSummary summary = policy.getFullDiscountSummary(
                 contextWithTickets(REGULAR_ZONE),
@@ -273,9 +297,9 @@ class DiscountPolicyTest {
 
     @Test
     void discountSnapshotForNoDiscountHasZeroAmount() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
-        policy.activateCompanyWide();
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(new Discount("Coupon", BigDecimal.valueOf(20), new CodePolicy("SAVE")));
+        policy.activate();
 
         DiscountSnapshot snapshot = policy.generateDiscountSnapshot(
                 contextWithCode("WRONG", REGULAR_ZONE),
@@ -287,9 +311,9 @@ class DiscountPolicyTest {
 
     @Test
     void discountsAndDiscountedEventIdsAccessorsReturnDefensiveCopies() {
-        DiscountPolicy policy = new DiscountPolicy(COMPANY_ID);
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.TEN));
-        policy.activateForEvent(EVENT_ID.toString());
+        policy.activateForEvent(EVENT_ID);
 
         assertThatThrownBy(() -> policy.discounts().add(Discount.GeneralDiscount("Other", BigDecimal.ONE)))
                 .isInstanceOf(UnsupportedOperationException.class);
