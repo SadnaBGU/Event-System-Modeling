@@ -49,6 +49,7 @@ import com.eventsystem.infrastructure.persistence.InMemoryVirtualQueueRepository
 import com.eventsystem.infrastructure.persistence.InMemoryZoneRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+import com.eventsystem.application.security.ITokenService;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -119,7 +120,7 @@ public class AppConfig {
     public BCryptPasswordHasher passwordHasher() { return new BCryptPasswordHasher(bcryptStrength); }
 
     @Bean
-    public JwtTokenService tokenService() { return new JwtTokenService(jwtSecret); }
+    public ITokenService tokenService() { return new JwtTokenService(jwtSecret); }
 
     @Bean
     public OrderFactory orderFactory() { return new OrderFactory(); }
@@ -133,7 +134,7 @@ public class AppConfig {
     // 2. Application Services
     // ==========================================
     @Bean
-    public AuthService authService(IMemberRepository memberRepo, BCryptPasswordHasher passwordHasher, JwtTokenService tokenService) {
+    public AuthService authService(IMemberRepository memberRepo, BCryptPasswordHasher passwordHasher, ITokenService tokenService) {
         return new AuthService(memberRepo, passwordHasher, tokenService, tokenValidity);
     }
 

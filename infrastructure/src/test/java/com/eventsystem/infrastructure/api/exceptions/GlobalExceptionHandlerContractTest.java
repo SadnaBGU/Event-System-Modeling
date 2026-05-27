@@ -42,6 +42,7 @@ public class GlobalExceptionHandlerContractTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.errorType").value("SecurityException"))
+                .andExpect(jsonPath("$.errorCode").value("FORBIDDEN"))
                 .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.path").value("/api/members/" + target.value()));
     }

@@ -35,6 +35,7 @@ public class AuthenticationInterceptorIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.errorType").value("AuthenticationException"))
+                .andExpect(jsonPath("$.errorCode").value("AUTH_INVALID"))
                 .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.path").value("/api/members/" + target));
     }
@@ -45,7 +46,8 @@ public class AuthenticationInterceptorIntegrationTest {
         mockMvc.perform(get("/api/members/" + target).header("Authorization", "Bearer bad.token"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.errorType").value("AuthenticationException"));
+                .andExpect(jsonPath("$.errorType").value("AuthenticationException"))
+                .andExpect(jsonPath("$.errorCode").value("AUTH_INVALID"));
     }
 
     @Test

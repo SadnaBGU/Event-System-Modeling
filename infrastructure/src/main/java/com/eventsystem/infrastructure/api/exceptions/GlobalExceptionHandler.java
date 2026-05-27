@@ -54,11 +54,20 @@ public class GlobalExceptionHandler {
         errorBody.put("timestamp", Instant.now().toString());
         errorBody.put("status", status.value());
         errorBody.put("errorType", ex.getClass().getSimpleName());
-        
-        errorBody.put("message", ex.getMessage()); 
+        errorBody.put("errorCode", errorCodeFor(ex));
+        errorBody.put("message", ex.getMessage());
         
         errorBody.put("path", request.getRequestURI());
 
         return new ResponseEntity<>(errorBody, status);
+    }
+
+    private String errorCodeFor(Exception ex) {
+        // Map exceptions to stable machine-readable error codes used by the UI.
+        if (ex instanceof AuthenticationException) return "AUTH_INVALID";
+        if (ex instanceof NotAuthorizedException || ex instanceof SecurityException) return "FORBIDDEN";
+        if (ex instanceof MemberNotFoundException || ex instanceof OrderNotFoundException) return "NOT_FOUND";
+        // Default for domain/validation/runtime exceptions
+        return "DOMAIN_ERROR";
     }
 }
