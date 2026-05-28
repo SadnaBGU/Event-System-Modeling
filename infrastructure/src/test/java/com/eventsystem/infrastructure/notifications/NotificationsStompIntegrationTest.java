@@ -2,6 +2,9 @@ package com.eventsystem.infrastructure.notifications;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.timeout;
 
 import java.lang.reflect.Type;
 import java.net.URI;
@@ -39,9 +42,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.web.socket.sockjs.client.SockJsClient;
-import org.springframework.web.socket.sockjs.client.Transport;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.List;
 
@@ -65,16 +66,16 @@ public class NotificationsStompIntegrationTest {
     @Test
     public void connect_and_receive_broadcast() throws Exception {
         // start client
-        Transport webSocketTransport = new WebSocketTransport(new StandardWebSocketClient());
-        @SuppressWarnings("null")
-        SockJsClient sockJsClient = new SockJsClient(List.of(webSocketTransport));
-        WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+        WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.initialize();
+        stompClient.setTaskScheduler(taskScheduler);
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
         CompletableFuture<StompSession> sessionFuture = new CompletableFuture<>();
 
         int port = ((WebServerApplicationContext) ctx).getWebServer().getPort();
-        String url = "ws://localhost:" + port + "/api/notifications/stream";
+        String url = "ws://localhost:" + port + "/api/notifications/stream/websocket";
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer test-token");
 
@@ -93,9 +94,12 @@ public class NotificationsStompIntegrationTest {
 
         StompSession stomp = sessionFuture.get(5, TimeUnit.SECONDS);
         assertThat(stomp).isNotNull();
-
+        verify(notificationService, timeout(5_000)).clientConnected(eq("member-xyz"), anyString());
         CompletableFuture<NotificationDto> received = new CompletableFuture<>();
-        stomp.subscribe("/user/queue/notifications", new StompFrameHandler() {
+        StompHeaders subscriptionHeaders = new StompHeaders();
+        subscriptionHeaders.setDestination("/user/queue/notifications");
+
+        stomp.subscribe(subscriptionHeaders, new StompFrameHandler() {
             @SuppressWarnings("null")
             @Override
             public Type getPayloadType(@SuppressWarnings("null") StompHeaders headers) {
@@ -107,6 +111,8 @@ public class NotificationsStompIntegrationTest {
                 received.complete((NotificationDto) payload);
             }
         });
+
+        TimeUnit.MILLISECONDS.sleep(250);
 
         // broadcast a notification to the connected member id
         broadcaster.broadcastToUser("member-xyz", Notification.create(NotificationType.PURCHASE_COMPLETED, "hello"));
