@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.api.orders;
+package com.eventsystem.infrastructure.api.order;
 
 public class ReserveSeatRequest {
     public String zoneId;

@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.api.orders;
+package com.eventsystem.infrastructure.api.order;
 
 import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.OrderService;

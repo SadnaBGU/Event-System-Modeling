@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.api.orders;
+package com.eventsystem.infrastructure.api.order;
 
 public class ReleaseSeatRequest {
     public String zoneId;
