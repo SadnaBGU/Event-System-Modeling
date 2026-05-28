@@ -30,15 +30,18 @@ public class NotificationsRestController {
     public ResponseEntity<Map<String,Object>> pending(
             @RequestAttribute("authenticatedMemberId") MemberId actor,
             @RequestParam(name = "markAsRead", defaultValue = "true") boolean markAsRead) {
-
         Member m = memberRepository.findById(actor).orElseThrow(() -> new MemberNotFoundException(actor));
-        List<NotificationDto> pending = m.getUndeliveredNotifications().stream()
-                .map(n -> new NotificationDto(n.getNotificationId(), n.getType().name(), n.getContent(), n.getCreatedAt().toString(), n.isDelivered()))
-                .collect(Collectors.toList());
 
-        if (markAsRead && !pending.isEmpty()) {
-            m.markNotificationsDelivered();
-            memberRepository.save(m);
+        List<NotificationDto> pending;
+        synchronized (m) {
+            pending = m.getUndeliveredNotifications().stream()
+                    .map(n -> new NotificationDto(n.getNotificationId(), n.getType().name(), n.getContent(), n.getCreatedAt().toString(), n.isDelivered()))
+                    .collect(Collectors.toList());
+
+            if (markAsRead && !pending.isEmpty()) {
+                m.markNotificationsDelivered();
+                memberRepository.save(m);
+            }
         }
 
         return ResponseEntity.ok(Map.of("notifications", pending));

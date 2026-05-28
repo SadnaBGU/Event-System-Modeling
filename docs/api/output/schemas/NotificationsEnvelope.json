@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NotificationsEnvelope",
+  "type": "object",
+  "properties": {
+    "notifications": {
+      "type": "array",
+      "items": { "$ref": "./Notification.json" }
+    }
+  },
+  "required": ["notifications"],
+  "additionalProperties": false
+}

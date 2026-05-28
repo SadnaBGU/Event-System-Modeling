@@ -27,11 +27,12 @@ public class NotificationBroadcasterBeanTest {
     @MockBean
     private SimpMessagingTemplate template;
 
+    @SuppressWarnings("null")
     @Test
     public void broadcaster_sendsToUserQueue() throws Exception {
         Notification n = Notification.create(NotificationType.PURCHASE_COMPLETED, "payload");
         Object broadcaster = context.getBean("notificationBroadcaster");
-        Method m = broadcaster.getClass().getMethod("broadcastToUser", String.class, com.eventsystem.domain.member.Notification.class);
+        Method m = broadcaster.getClass().getMethod("broadcastToUser", String.class, Notification.class);
         m.invoke(broadcaster, "user-1", n);
 
         verify(template).convertAndSendToUser(eq("user-1"), eq("/queue/notifications"), any());

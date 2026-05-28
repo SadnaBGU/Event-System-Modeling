@@ -105,7 +105,7 @@ class AdminServiceTest {
 
     @Test
     void addAdminRejectsUnknownMember() {
-        Platform p = platformWithAdmin();
+        platformWithAdmin();
         MemberId ghost = MemberId.generate();
         when(memberRepo.findById(ghost)).thenReturn(Optional.empty());
 

@@ -14,8 +14,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         this.authenticationInterceptor = authenticationInterceptor;
     }
 
+    @SuppressWarnings("null")
     @Override
-    public void addInterceptors(InterceptorRegistry registry) {
+    public void addInterceptors(@SuppressWarnings("null") InterceptorRegistry registry) {
         registry.addInterceptor(authenticationInterceptor)
                 .addPathPatterns("/api/**") 
                 .excludePathPatterns(
