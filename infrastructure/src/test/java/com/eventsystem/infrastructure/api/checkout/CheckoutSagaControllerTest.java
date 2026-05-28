@@ -1,0 +1,81 @@
+package com.eventsystem.infrastructure.api.checkout;
+
+import com.eventsystem.application.order.CheckoutSaga;
+import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
+import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(value = CheckoutSagaController.class, properties = "spring.main.web-application-type=servlet")
+@AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalExceptionHandler.class)
+class CheckoutSagaControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private CheckoutSaga checkoutSaga;
+
+    @MockBean
+    private ITokenService tokenService;
+
+    @MockBean
+    private AuthenticationInterceptor authenticationInterceptor;
+
+    @SuppressWarnings("null")
+    @BeforeEach
+    void allowMvcRequests() throws Exception {
+        when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("POST /api/checkout accepts valid request and delegates")
+    void checkout_ValidRequest_ReturnsAccepted() throws Exception {
+        CheckoutSagaController.CheckoutRequest req = new CheckoutSagaController.CheckoutRequest();
+        req.orderId = "ORDER-1";
+        req.paymentToken = "tok-1";
+        req.discountCode = "DISC-1";
+
+        mockMvc.perform(post("/api/checkout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isAccepted());
+
+        verify(checkoutSaga).executeCheckout("ORDER-1", "tok-1", "DISC-1");
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("POST /api/checkout rejects missing orderId")
+    void checkout_MissingOrderId_ReturnsBadRequest() throws Exception {
+        CheckoutSagaController.CheckoutRequest req = new CheckoutSagaController.CheckoutRequest();
+        req.paymentToken = "tok-1";
+
+        mockMvc.perform(post("/api/checkout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+}
