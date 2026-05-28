@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(value = CheckoutSagaController.class, properties = "spring.main.web-application-type=servlet")
@@ -64,6 +65,21 @@ class CheckoutSagaCallbackControllerTest {
         mockMvc.perform(post("/api/checkout/ORDER-1/callbacks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.orderId").value("ORDER-1"))
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("POST /api/checkout/{orderId}/callbacks rejects missing callback type")
+    void callback_MissingType_ReturnsBadRequest() throws Exception {
+        CallbackRequest req = new CallbackRequest();
+        req.payload = "{\"status\":\"success\"}";
+
+        mockMvc.perform(post("/api/checkout/ORDER-1/callbacks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
     }
 }

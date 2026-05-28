@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.api.checkout;
 import com.eventsystem.application.order.CheckoutSaga;
 import com.eventsystem.application.order.OrderService;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.infrastructure.api.checkout.CheckoutSagaController.CheckoutRequest;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,7 +58,7 @@ class CheckoutSagaControllerTest {
     @Test
     @DisplayName("POST /api/checkout accepts valid request and delegates")
     void checkout_ValidRequest_ReturnsAccepted() throws Exception {
-        CheckoutSagaController.CheckoutRequest req = new CheckoutSagaController.CheckoutRequest();
+        CheckoutRequest req = new CheckoutRequest();
         req.orderId = "ORDER-1";
         req.paymentToken = "tok-1";
         req.discountCode = "DISC-1";
@@ -74,8 +75,21 @@ class CheckoutSagaControllerTest {
     @Test
     @DisplayName("POST /api/checkout rejects missing orderId")
     void checkout_MissingOrderId_ReturnsBadRequest() throws Exception {
-        CheckoutSagaController.CheckoutRequest req = new CheckoutSagaController.CheckoutRequest();
+        CheckoutRequest req = new CheckoutRequest();
         req.paymentToken = "tok-1";
+
+        mockMvc.perform(post("/api/checkout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("POST /api/checkout rejects missing paymentToken")
+    void checkout_MissingPaymentToken_ReturnsBadRequest() throws Exception {
+        CheckoutRequest req = new CheckoutRequest();
+        req.orderId = "ORDER-1";
 
         mockMvc.perform(post("/api/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
