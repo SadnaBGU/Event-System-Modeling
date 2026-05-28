@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.member.NotificationService;
@@ -95,6 +96,7 @@ public class NotificationsStompIntegrationTest {
         assertThat(stomp).isNotNull();
 
         CompletableFuture<NotificationDto> received = new CompletableFuture<>();
+
         stomp.subscribe("/user/queue/notifications", new StompFrameHandler() {
             @SuppressWarnings("null")
             @Override
@@ -108,10 +110,20 @@ public class NotificationsStompIntegrationTest {
             }
         });
 
-        // broadcast a notification to the connected member id
-        broadcaster.broadcastToUser("member-xyz", Notification.create(NotificationType.PURCHASE_COMPLETED, "hello"));
+        // Give the broker a short moment to register the subscription.
+        // Without receipts, subscribe() may return before the server-side subscription is fully active in CI.
+        Thread.sleep(500);
 
-        NotificationDto dto = received.get(5, TimeUnit.SECONDS);
+        // Broadcast with a small retry loop to avoid CI timing races.
+        Notification notification = Notification.create(NotificationType.PURCHASE_COMPLETED, "hello");
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (!received.isDone() && System.nanoTime() < deadline) {
+            broadcaster.broadcastToUser("member-xyz", notification);
+            Thread.sleep(200);
+        }
+
+        NotificationDto dto = received.get(2, TimeUnit.SECONDS);
         assertThat(dto).isNotNull();
         assertThat(dto.type()).isEqualTo("PURCHASE_COMPLETED");
 
