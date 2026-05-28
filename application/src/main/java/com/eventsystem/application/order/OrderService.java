@@ -207,4 +207,13 @@ public class OrderService {
         }
         logger.info("Completed background sweep. Total expired orders processed: {}", count);
     }
+
+    /**
+     * Return the ActiveOrderDTO for a given orderId or throw OrderNotFoundException
+     */
+    public ActiveOrderDTO getOrderById(String orderId) {
+        ActiveOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Active order " + orderId + " not found"));
+        return ActiveOrderDTO.fromDomain(order);
+    }
 }

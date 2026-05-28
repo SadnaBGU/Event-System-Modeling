@@ -31,9 +31,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.eventsystem.application.appexceptions.ActiveOrderHasExpiredException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
+import com.eventsystem.application.appexceptions.PaymentFailedException;
+import com.eventsystem.application.appexceptions.PriceCalcException;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.event.IZoneRepository;
-import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
@@ -248,5 +249,57 @@ class CheckoutSagaTest {
         verify(purchaseRecordRepository, never()).append(any());
         // Verify payment gateway was NOT asked for a refund because the charge itself timed out
         verify(paymentGateway, never()).refund(any(), any(), any());
+    }
+
+    @Test
+    void executeCheckout_PolicyValidationThrows_MapsToPolicyViolationException() {
+        // Arrange
+        when(eventQueryPort.validatePurchasePolicy(any(), any(), any()))
+                .thenThrow(new RuntimeException("Policy subsystem unavailable"));
+
+        // Act & Assert
+        assertThrows(OrderViolatesPolicyException.class, () -> {
+            checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
+        });
+
+        verify(paymentGateway, never()).charge(any(), any(), any(), any());
+        verify(purchaseRecordRepository, never()).append(any());
+    }
+
+    @Test
+    void executeCheckout_DiscountEvaluationFails_ThrowsPriceCalcException() {
+        // Arrange
+        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
+        when(eventQueryPort.applyDiscount(any(), any(), any()))
+                .thenThrow(new RuntimeException("Discount service down"));
+
+        // Act & Assert
+        assertThrows(PriceCalcException.class, () -> {
+            checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
+        });
+
+        verify(paymentGateway, never()).charge(any(), any(), any(), any());
+        verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
+        verify(purchaseRecordRepository, never()).append(any());
+    }
+
+    @Test
+    void executeCheckout_PaymentGatewayThrows_ThrowsPaymentFailedExceptionAndNotifies() {
+        // Arrange
+        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
+        when(eventQueryPort.applyDiscount(any(), any(), any()))
+                .thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
+        when(paymentGateway.charge(any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Gateway unavailable"));
+
+        // Act & Assert
+        assertThrows(PaymentFailedException.class, () -> {
+            checkoutSaga.executeCheckout(ORDER_ID, "VALID_TOKEN", "DISCOUNT10");
+        });
+
+        verify(notificationPort).sendPurchaseFailure(eq(testBuyer), contains("Payment processing error"));
+        verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
+        verify(paymentGateway, never()).refund(any(), any(), any());
+        verify(purchaseRecordRepository, never()).append(any());
     }
 }
