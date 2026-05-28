@@ -4,10 +4,9 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
-import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class AfterDatePolicy implements IPolicy{
+public final class AfterDatePolicy implements IBasicPolicy{
 
     private final LocalDate deadlineDate;
 

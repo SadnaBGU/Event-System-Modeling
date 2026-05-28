@@ -13,7 +13,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 
-public final class ZoneSpecificPolicy implements IPolicy {
+public final class ZoneSpecificPolicy implements ICompositePolicy {
 
 
     private final IPolicy policy;
@@ -87,5 +87,10 @@ public final class ZoneSpecificPolicy implements IPolicy {
                     e.getMessage()
             ));
         }
+    }
+
+    @Override
+    public List<IPolicy> children() {
+        return List.of(policy);
     }
 }

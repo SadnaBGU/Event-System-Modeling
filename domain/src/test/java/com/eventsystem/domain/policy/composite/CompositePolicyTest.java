@@ -4,6 +4,8 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PurchaseContext;
+import com.eventsystem.domain.policy.basic.IBasicPolicy;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CompositePolicyTest {
 
     private static IPolicy passingPolicy() {
-        return new IPolicy() {
+        return new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 return true;
@@ -40,7 +42,7 @@ class CompositePolicyTest {
     }
 
     private static IPolicy failingPolicy(String message) {
-        return new IPolicy() {
+        return new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 return false;
@@ -188,7 +190,7 @@ class CompositePolicyTest {
         java.util.concurrent.atomic.AtomicBoolean secondEvaluated = new java.util.concurrent.atomic.AtomicBoolean(false);
 
         IPolicy first = failingPolicy("first failed");
-        IPolicy second = new IPolicy() {
+        IPolicy second = new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 secondEvaluated.set(true);
@@ -211,7 +213,7 @@ class CompositePolicyTest {
 
     @Test
     void zoneSpecificPolicy_passModeDoesNotEvaluateInnerPolicyWhenNoAffectedTickets() {
-        IPolicy explodingPolicy = new IPolicy() {
+        IPolicy explodingPolicy = new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 throw new AssertionError("inner policy should not be evaluated");
@@ -242,7 +244,7 @@ class CompositePolicyTest {
     }
 
     private static IPolicy countedTicketsMustEqual(int expected) {
-        return new IPolicy() {
+        return new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 return context.ticketCount() == expected;
@@ -258,7 +260,7 @@ class CompositePolicyTest {
     }
 
     private static IPolicy countedTicketsAtMost(int max) {
-        return new IPolicy() {
+        return new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 return context.ticketCount() <= max;
@@ -274,7 +276,7 @@ class CompositePolicyTest {
     }
 
     private static IPolicy countedTicketsAtLeast(int min) {
-        return new IPolicy() {
+        return new IBasicPolicy() {
             @Override
             public boolean validate(PurchaseContext context) {
                 return context.ticketCount() >= min;

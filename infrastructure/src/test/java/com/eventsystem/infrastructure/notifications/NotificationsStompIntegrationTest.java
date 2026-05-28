@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.member.NotificationService;
@@ -117,7 +118,7 @@ public class NotificationsStompIntegrationTest {
         // broadcast a notification to the connected member id
         broadcaster.broadcastToUser("member-xyz", Notification.create(NotificationType.PURCHASE_COMPLETED, "hello"));
 
-        NotificationDto dto = received.get(5, TimeUnit.SECONDS);
+        NotificationDto dto = received.get(2, TimeUnit.SECONDS);
         assertThat(dto).isNotNull();
         assertThat(dto.type()).isEqualTo("PURCHASE_COMPLETED");
 

@@ -3,7 +3,6 @@ package com.eventsystem.domain.policy;
 import java.util.List;
 import java.util.Objects;
 
-import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.composite.AndPolicy;
 import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
