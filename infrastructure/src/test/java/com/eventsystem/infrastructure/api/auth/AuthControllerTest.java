@@ -51,6 +51,7 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Register - Valid details - Returns 201 Created")
     void register_ValidDetails_ReturnsCreated() throws Exception {
@@ -65,6 +66,7 @@ class AuthControllerTest {
                 .andExpect(status().isCreated());
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Register - Username already taken - Returns 400 Bad Request")
     void register_UsernameTaken_ReturnsBadRequest() throws Exception {
@@ -80,6 +82,7 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Login - Valid credentials - Returns 200 OK and Token")
     void login_ValidCredentials_ReturnsOkAndToken() throws Exception {
@@ -96,6 +99,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.memberId.value").value("member-123"));
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Login - Invalid password - Returns 401 Unauthorized")
     void login_InvalidPassword_ReturnsUnauthorized() throws Exception {
@@ -109,6 +113,7 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Login - Missing body parameters - Returns 400 Bad Request")
     void login_MissingBody_ReturnsBadRequest() throws Exception {

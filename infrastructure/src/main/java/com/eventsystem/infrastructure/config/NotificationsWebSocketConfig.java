@@ -43,22 +43,23 @@ public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfi
     }
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
+    public void configureMessageBroker(@SuppressWarnings("null") MessageBrokerRegistry config) {
         config.enableSimpleBroker("/queue");
         config.setUserDestinationPrefix("/user");
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
+    public void registerStompEndpoints(@SuppressWarnings("null") StompEndpointRegistry registry) {
         registry.addEndpoint("/api/notifications/stream").setAllowedOriginPatterns("*").withSockJS();
     }
 
     @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
+    public void configureClientInboundChannel(@SuppressWarnings("null") ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
+            public Message<?> preSend(@SuppressWarnings("null") Message<?> message, @SuppressWarnings("null") MessageChannel channel) {
+                @SuppressWarnings("null")
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     List<String> auth = accessor.getNativeHeader("Authorization");
@@ -84,6 +85,7 @@ public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfi
         });
     }
 
+    @SuppressWarnings("null")
     @Bean
     public NotificationBroadcaster notificationBroadcaster(SimpMessagingTemplate template) {
         return (memberId, notification) -> {

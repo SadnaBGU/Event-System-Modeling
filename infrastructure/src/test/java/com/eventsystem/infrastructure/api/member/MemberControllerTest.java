@@ -81,6 +81,7 @@ class MemberControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Update details - Returns 200 OK with updated member JSON")
     void updateDetails_ReturnsOk() throws Exception {
