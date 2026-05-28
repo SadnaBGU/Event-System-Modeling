@@ -43,6 +43,14 @@ public class CheckoutSagaController {
             throw ex;
         }
     }
+    
+    @PostMapping("/{orderId}/callbacks")
+    public ResponseEntity<Void> callback(@PathVariable String orderId,
+                                         @RequestBody CallbackRequest req) {
+        if (orderId == null || orderId.isBlank()) throw new IllegalArgumentException("orderId is required");
+        // For now accept and acknowledge callbacks; orchestration handled asynchronously by application services later
+        return ResponseEntity.accepted().build();
+    }
 
     public static class CheckoutRequest {
         public String orderId;
@@ -58,5 +66,10 @@ public class CheckoutSagaController {
             this.orderId = orderId;
             this.status = status;
         }
+    }
+    
+    public static class CallbackRequest {
+        public String type;
+        public String payload;
     }
 }
