@@ -20,6 +20,11 @@ import com.eventsystem.application.order.PurchaseHistoryService;
 import com.eventsystem.application.order.QueueService;
 import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.application.order.ReportService;
+import com.eventsystem.application.policy.DiscountPermissionChecker;
+import com.eventsystem.application.policy.DiscountPolicyService;
+import com.eventsystem.application.policy.IDiscountPermissionChecker;
+import com.eventsystem.application.policy.IDiscountPolicyRepository;
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.application.venue.IVenueRepository;
 import com.eventsystem.application.venue.VenueManagementService;
 import com.eventsystem.application.order.CheckoutSaga;
@@ -41,7 +46,9 @@ import com.eventsystem.infrastructure.persistence.InMemoryLotteryRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryPlatformRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryProductionCompanyRepository;
+import com.eventsystem.infrastructure.persistence.InMemoryPurchasePolicyRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryActiveOrderRepository;
+import com.eventsystem.infrastructure.persistence.InMemoryDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryEventRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryPurchaseRecordRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryVenueRepository;
@@ -130,6 +137,18 @@ public class AppConfig {
         return new ProductionEventPermissionChecker(productionCompanyRepository());
     }
 
+    @Bean
+    public IPurchasePolicyRepository purchasePolicyRepository() { return new InMemoryPurchasePolicyRepository(); }
+
+    @Bean
+    public IDiscountPolicyRepository discountPolicyRepository() { return new InMemoryDiscountPolicyRepository(); }
+
+    @Bean
+    public IDiscountPermissionChecker discountPermissionChecker() {
+        return new DiscountPermissionChecker(productionCompanyRepository());
+    }
+    
+
     // ==========================================
     // 2. Application Services
     // ==========================================
@@ -174,8 +193,8 @@ public class AppConfig {
     }
 
     @Bean
-    public EventService eventService(IEventRepository eventRepo, IEventPermissionChecker eventPermissionChecker) {
-        return new EventService(eventRepo, eventPermissionChecker);
+    public EventService eventService(IEventRepository eventRepo, IEventPermissionChecker eventPermissionChecker, IPurchasePolicyRepository purchasePolicyRepository) {
+        return new EventService(eventRepo, eventPermissionChecker, purchasePolicyRepository);
     }
 
     @Bean
@@ -199,8 +218,13 @@ public class AppConfig {
     }
 
     @Bean
-    public IEventQueryPort eventPurchaseSupportService(IEventRepository eventRepo, IZoneRepository zoneRepo) {
-        return new EventPurchaseSupportService(eventRepo, zoneRepo); 
+    public IEventQueryPort eventPurchaseSupportService(IEventRepository eventRepo, IZoneRepository zoneRepo, IPurchasePolicyRepository ppolicyRepository) {
+        return new EventPurchaseSupportService(eventRepo, zoneRepo, ppolicyRepository); 
+    }
+
+    @Bean
+    public DiscountPolicyService discountPolicyService(IDiscountPolicyRepository discountPolicyRepository, IDiscountPermissionChecker permissionChecker) {
+        return new DiscountPolicyService(discountPolicyRepository, permissionChecker);
     }
 
     @Bean

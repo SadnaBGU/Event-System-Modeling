@@ -1,11 +1,15 @@
 package com.eventsystem.application.event;
 
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.event.*;
+import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.zone.ZoneId;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,10 +18,12 @@ public class EventService {
 
     private static final Logger logger = LoggerFactory.getLogger(EventService.class);
     private final IEventRepository eventRepository;
+    private final IPurchasePolicyRepository ppolicyRepository;
     private final IEventPermissionChecker permissionChecker;
 
-    public EventService(IEventRepository eventRepository, IEventPermissionChecker permissionChecker ) {
+    public EventService(IEventRepository eventRepository, IEventPermissionChecker permissionChecker, IPurchasePolicyRepository ppolicyRepository) {
         this.eventRepository = Objects.requireNonNull( eventRepository, "eventRepository must not be null");
+        this.ppolicyRepository = Objects.requireNonNull( ppolicyRepository, "purchasePolicyRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker,"permissionChecker must not be null");
     }
 
@@ -30,6 +36,23 @@ public class EventService {
 
         Event event = Event.createDraft(companyId, details, venueMap);
         eventRepository.save(event);
+        ppolicyRepository.saveForEvent(event.id(), PurchasePolicy.AllowAll());
+        logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
+            event.id().value(), companyId, actorId);
+        return event.id();
+    }
+
+    public EventId createRestrictedPurchaseDraft(String actorId, String companyId,
+                                                 EventDetails details, VenueMap venueMap, PurchasePolicy policy) {
+        requireValidActor(actorId);
+        Objects.requireNonNull(details, "details must not be null");
+        Objects.requireNonNull(venueMap, "venueMap must not be null");
+
+        requireManageEventsPermission(actorId, companyId);
+
+        Event event = Event.createDraft(companyId, details, venueMap);
+        eventRepository.save(event);
+        ppolicyRepository.saveForEvent(event.id(), policy);
         logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
             event.id().value(), companyId, actorId);
         return event.id();
@@ -87,16 +110,34 @@ public class EventService {
             eventId.value(), zoneId.value(), event.companyId(), actorId);
     }
 
-    /*TODO - Add when Policy and SalesMethod Support are added:
+    public Optional<PurchasePolicy> findPurchasePolicy(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        logger.debug("Finding purchase policy for event. eventId={}", eventId.value());
+
+        return ppolicyRepository.findByEventId(eventId);
+    }
+
     public void setPurchasePolicy(String actorId, EventId eventId, PurchasePolicy policy) {
-        
+        requireValidActor(actorId);
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+        Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+        ppolicyRepository.saveForEvent(eventId, policy);
+        logger.info("Purchase Policy modified for Event. eventId={}, companyId={}, actorId={}",
+            eventId.value(), event.companyId(), actorId);
     }
 
-    public void setDiscountPolicy(String actorId, EventId eventId, DiscountPolicy policy) {
-        
+    public void clearPurchasePolicy(String actorId, EventId eventId) {
+        requireValidActor(actorId);
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Event event = loadEvent(eventId);
+        requireManageEventsPermission(actorId, event.companyId());
+        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.AllowAll());
+        logger.info("Purchase Policy for Event was set to ALLOW ALL. eventId={}, companyId={}, actorId={}",
+            eventId.value(), event.companyId(), actorId);
     }
-
-    */
 
     public void publish(String actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
@@ -108,6 +149,9 @@ public class EventService {
         eventRepository.save(event);
         logger.info("Event published. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
+        if(ppolicyRepository.findByEventId(eventId).isEmpty()) {
+            ppolicyRepository.saveForEvent(eventId, PurchasePolicy.AllowAll());
+        }
     }
 
     public void eventOver(String actorId, EventId eventId) { //TODO - ensure OVER is required
@@ -118,6 +162,7 @@ public class EventService {
 
         event.over();
         eventRepository.save(event);
+        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.NotAllowed());
         logger.info("Event marked as over. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
     }
@@ -132,6 +177,7 @@ public class EventService {
         eventRepository.save(event);
         logger.info("Event cancelled. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
+        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.NotAllowed());
     }
 
     public Event findById(EventId eventId) {

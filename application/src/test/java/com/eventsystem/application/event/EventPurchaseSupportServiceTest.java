@@ -7,9 +7,14 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.PolicyValidationResult;
+import com.eventsystem.domain.policy.PurchaseContext;
+import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
+
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 
 import java.math.BigDecimal;
 
@@ -19,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -65,11 +71,15 @@ class EventPurchaseSupportServiceTest {
     @Mock
     private IZoneRepository zoneRepository;
 
+    @Mock
+    private IPurchasePolicyRepository ppRepository;
+
+
     private EventPurchaseSupportService service;
 
     @BeforeEach
     void setUp() {
-        service = new EventPurchaseSupportService(eventRepository, zoneRepository);
+        service = new EventPurchaseSupportService(eventRepository, zoneRepository, ppRepository );
     }
 
     private EventDetails defaultDetails() {
@@ -617,5 +627,208 @@ class EventPurchaseSupportServiceTest {
         assertThat(snapshot.companyName()).isEqualTo(event.companyId());
         assertThat(snapshot.eventDate()).isEqualTo(event.details().dates().get(0).toLocalDate());
         assertThat(snapshot.location()).isEqualTo(event.details().location());
+    }
+
+    @Test
+    void validatePurchasePolicy_whenNoPolicyStored_usesAllowAllPolicy() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                "seat-1",
+                3,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        when(ppRepository.findByEventId(event.id())).thenReturn(Optional.empty());
+
+        PolicyValidationResult result = service.getValidatePurchasePolicyResults(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25)
+        );
+
+        assertThat(result.isSuccess()).isTrue();
+    }
+
+    @Test
+    void validatePurchasePolicy_whenStoredPolicyRejectsOrder_returnsFailure_UAT27() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                "seat-1",
+                2,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        PurchasePolicy maxOneTicketPolicy =
+                new PurchasePolicy(new com.eventsystem.domain.policy.basic.MaxTicketPolicy(1));
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        when(ppRepository.findByEventId(event.id())).thenReturn(Optional.of(maxOneTicketPolicy));
+
+        PolicyValidationResult result = service.getValidatePurchasePolicyResults(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25)
+        );
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("Cannot Purchase more than 1 tickets");
+    }
+
+    @Test
+    void fromPurchaseInfo_expandsOrderItemQuantityIntoOneZonePerTicket() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                null,
+                3,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        PurchaseContext context = service.fromPurchaseInfo(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25)
+        );
+
+        assertThat(context.zonesOfEachEventTicket())
+                .containsExactly(zoneId, zoneId, zoneId);
+    }
+
+    @Test
+    void fromPurchaseInfo_trimsDiscountCode() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                null,
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        PurchaseContext context = service.fromPurchaseInfo(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25),
+                "  SAVE20  "
+        );
+
+        assertThat(context.discountCode()).isEqualTo("SAVE20");
+    }
+
+    @Test
+    void fromPurchaseInfo_blankDiscountCodeBecomesNull() {
+        Event event = createDraftEvent();
+        ZoneId zoneId = ZoneId.random();
+        event.addZone(zoneId);
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                zoneId.value(),
+                null,
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        PurchaseContext context = service.fromPurchaseInfo(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25),
+                "   "
+        );
+
+        assertThat(context.discountCode()).isNull();
+    } 
+
+    @Test
+    void validatePurchasePolicy_whenOrderItemZoneIdIsBlank_returnsFailure() {
+        Event event = createDraftEvent();
+        event.addZone(ZoneId.random());
+        event.publish();
+
+        OrderItem item = new OrderItem(
+                "   ",
+                null,
+                1,
+                Money.of(BigDecimal.valueOf(100), "ILS")
+        );
+
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, "member-1");
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        PolicyValidationResult result = service.getValidatePurchasePolicyResults(
+                event.id().value(),
+                buyer,
+                List.of(item),
+                LocalDate.now().minusYears(25)
+        );
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("Invalid zone id");
+        verify(ppRepository, never()).findByEventId(any());
+    }
+
+    @Test
+    void evaluatePurchasePolicy_whenContextContainsZoneNotInEvent_returnsFailure() {
+        Event event = createDraftEvent();
+        ZoneId realZone = ZoneId.random();
+        ZoneId wrongZone = ZoneId.random();
+        event.addZone(realZone);
+        event.publish();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+
+        PurchaseContext context = new PurchaseContext(
+                event.id(),
+                new com.eventsystem.domain.company.CompanyId(event.companyId()),
+                List.of(wrongZone),
+                LocalDate.now().minusYears(25),
+                null
+        );
+
+        PolicyValidationResult result = service.validateContextAgainstEvent(event.id(), context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("invalid zone");
+        verify(ppRepository, never()).findByEventId(any());
     }
 }

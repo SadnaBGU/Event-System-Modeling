@@ -1,6 +1,8 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.*;
+import com.eventsystem.domain.policy.PurchasePolicy;
+import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -17,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -71,13 +74,17 @@ class EventServiceTest {
     private IEventRepository eventRepository;
 
     @Mock
+    private IPurchasePolicyRepository ppRepository;
+
+    @Mock
     private IEventPermissionChecker permissionChecker;
+    
 
     private EventService service;
 
     @BeforeEach
     void setUp() {
-        service = new EventService(eventRepository, permissionChecker);
+        service = new EventService(eventRepository ,permissionChecker, ppRepository);
     }
 
     private EventDetails defaultDetails() {
@@ -1256,5 +1263,75 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void createDraft_savesDefaultAllowAllPurchasePolicy_UAT44() {
+        String actorId = "member-1";
+        String companyId = "company-1";
+
+        when(permissionChecker.canManageEvents(actorId, companyId)).thenReturn(true);
+
+        EventId eventId = service.createDraft(
+                actorId,
+                companyId,
+                defaultDetails(),
+                VenueMap.empty()
+        );
+
+        verify(eventRepository).save(any(Event.class));
+        verify(ppRepository).saveForEvent(eq(eventId), any(PurchasePolicy.class));
+    }
+
+    @Test
+    void setPurchasePolicy_whenAuthorized_savesPolicy_UAT44() {
+        String actorId = "member-1";
+        Event event = createDraftEvent();
+        PurchasePolicy policy = new PurchasePolicy(
+                new com.eventsystem.domain.policy.basic.MaxTicketPolicy(4)
+        );
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        when(permissionChecker.canManageEvents(actorId, event.companyId())).thenReturn(true);
+
+        service.setPurchasePolicy(actorId, event.id(), policy);
+
+        verify(ppRepository).saveForEvent(event.id(), policy);
+    }
+
+    @Test
+    void setPurchasePolicy_whenUnauthorized_throwsAndDoesNotSave_UAT62() {
+        String actorId = "member-1";
+        Event event = createDraftEvent();
+        PurchasePolicy policy = PurchasePolicy.AllowAll();
+
+        when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
+        when(permissionChecker.canManageEvents(actorId, event.companyId())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.setPurchasePolicy(actorId, event.id(), policy))
+                .isInstanceOf(SecurityException.class);
+
+        verify(ppRepository, never()).saveForEvent(any(), any());
+    }
+
+    @Test
+    void createRestrictedPurchaseDraft_savesGivenPolicyOnly() {
+        String actorId = "member-1";
+        String companyId = "company-1";
+        PurchasePolicy policy = new PurchasePolicy(
+                new com.eventsystem.domain.policy.basic.MaxTicketPolicy(2)
+        );
+
+        when(permissionChecker.canManageEvents(actorId, companyId)).thenReturn(true);
+
+        EventId eventId = service.createRestrictedPurchaseDraft(
+                actorId,
+                companyId,
+                defaultDetails(),
+                VenueMap.empty(),
+                policy
+        );
+
+        verify(ppRepository).saveForEvent(eventId, policy);
     }
 }

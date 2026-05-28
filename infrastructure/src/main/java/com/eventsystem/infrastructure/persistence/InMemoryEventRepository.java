@@ -3,14 +3,13 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.application.event.IEventRepository;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.application.event.IEventRepository;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
 
 public class InMemoryEventRepository implements IEventRepository {
 
