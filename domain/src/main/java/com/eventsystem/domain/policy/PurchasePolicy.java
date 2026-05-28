@@ -57,7 +57,7 @@ public class PurchasePolicy{
         try {
             policy.require(context);
             return PolicyValidationResult.success();
-        } catch (PolicyException e) {
+        } catch (Exception e) {
             return PolicyValidationResult.failure(e.getMessage());
         }
     }

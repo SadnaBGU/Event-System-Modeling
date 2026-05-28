@@ -121,7 +121,7 @@ public class EventPurchaseSupportService implements EventQueryPort{
         event.requireZoneBelongsToEvent(zoneId);
     }
 
-    private PolicyValidationResult validateContextAgainstEvent(EventId eventId, PurchaseContext context) {
+    public PolicyValidationResult validateContextAgainstEvent(EventId eventId, PurchaseContext context) {
         Event event = loadEvent(eventId);
 
         if (!event.isPurchasable()) {
@@ -303,6 +303,21 @@ public class EventPurchaseSupportService implements EventQueryPort{
         }
         res = evaluateEventPurchasePolicy(eid, context);
         return res.isSuccess();
+    }
+
+    public PolicyValidationResult getValidatePurchasePolicyResults(String eventId, BuyerReference buyer, List<OrderItem> items, LocalDate buyerBirthDate) {
+        PolicyValidationResult res = evalEventPurchaseBeforePolicyValidation(eventId, buyer, items);
+        if (!res.isSuccess()) {
+            return res;
+        }
+        EventId eid = new EventId(eventId);
+        PurchaseContext context = fromPurchaseInfo(eventId, buyer, items, buyerBirthDate);
+        res = evaluateEventPurchasePolicy(eid, context);
+        if (!res.isSuccess()) {
+            return res;
+        }
+        res = evaluateEventPurchasePolicy(eid, context);
+        return res;
     }
 
     /**

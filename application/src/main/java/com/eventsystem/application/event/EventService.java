@@ -52,7 +52,7 @@ public class EventService {
 
         Event event = Event.createDraft(companyId, details, venueMap);
         eventRepository.save(event);
-        ppolicyRepository.saveForEvent(event.id(), PurchasePolicy.AllowAll());
+        ppolicyRepository.saveForEvent(event.id(), policy);
         logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
             event.id().value(), companyId, actorId);
         return event.id();

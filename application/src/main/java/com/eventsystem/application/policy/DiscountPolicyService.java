@@ -35,9 +35,22 @@ public class DiscountPolicyService {
         this.permissionChecker = Objects.requireNonNull(permissionChecker,"permisiionChecker must not be null");
     }
 
-    public void saveDiscountPolicy(String actorId, String companyId ,DiscountPolicy discountPolicy) {
-        requireManageDiscountsPermission(actorId,companyId);
+    public void saveDiscountPolicy(String actorId, String companyId, DiscountPolicy discountPolicy) {
+        requireManageDiscountsPermission(actorId, companyId);
         Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
+
+        CompanyId requestedCompanyId = new CompanyId(companyId);
+
+        if (!discountPolicy.companyId().equals(requestedCompanyId)) {
+            logger.warn(
+                    "Cannot save discount policy for different company. requestedCompanyId={}, policyCompanyId={}, policyId={}",
+                    requestedCompanyId,
+                    discountPolicy.companyId(),
+                    discountPolicy.id()
+            );
+
+            throw new SecurityException("Cannot save Discount policy for another company");
+        }
 
         logger.info(
                 "Saving discount policy. policyId={}, companyId={}, active={}",
@@ -263,25 +276,28 @@ public class DiscountPolicyService {
     }
 
     private void requireCompanyOwnsDiscountPolicy(DiscountPolicyId dpId, CompanyId companyId) {
-        Objects.requireNonNull(dpId, "actorId must not be null");
+        Objects.requireNonNull(dpId, "policyId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
+        DiscountPolicy p;
+        try {
+            p = loadDiscountPolicy(dpId);
 
-        DiscountPolicy p = loadDiscountPolicy(dpId);
-        if(!(p.companyId() .equals(companyId))) {
+        } catch (Exception e) {
+            return;
+        }
+        if(!(p.companyId().equals(companyId))) {
             throw new SecurityException("Cannot modify Discount policies of other comapnies");
         }
     }
 
     public PurchaseContext fromPurchaseInfo(EventId eventId, CompanyId compId, List<ZoneId> zoneOfEachTicket,
                                              LocalDate buyerBirthdate) {
-        //TODO- get buyer birthday date and replace the placeholder!
-        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,placeholderBuyerBirthDate(), normalizeDiscountCode(null));
+        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,buyerBirthdate, normalizeDiscountCode(null));
     }
 
     public PurchaseContext fromPurchaseInfo(EventId eventId, CompanyId compId, List<ZoneId> zoneOfEachTicket,
                                              LocalDate buyerBirthdate, String discountCode) {
-        //TODO- get buyer birthday date and replace the placeholder!
-        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,placeholderBuyerBirthDate(), normalizeDiscountCode(discountCode));
+        return new PurchaseContext(eventId, compId,zoneOfEachTicket ,buyerBirthdate, normalizeDiscountCode(discountCode));
     }
 
     private DiscountPolicy loadDiscountPolicy(DiscountPolicyId dpId) {
