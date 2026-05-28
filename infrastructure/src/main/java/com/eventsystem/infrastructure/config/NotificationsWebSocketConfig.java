@@ -2,14 +2,21 @@ package com.eventsystem.infrastructure.config;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.infrastructure.api.notifications.NotificationDto;
+
+import io.micrometer.common.lang.NonNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -48,10 +55,10 @@ public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfi
     }
 
     @Override
-    public void configureClientInboundChannel(org.springframework.messaging.simp.config.ChannelRegistration registration) {
+    public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public org.springframework.messaging.Message<?> preSend(org.springframework.messaging.Message<?> message, org.springframework.messaging.MessageChannel channel) {
+            public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     List<String> auth = accessor.getNativeHeader("Authorization");
@@ -63,7 +70,7 @@ public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfi
                         throw new IllegalArgumentException("Malformed Authorization header in STOMP CONNECT");
                     }
                     String token = header.substring(7);
-                    var claims = tokenService.verifyToken(token);
+                    TokenClaims claims = tokenService.verifyToken(token);
                     Principal user = new Principal() {
                         @Override
                         public String getName() {

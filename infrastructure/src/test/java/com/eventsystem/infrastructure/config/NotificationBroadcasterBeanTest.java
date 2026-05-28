@@ -9,6 +9,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -32,6 +34,6 @@ public class NotificationBroadcasterBeanTest {
         Method m = broadcaster.getClass().getMethod("broadcastToUser", String.class, com.eventsystem.domain.member.Notification.class);
         m.invoke(broadcaster, "user-1", n);
 
-        verify(template).convertAndSendToUser(org.mockito.Mockito.eq("user-1"), org.mockito.Mockito.eq("/queue/notifications"), org.mockito.Mockito.any());
+        verify(template).convertAndSendToUser(eq("user-1"), eq("/queue/notifications"), any());
     }
 }
