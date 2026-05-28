@@ -7,7 +7,6 @@ import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
 
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -21,14 +20,14 @@ public final class DiscountPolicy {
 
     private final DiscountPolicyId id;
     private final CompanyId companyId;
-    private DiscountPolicyScope scope;
+    private PolicyScope scope;
     private final List<Discount> discounts;
     private boolean stackable;
     private boolean active;
 
     private static final BigDecimal HUNDREAD = BigDecimal.valueOf(100);
 
-        public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, DiscountPolicyScope scope) {
+        public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
@@ -38,23 +37,23 @@ public final class DiscountPolicy {
     }
 
     public DiscountPolicy(CompanyId cid) {
-        this(DiscountPolicyId.random(), cid, DiscountPolicyScope.clearScope());
+        this(DiscountPolicyId.random(), cid, PolicyScope.clearScope());
     }
 
     public static DiscountPolicy clearScope(CompanyId companyId) {
-        return new DiscountPolicy( DiscountPolicyId.random(), companyId, DiscountPolicyScope.clearScope());
+        return new DiscountPolicy( DiscountPolicyId.random(), companyId, PolicyScope.clearScope());
     }
 
     public static DiscountPolicy inactiveCompanyWide(CompanyId companyId) {
-        return new DiscountPolicy( DiscountPolicyId.random(), companyId, DiscountPolicyScope.companyWideScope());
+        return new DiscountPolicy( DiscountPolicyId.random(), companyId, PolicyScope.companyWideScope());
     }
 
     public static DiscountPolicy inactiveForEvents(CompanyId companyId, Set<EventId> eventIds) {
-        return new DiscountPolicy(DiscountPolicyId.random(), companyId, DiscountPolicyScope.forEvents(eventIds));
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forEvents(eventIds));
     }
 
     public static DiscountPolicy inactiveForSingleEvent(CompanyId companyId, EventId eventId) {
-        return new DiscountPolicy(DiscountPolicyId.random(), companyId, DiscountPolicyScope.forSingleEvent(eventId));
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forSingleEvent(eventId));
     }
 
     public DiscountPolicyId id() {
@@ -65,7 +64,7 @@ public final class DiscountPolicy {
         return companyId;
     }
 
-    public DiscountPolicyScope scope() {
+    public PolicyScope scope() {
         return scope;
     }
 
@@ -86,7 +85,7 @@ public final class DiscountPolicy {
         this.active = false;
     }
 
-    public void changeScope(DiscountPolicyScope scope) {
+    public void changeScope(PolicyScope scope) {
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
         if(!scope.isScopedToEventsOrCompany()) {
             deactivate();
@@ -121,12 +120,12 @@ public final class DiscountPolicy {
 
     public void setCompanyWide() {
         Set<EventId> affectedEvents = scope.eventIds();
-        this.scope = new DiscountPolicyScope(true, affectedEvents);
+        this.scope = new PolicyScope(true, affectedEvents);
     }
 
     public void deactivateCompanyWide() {
         Set<EventId> affectedEvents = scope.eventIds();
-        this.scope = new DiscountPolicyScope(false, affectedEvents);
+        this.scope = new PolicyScope(false, affectedEvents);
         if(!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }
@@ -138,7 +137,7 @@ public final class DiscountPolicy {
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
         affectedEvents.add(eventId);
 
-        this.scope = new DiscountPolicyScope(scope.isCompanyWide(), affectedEvents);
+        this.scope = new PolicyScope(scope.isCompanyWide(), affectedEvents);
     }
 
     public void deactivateForEvent(EventId eventId) {
@@ -147,7 +146,7 @@ public final class DiscountPolicy {
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
         affectedEvents.remove(eventId);
 
-        this.scope = new DiscountPolicyScope(scope.isCompanyWide(), affectedEvents);
+        this.scope = new PolicyScope(scope.isCompanyWide(), affectedEvents);
         if(!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }

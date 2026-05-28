@@ -28,7 +28,7 @@ public class InMemoryEventRepository implements IEventRepository {
 
         return events.values()
                 .stream()
-                .filter(event -> event.companyId().equals(companyId))
+                .filter(event -> event.companyId().value().equals(companyId))
                 .toList();
     }
 

@@ -1,0 +1,225 @@
+classDiagram
+    direction TB
+
+    %% 
+    %% ══════════════════════════════════════════
+    %% EVENT-ZONE domain:
+    %% Updated Event-Zone Domain design for V2
+    %% ══════════════════════════════════════════
+    namespace Domain-Event {
+        class Event
+        class EventDetails
+        class VenueMap
+        class MapElement
+        class EventStatus
+        class SalesMethod
+        class Zone
+        class ZoneType
+        class Row
+        class Seat
+        class SeatId
+        class SeatStatus
+    }
+
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Event
+    %% Boundary: Event root + VenueMap + MapElement
+    %% ══════════════════════════════════════════
+    class Event {
+        <<Aggregate Root>>
+        -EventId eventId
+        -CompanyId companyId
+        -EventDetails details
+        -VenueMap venueMap
+        -EventStatus status
+        -Set~ZoneId~ zones
+        -SalesMethod salesMethod
+        +createDraft(companyId, details, venueMap) Event
+        +updateDetails(newDetails) void
+        +updateVenueMap(newVenueMap) void
+        +addZone(zoneId) void
+        +removeZone(zoneId) void
+        +publish() void
+        +cancel() void
+        +over() void
+        +markSoldOut() void
+        +setSalesMethod(salesMethod) void
+    }
+
+    class EventDetails {
+        <<Value Object>>
+        +String name
+        +List~LocalDateTime~ dates
+        +String category
+        +String location
+        +String description
+    }
+
+    class VenueMap {
+        <<Value Object>>
+        -List~MapElement~ mapElements
+        +addElement(element) VenueMap
+        +removeElement(element) VenueMap
+        +mapElements() List~MapElement~
+    }
+
+    class MapElement {
+        <<Value Object>>
+        +String elementType
+        +String label
+        +int positionX
+        +int positionY
+        +ZoneId linkedZoneId
+    }
+
+    class EventStatus {
+        <<enum>>
+        DRAFT
+        PUBLISHED
+        SOLD_OUT
+        CANCELLED
+        OVER
+    }
+
+    class SalesMethod {
+        <<enum>>
+        REGULAR
+        VIRTUAL_QUEUE
+        LOTTERY
+    }
+    
+    %% ══════════════════════════════════════════
+    %% AGGREGATE: Zone (separate for concurrency)
+    %% Boundary: Zone root + Row + Seat
+    %% ══════════════════════════════════════════
+    class Zone {
+        <<Aggregate Root>>
+        -ZoneId zoneId
+        -EventId eventId
+        -String zoneName
+        -ZoneType zoneType
+        -Money pricePerTicket
+        -long version
+        -List~Row~ rows
+        -int totalCapacity
+        -int availableCount
+        +createSeated(zoneId, eventId, zoneName, price, rows) Zone
+        +createStanding(zoneId, eventId, zoneName, price, capacity) Zone
+        +reserveSeat(seatId) void
+        +releaseSeat(seatId) void
+        +markSold(seatId) void
+        +reserveStanding(quantity) void
+        +releaseStanding(quantity) void
+        +markSoldStanding(quantity) void
+        +updateName(newName) void
+        +updatePrice(newPrice) void
+    }
+
+    class Row {
+        <<Entity>>
+        +String rowLabel
+        +List~Seat~ seats
+    }
+
+    class Seat {
+        <<Entity>>
+        +SeatId seatId
+        +String rowLabel
+        +int seatNumber
+        +SeatStatus status
+    }
+
+    class SeatId {
+        <<Value Object>>
+        +String value
+    }
+
+    class ZoneType {
+        <<enum>>
+        SEATED
+        STANDING
+    }
+
+    class SeatStatus {
+        <<enum>>
+        AVAILABLE
+        RESERVED
+        SOLD
+    }
+
+    Event "1" *-- "1" EventDetails : details
+    Event "1" *-- "1" VenueMap : venueMap
+    VenueMap "1" *-- "0..*" MapElement : elements
+    Event --> EventStatus
+    Event --> SalesMethod
+
+    Event "1"..>"0..n" Zone : has Zones by ZoneIds
+    Zone "1"<.."1" Event : belongs to Event by EventId
+
+    Zone --> ZoneType
+
+    Zone "1" *-- "0..*" Row : seated only
+    Row "1" *-- "1..*" Seat
+    Seat --> SeatId
+    Seat --> SeatStatus
+
+%%External Domain Usage and relations:
+
+    namespace Domain-Company {
+        class CompanyId
+    }
+
+    namespace Domain-Shared {
+        class Money
+    }
+
+    namespace Domain-Policy {
+        class DiscountPolicy
+        class PurchasePolicy
+    }
+
+    class CompanyId {
+        <<Value Object>>
+    }
+
+    class Money {
+        <<Value Object>>
+    }
+
+    class DiscountPolicy {
+        <<Aggregate Root>>
+    }
+
+    class PurchasePolicy {
+        <<Aggregate Root>>
+    }
+
+    Event ..> CompanyId : owned by ProductionCompany by CompanyId
+    Zone ..> Money : used for pricePerTicket
+    PurchasePolicy ..> Event : can target Event by EventId
+    DiscountPolicy ..> Event : can target Event by EventId
+    PurchasePolicy ..> CompanyId : can target Company by CompanyId
+    DiscountPolicy ..> CompanyId : can target Company by CompanyId
+
+
+%%Repository Connection Example
+    
+    namespace Infastructure-persistence {
+        class EventRepository
+        class ZoneRepository
+    }
+
+    class EventRepository {
+        <<Repository>>
+        -ConcurrentMap~EventId, Event~ events
+    }
+
+    class ZoneRepository {
+        <<Repository>>
+        -Map~String, Zone~ store
+        -ConcurrentHashMap~String, ReentrantLock~ zoneLocks
+    }
+
+    EventRepository ..> Event : Manages persistence
+    ZoneRepository ..> Zone : Manages persistence
+
