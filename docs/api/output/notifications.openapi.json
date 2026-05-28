@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Event System Notifications API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/notifications/pending": {
+      "get": {
+        "summary": "Get pending notifications for the authenticated user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "markAsRead",
+            "schema": { "type": "boolean" },
+            "description": "Whether to atomically mark returned notifications as delivered (default: true)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with notifications",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationsEnvelope" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "notificationId": { "type": "string" },
+          "type": { "type": "string" },
+          "content": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "delivered": { "type": "boolean" }
+        }
+      },
+      "NotificationsEnvelope": {
+        "type": "object",
+        "properties": {
+          "notifications": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } }
+        }
+      }
+    }
+  }
+}
