@@ -624,7 +624,7 @@ class EventPurchaseSupportServiceTest {
 
         assertThat(snapshot.eventId()).isEqualTo(event.id().value());
         assertThat(snapshot.eventName()).isEqualTo(event.details().name());
-        assertThat(snapshot.companyName()).isEqualTo(event.companyId());
+        assertThat(snapshot.companyName()).isEqualTo(event.companyId().toString());
         assertThat(snapshot.eventDate()).isEqualTo(event.details().dates().get(0).toLocalDate());
         assertThat(snapshot.location()).isEqualTo(event.details().location());
     }
@@ -819,7 +819,7 @@ class EventPurchaseSupportServiceTest {
 
         PurchaseContext context = new PurchaseContext(
                 event.id(),
-                new com.eventsystem.domain.company.CompanyId(event.companyId()),
+                event.companyId(),
                 List.of(wrongZone),
                 LocalDate.now().minusYears(25),
                 null

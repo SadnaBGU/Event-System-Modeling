@@ -2,6 +2,7 @@ package com.eventsystem.domain.event;
 
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 
@@ -14,7 +15,7 @@ import java.util.Set;
 public class Event {
     
     private final EventId eventId;
-    private final String companyId;
+    private final CompanyId companyId;
     private EventDetails details;
     private VenueMap venueMap;
     private EventStatus status;
@@ -23,12 +24,19 @@ public class Event {
     private SalesMethod salesMethod; //TODO -verify if correct structure and implementation
 
 
-    // private PurchasePolicy purchasePolicy; //TODO - add later
-    // private DiscountPolicy discountPolicy; //TODO - add later
-
-     public Event( EventId id, String companyId, EventDetails details, VenueMap venueMap) {
+     public Event( EventId id, CompanyId companyId, EventDetails details, VenueMap venueMap) {
         this.eventId= Objects.requireNonNull(id, "event id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
+        this.details = Objects.requireNonNull(details, "event details must not be null");
+        this.venueMap = Objects.requireNonNull(venueMap, "venue map must not be null");
+        this.status = EventStatus.DRAFT;
+        this.zones = new LinkedHashSet<>();
+        this.salesMethod = SalesMethod.REGULAR;
+    }
+
+    public Event( EventId id, String companyId, EventDetails details, VenueMap venueMap) {
+        this.eventId= Objects.requireNonNull(id, "event id must not be null");
+        this.companyId = Objects.requireNonNull(new CompanyId(companyId), "company id must not be null");
         this.details = Objects.requireNonNull(details, "event details must not be null");
         this.venueMap = Objects.requireNonNull(venueMap, "venue map must not be null");
         this.status = EventStatus.DRAFT;
@@ -52,7 +60,7 @@ public class Event {
         return eventId.toString();
     }
 
-    public String companyId() {
+    public CompanyId companyId() {
         return companyId;
     }
 

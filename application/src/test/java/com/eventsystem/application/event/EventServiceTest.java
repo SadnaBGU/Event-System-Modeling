@@ -5,6 +5,8 @@ import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.company.CompanyId;
+
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,7 +70,10 @@ import static org.mockito.Mockito.*;
 class EventServiceTest {
 
     private static final String ACTOR_ID = "actor-1";
-    private static final String COMPANY_ID = "company-1";
+    private static final String COMPANY_ID_STR = "company-1";
+    private static final CompanyId COMPANY_ID = new CompanyId(COMPANY_ID_STR);
+
+
 
     @Mock
     private IEventRepository eventRepository;
@@ -99,7 +104,7 @@ class EventServiceTest {
 
     private Event createDraftEvent() {
         return Event.createDraft(
-                COMPANY_ID,
+                COMPANY_ID_STR,
                 defaultDetails(),
                 VenueMap.empty()
         );
@@ -112,11 +117,12 @@ class EventServiceTest {
     }
 
     private void allowManageEvents() {
-        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID_STR)).thenReturn(true);
     }
 
     private void denyManageEvents() {
-        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID_STR)).thenReturn(false);
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID_STR)).thenReturn(false);
     }
 
     // ── createDraft ─────────────────────────────────────────────────────────
@@ -130,7 +136,7 @@ class EventServiceTest {
         VenueMap venueMap = VenueMap.empty();
         allowManageEvents();
 
-        EventId eventId = service.createDraft(ACTOR_ID, COMPANY_ID, details, venueMap);
+        EventId eventId = service.createDraft(ACTOR_ID, COMPANY_ID_STR, details, venueMap);
 
         assertThat(eventId).isNotNull();
 
@@ -144,7 +150,7 @@ class EventServiceTest {
         assertThat(savedEvent.venueMap()).isEqualTo(venueMap);
         assertThat(savedEvent.status()).isEqualTo(EventStatus.DRAFT);
 
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -154,11 +160,11 @@ class EventServiceTest {
     void createDraft_actorWithoutPermission_throwsAndDoesNotSave() {
         denyManageEvents();
 
-        assertThatThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, defaultDetails(), VenueMap.empty()))
+        assertThatThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID_STR, defaultDetails(), VenueMap.empty()))
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-42: Missing Required Fields
@@ -167,7 +173,7 @@ class EventServiceTest {
     @Test
     void createDraft_nullActorId_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft(null, COMPANY_ID, defaultDetails(), VenueMap.empty()));
+                .isThrownBy(() -> service.createDraft(null, COMPANY_ID_STR, defaultDetails(), VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
         verifyNoInteractions(permissionChecker);
@@ -179,7 +185,7 @@ class EventServiceTest {
     @Test
     void createDraft_blankActorId_throws() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.createDraft("   ", COMPANY_ID, defaultDetails(), VenueMap.empty()));
+                .isThrownBy(() -> service.createDraft("   ", COMPANY_ID_STR, defaultDetails(), VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
         verifyNoInteractions(permissionChecker);
@@ -203,7 +209,7 @@ class EventServiceTest {
     @Test
     void createDraft_nullDetails_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, null, VenueMap.empty()));
+                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID_STR, null, VenueMap.empty()));
 
         verify(eventRepository, never()).save(any());
         verifyNoInteractions(permissionChecker);
@@ -215,7 +221,7 @@ class EventServiceTest {
     @Test
     void createDraft_nullVenueMap_throws() {
         assertThatNullPointerException()
-                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, defaultDetails(), null));
+                .isThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID_STR, defaultDetails(), null));
 
         verify(eventRepository, never()).save(any());
         verifyNoInteractions(permissionChecker);
@@ -244,7 +250,7 @@ class EventServiceTest {
 
         assertThat(event.details()).isEqualTo(newDetails);
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -268,7 +274,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15 / UC20
@@ -338,7 +344,7 @@ class EventServiceTest {
 
         assertThat(event.venueMap()).isEqualTo(newVenueMap);
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -355,7 +361,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15 / UC20
@@ -425,7 +431,7 @@ class EventServiceTest {
 
         assertThat(event.zoneIds()).contains(zoneId);
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -442,7 +448,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -512,7 +518,7 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-61: Authorized Action Success
@@ -531,7 +537,7 @@ class EventServiceTest {
 
         assertThat(event.zoneIds()).doesNotContain(zoneId);
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -550,7 +556,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -619,7 +625,7 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // ── publish / cancel ────────────────────────────────────────────────────
@@ -639,7 +645,7 @@ class EventServiceTest {
         assertThat(event.status()).isEqualTo(EventStatus.PUBLISHED);
         assertThat(event.isPublished()).isTrue();
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -656,7 +662,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -724,7 +730,7 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -742,7 +748,7 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-61: Authorized Action Success
@@ -760,7 +766,7 @@ class EventServiceTest {
         assertThat(event.status()).isEqualTo(EventStatus.CANCELLED);
         assertThat(event.isCancelled()).isTrue();
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -777,7 +783,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -869,12 +875,12 @@ class EventServiceTest {
     void findByCompany_delegatesToRepository() {
         Event event = createDraftEvent();
 
-        when(eventRepository.findByCompany(COMPANY_ID)).thenReturn(List.of(event));
+        when(eventRepository.findByCompany(COMPANY_ID_STR)).thenReturn(List.of(event));
 
-        List<Event> result = service.findByCompany(COMPANY_ID);
+        List<Event> result = service.findByCompany(COMPANY_ID_STR);
 
         assertThat(result).containsExactly(event);
-        verify(eventRepository).findByCompany(COMPANY_ID);
+        verify(eventRepository).findByCompany(COMPANY_ID_STR);
         verifyNoInteractions(permissionChecker);
     }
 
@@ -902,10 +908,10 @@ class EventServiceTest {
         Event cancelledEvent = createDraftEvent();
         cancelledEvent.cancel();
 
-        when(eventRepository.findByCompany(COMPANY_ID))
+        when(eventRepository.findByCompany(COMPANY_ID_STR))
                 .thenReturn(List.of(draftEvent, publishedEvent, cancelledEvent));
 
-        List<Event> result = service.findPublishedByCompany(COMPANY_ID);
+        List<Event> result = service.findPublishedByCompany(COMPANY_ID_STR);
 
         assertThat(result).containsExactly(publishedEvent);
         verifyNoInteractions(permissionChecker);
@@ -916,9 +922,9 @@ class EventServiceTest {
     // ─────────────────────────────────────────────────────────────────────
     @Test
     void findPublishedByCompany_whenNoEvents_returnsEmptyList() {
-        when(eventRepository.findByCompany(COMPANY_ID)).thenReturn(List.of());
+        when(eventRepository.findByCompany(COMPANY_ID_STR)).thenReturn(List.of());
 
-        List<Event> result = service.findPublishedByCompany(COMPANY_ID);
+        List<Event> result = service.findPublishedByCompany(COMPANY_ID_STR);
 
         assertThat(result).isEmpty();
         verifyNoInteractions(permissionChecker);
@@ -952,7 +958,7 @@ class EventServiceTest {
         assertThat(event.salesMethod()).isEqualTo(SalesMethod.LOTTERY);
         assertThat(event.isMethodLottery()).isTrue();
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -969,7 +975,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -1106,7 +1112,7 @@ class EventServiceTest {
         assertThat(event.status()).isEqualTo(EventStatus.OVER);
         assertThat(event.isOver()).isTrue();
         verify(eventRepository).save(event);
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-62: Unauthorized Action Denied
@@ -1124,7 +1130,7 @@ class EventServiceTest {
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // Supporting test for UC15
@@ -1157,7 +1163,7 @@ class EventServiceTest {
                 .isInstanceOf(EventDomainException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-42: Missing Required Fields
@@ -1201,7 +1207,7 @@ class EventServiceTest {
     // ─────────────────────────────────────────────────────────────────────
     @Test
     void createDraft_missingRequiredDetails_throwsAndDoesNotSave() {
-        assertThatThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID, null, VenueMap.empty()))
+        assertThatThrownBy(() -> service.createDraft(ACTOR_ID, COMPANY_ID_STR, null, VenueMap.empty()))
                 .isInstanceOf(NullPointerException.class);
 
         verify(eventRepository, never()).save(any());
@@ -1224,13 +1230,13 @@ class EventServiceTest {
         );
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
-        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+        when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID_STR)).thenReturn(false);
 
         assertThatThrownBy(() -> service.updateDetails(ACTOR_ID, event.id(), newDetails))
                 .isInstanceOf(SecurityException.class);
 
         verify(eventRepository, never()).save(any());
-        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID);
+        verify(permissionChecker).canManageEvents(ACTOR_ID, COMPANY_ID_STR);
     }
 
     // UAT-41: Successful Event Creation
@@ -1292,7 +1298,7 @@ class EventServiceTest {
         );
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
-        when(permissionChecker.canManageEvents(actorId, event.companyId())).thenReturn(true);
+        when(permissionChecker.canManageEvents(actorId, event.companyId().value())).thenReturn(true);
 
         service.setPurchasePolicy(actorId, event.id(), policy);
 
@@ -1306,7 +1312,7 @@ class EventServiceTest {
         PurchasePolicy policy = PurchasePolicy.AllowAll();
 
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
-        when(permissionChecker.canManageEvents(actorId, event.companyId())).thenReturn(false);
+        when(permissionChecker.canManageEvents(actorId, event.companyId().value())).thenReturn(false);
 
         assertThatThrownBy(() -> service.setPurchasePolicy(actorId, event.id(), policy))
                 .isInstanceOf(SecurityException.class);

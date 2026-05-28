@@ -5,9 +5,9 @@ import com.eventsystem.domain.event.EventId;
 import java.util.Objects;
 import java.util.Set;
 
-public record DiscountPolicyScope(boolean companyWide, Set<EventId> eventIds) {
+public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
 
-    public DiscountPolicyScope {
+    public PolicyScope {
         Objects.requireNonNull(eventIds, "eventIds must not be null");
 
         // if (!companyWide && eventIds.isEmpty()) {
@@ -27,20 +27,20 @@ public record DiscountPolicyScope(boolean companyWide, Set<EventId> eventIds) {
         return Set.copyOf(eventIds);
     }
 
-    public static DiscountPolicyScope companyWideScope() {
-        return new DiscountPolicyScope(true, Set.of());
+    public static PolicyScope companyWideScope() {
+        return new PolicyScope(true, Set.of());
     }
 
-    public static DiscountPolicyScope forEvents(Set<EventId> eventIds) {
-        return new DiscountPolicyScope(false, eventIds);
+    public static PolicyScope forEvents(Set<EventId> eventIds) {
+        return new PolicyScope(false, eventIds);
     }
 
-    public static DiscountPolicyScope forSingleEvent(EventId eventId) {
-        return new DiscountPolicyScope(false, Set.of(eventId));
+    public static PolicyScope forSingleEvent(EventId eventId) {
+        return new PolicyScope(false, Set.of(eventId));
     }
 
-    public static DiscountPolicyScope clearScope() {
-        return new DiscountPolicyScope(false, Set.of());
+    public static PolicyScope clearScope() {
+        return new PolicyScope(false, Set.of());
     }
 
     public boolean appliesTo(EventId eventId) {

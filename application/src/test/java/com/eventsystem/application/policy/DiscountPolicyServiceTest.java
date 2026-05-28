@@ -6,7 +6,7 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.DiscountPolicy;
 import com.eventsystem.domain.policy.DiscountPolicyId;
-import com.eventsystem.domain.policy.DiscountPolicyScope;
+import com.eventsystem.domain.policy.PolicyScope;
 import com.eventsystem.domain.policy.DiscountSummary;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -58,7 +58,7 @@ class DiscountPolicyServiceTest {
     }
 
     private DiscountPolicy companyWideWithDiscount() {
-        DiscountPolicy p =  new DiscountPolicy(DiscountPolicyId.random(),COMPANY_ID,DiscountPolicyScope.companyWideScope());
+        DiscountPolicy p =  new DiscountPolicy(DiscountPolicyId.random(),COMPANY_ID,PolicyScope.companyWideScope());
         p.addDiscount(Discount.GeneralDiscount("TEST", BigDecimal.ONE));
         return p;
     }
@@ -67,7 +67,7 @@ class DiscountPolicyServiceTest {
         return new DiscountPolicy(
                 DiscountPolicyId.random(),
                 COMPANY_ID,
-                DiscountPolicyScope.companyWideScope()
+                PolicyScope.companyWideScope()
         );
     }
 
@@ -75,7 +75,7 @@ class DiscountPolicyServiceTest {
         return new DiscountPolicy(
                 DiscountPolicyId.random(),
                 COMPANY_ID,
-                DiscountPolicyScope.forEvents(Set.of(eventId))
+                PolicyScope.forEvents(Set.of(eventId))
         );
     }
 

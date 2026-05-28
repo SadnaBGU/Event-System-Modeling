@@ -2,10 +2,9 @@ package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
-import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class CodePolicy implements IPolicy{
+public final class CodePolicy implements IBasicPolicy{
 
     private final String discountCode;
 

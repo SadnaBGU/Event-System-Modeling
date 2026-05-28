@@ -1,8 +1,7 @@
 package com.eventsystem.domain.policy.basic;
 import com.eventsystem.domain.policy.PurchaseContext;
-import com.eventsystem.domain.policy.IPolicy;
 
-public enum AlwaysTruePolicy implements IPolicy {
+public enum AlwaysTruePolicy implements IBasicPolicy {
     INSTANCE;
 
     @Override

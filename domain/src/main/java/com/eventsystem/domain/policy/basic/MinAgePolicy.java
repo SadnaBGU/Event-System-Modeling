@@ -4,12 +4,11 @@ import java.time.LocalDate;
 import java.time.Period;
 
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
-import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 
 
-public final class MinAgePolicy implements IPolicy{
+public final class MinAgePolicy implements IBasicPolicy{
     
     private final int minAge;
 

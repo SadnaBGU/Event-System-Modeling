@@ -4,6 +4,7 @@ import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.event.*;
 import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.company.CompanyId;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -256,6 +257,12 @@ public class EventService {
         
     }
 
+    private void requireManageEventsPermission(String actorId, CompanyId companyId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+        requireManageEventsPermission(actorId, companyId.value());
+    }
+    
     public void requireZoneBelongsToEvent(EventId eventId, ZoneId zoneId) {
         Event event = loadEvent(eventId);
         if (!event.isZoneInEvent(zoneId)) {

@@ -9,4 +9,6 @@ public interface IPolicy {
     //if not valid- throw(for purchase policies)
     public void require(PurchaseContext context);
 
+    public boolean isValidPolicy();
+
 }

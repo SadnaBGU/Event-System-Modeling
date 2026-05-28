@@ -8,7 +8,7 @@ import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 
-public final class OrPolicy implements IPolicy {
+public final class OrPolicy implements ICompositePolicy {
     private final List<IPolicy> policies;
 
     public OrPolicy(List<IPolicy> policies) {
@@ -38,6 +38,11 @@ public final class OrPolicy implements IPolicy {
         for (IPolicy policy : policies) {
             policy.require(context);
         }
+    }
+
+    @Override
+    public List<IPolicy> children() {
+        return policies;
     }
     
 }

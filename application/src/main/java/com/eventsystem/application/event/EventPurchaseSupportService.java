@@ -193,7 +193,7 @@ public class EventPurchaseSupportService implements IEventQueryPort{
                 }
             }
         }
-        CompanyId cid = new CompanyId(event.companyId());
+        CompanyId cid = event.companyId();
 
         //TODO- get buyer birthday date and replace the placeholder!
         return new PurchaseContext(eid, cid,ticketZoneList ,placeholderBuyerBirthDate(), normalizeDiscountCode(null));
@@ -214,7 +214,7 @@ public class EventPurchaseSupportService implements IEventQueryPort{
                 }
             }
         }
-        CompanyId cid = new CompanyId(event.companyId());
+        CompanyId cid = event.companyId();
 
         //TODO- get buyer birthday date and replace the placeholder!
         return new PurchaseContext(eid, cid,ticketZoneList ,placeholderBuyerBirthDate(), normalizeDiscountCode(discountCode));
@@ -259,36 +259,37 @@ public class EventPurchaseSupportService implements IEventQueryPort{
 
     public PurchaseContext fromPurchaseInfo( String eventId, BuyerReference buyer, List<OrderItem> items,
                                              LocalDate buyerBirthDate, String discountCode ) {
-    Objects.requireNonNull(eventId, "eventId must not be null");
-    Objects.requireNonNull(buyer, "buyer must not be null");
-    Objects.requireNonNull(items, "items must not be null");
-    Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(buyer, "buyer must not be null");
+        Objects.requireNonNull(items, "items must not be null");
+        Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
 
-    EventId eid = new EventId(eventId);
-    Event event = loadEvent(eid);
+        EventId eid = new EventId(eventId);
+        Event event = loadEvent(eid);
 
-    List<ZoneId> ticketZoneList = new ArrayList<>();
+        List<ZoneId> ticketZoneList = new ArrayList<>();
 
-    for (OrderItem item : items) {
-        Objects.requireNonNull(item, "order item must not be null");
+        for (OrderItem item : items) {
+            Objects.requireNonNull(item, "order item must not be null");
 
-        ZoneId zoneId = new ZoneId(item.getZoneId());
+            ZoneId zoneId = new ZoneId(item.getZoneId());
 
-        if (!event.isZoneInEvent(zoneId)) {
-            logger.warn("Cannot build purchase context: zone does not belong to event. eventId={}, zoneId={}",
-                    eventId, zoneId.value());
-            throw new PolicyException("Zone does not belong to event: " + zoneId.value());
+            if (!event.isZoneInEvent(zoneId)) {
+                logger.warn("Cannot build purchase context: zone does not belong to event. eventId={}, zoneId={}",
+                        eventId, zoneId.value());
+                throw new PolicyException("Zone does not belong to event: " + zoneId.value());
+            }
+
+            for (int i = 0; i < item.getQuantity(); i++) {
+                ticketZoneList.add(zoneId);
+            }
         }
 
-        for (int i = 0; i < item.getQuantity(); i++) {
-            ticketZoneList.add(zoneId);
-        }
-    }
+        CompanyId cid = event.companyId();
 
-    CompanyId companyId = new CompanyId(event.companyId());
 
-    return new PurchaseContext(eid, companyId, ticketZoneList, buyerBirthDate, normalizeDiscountCode(discountCode));
-}
+        return new PurchaseContext(eid, cid, ticketZoneList, buyerBirthDate, normalizeDiscountCode(discountCode));
+    }   
 
     public boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items, LocalDate buyerBirthDate) {
         PolicyValidationResult res = evalEventPurchaseBeforePolicyValidation(eventId, buyer, items);
@@ -351,8 +352,8 @@ public class EventPurchaseSupportService implements IEventQueryPort{
         Objects.requireNonNull(eventId, "eventId must not be null");
 
         Event event = loadEvent(new EventId(eventId));
-
-        return new EventSnapshot( event.id().value(), event.details().name(), event.companyId(),
+        //TODO - Needs to replace CompanyId with name
+        return new EventSnapshot( event.id().value(), event.details().name(), event.companyId().toString(),
                             event.details().dates().get(0).toLocalDate(), event.details().location());
     }
 
