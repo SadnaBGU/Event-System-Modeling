@@ -12,5 +12,7 @@ public interface IEventRepository {
 
     List<Event> findByCompany(String companyId);
 
+    List<Event> findAll();
+
     void save(Event event);
 }

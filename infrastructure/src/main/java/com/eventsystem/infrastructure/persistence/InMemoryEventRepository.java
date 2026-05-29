@@ -33,6 +33,11 @@ public class InMemoryEventRepository implements IEventRepository {
     }
 
     @Override
+    public List<Event> findAll() {
+        return events.values().stream().toList();
+    }
+
+    @Override
     public void save(Event event) {
         Objects.requireNonNull(event, "event must not be null");
 
