@@ -114,6 +114,19 @@ public class VirtualQueue {
                 .count();
         return Math.max(0, maxConcurrentAdmissions - currentLoad);
     }
+    /**
+     * Returns the 1-based position of the visitor in the waiting queue.
+     * Returns 0 if the visitor is admitted, and -1 if the visitor is neither waiting nor admitted.
+     */
+    public int positionOf(BuyerReference visitor) {
+        if (isAdmitted(visitor)) return 0;
+        int pos = 1;
+        for (QueueEntry e : waitingEntries) {
+            if (e.getVisitorRef().equals(visitor)) return e.getPosition();
+            pos++;
+        }
+        return -1;
+    }
     
     public void consumeTokenFor(BuyerReference buyer) {
         admittedSet.stream()

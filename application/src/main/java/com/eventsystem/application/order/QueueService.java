@@ -98,6 +98,26 @@ public class QueueService {
         
         return status;
     }
+
+    /**
+     * Returns admission status and position for a buyer in the queue.
+     * position = 0 when admitted, -1 when not in queue.
+     */
+    public AdmissionStatus getAdmissionStatus(String eventId, BuyerReference buyer) {
+        return queueRepository.findByEvent(eventId)
+                .map(queue -> new AdmissionStatus(queue.isAdmitted(buyer), queue.positionOf(buyer)))
+                .orElse(new AdmissionStatus(false, -1));
+    }
+
+    public static class AdmissionStatus {
+        public final boolean isAdmitted;
+        public final int position;
+
+        public AdmissionStatus(boolean isAdmitted, int position) {
+            this.isAdmitted = isAdmitted;
+            this.position = position;
+        }
+    }
     
     private VirtualQueue createNewQueue(String eventId) {
         VirtualQueue newQueue = new VirtualQueue(
