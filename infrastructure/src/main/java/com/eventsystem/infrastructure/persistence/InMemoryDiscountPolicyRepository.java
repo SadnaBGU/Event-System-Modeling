@@ -5,6 +5,7 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.DiscountPolicy;
 import com.eventsystem.domain.policy.DiscountPolicyId;
+import com.eventsystem.domain.policy.PurchasePolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,17 @@ public class InMemoryDiscountPolicyRepository implements IDiscountPolicyReposito
                 .stream()
                 .filter(DiscountPolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
+                .toList();
+    }
+
+    @Override
+    public List<DiscountPolicy> findApplicableToEvent(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        return policiesById.values()
+                .stream()
+                .filter(DiscountPolicy::isActive)
+                .filter(policy -> policy.scope().appliesTo(eventId))
                 .toList();
     }
 
