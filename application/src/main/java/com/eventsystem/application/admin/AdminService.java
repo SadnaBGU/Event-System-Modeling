@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Use cases (I.1, I.2): manage the singleton {@link Platform} — admin set,
@@ -152,19 +152,22 @@ public class AdminService {
      */
     public List<SuspensionDto> listSuspensions(MemberId actor) {
         requireAdmin(actor);
-        return memberRepo.findAll().stream()
-                .filter(m -> m.isSuspendedAt(Instant.now()))
-                .map(m -> {
-                    Suspension s = m.getSuspension().orElseThrow();
-                    return new SuspensionDto(
-                            m.getMemberId().value(),
-                            m.getUsername(),
-                            s.suspendedAt(),
-                            s.isPermanent() ? "PERMANENT" : s.duration().toString(),
-                            s.endsAt()
-                    );
-                })
-                .collect(Collectors.toList());
+        Instant now = Instant.now();
+        List<SuspensionDto> suspensions = new ArrayList<>();
+        for (Member member : memberRepo.findAll()) {
+            if (!member.isSuspendedAt(now)) {
+                continue;
+            }
+            Suspension suspension = member.getSuspension().orElseThrow();
+            suspensions.add(new SuspensionDto(
+                    member.getMemberId().value(),
+                    member.getUsername(),
+                    suspension.suspendedAt(),
+                    suspension.isPermanent() ? "PERMANENT" : suspension.duration().toString(),
+                    suspension.endsAt()
+            ));
+        }
+        return suspensions;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
