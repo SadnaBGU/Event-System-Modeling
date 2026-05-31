@@ -12,6 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * UC15: Create and Configure Event
@@ -389,4 +390,33 @@ class EventTest {
         assertThatThrownBy(() -> event.setSalesMethod(null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void canceledEventsCancelhasNoEffect() {
+        Event event = createDraftEvent();
+        event.cancel();
+        event.cancel();
+        assertThat(event.status() == EventStatus.CANCELLED);
+    }
+
+    @Test
+    void overEventsOverhasNoEffect() {
+        Event event = createDraftEvent();
+        event.addZone(ZoneId.random());
+        event.publish();
+        event.over();
+        event.over();
+        assertThat(event.status() == EventStatus.OVER);
+    }
+
+    @Test
+    void cannotCancelOverEvent() {
+        Event event = createDraftEvent();
+        event.addZone(ZoneId.random());
+        event.publish();
+        event.over();
+        assertThrows(EventDomainException.class, () -> { event.cancel(); });
+    }
+
+
 }

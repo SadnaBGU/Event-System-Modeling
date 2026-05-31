@@ -18,7 +18,7 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
         Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(zonesOfEachEventTicket, "zonesOfEachEventTicket must not be null");
-
+        discountCode = normalizeDiscountCode(discountCode);
         zonesOfEachEventTicket = List.copyOf(zonesOfEachEventTicket);
     }
 
@@ -56,16 +56,6 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
 
     public PurchaseContext withCode(String code) {
         return new PurchaseContext(eventId(), companyId(),zonesOfEachEventTicket(),buyerBirthDate(), code);
-    }
-
-    public int ticketCountForZone(ZoneId zoneTocount) {
-        int counter  = 0;
-        for (ZoneId zoneId : zonesOfEachEventTicket) {
-            if (zoneId.equals(zoneTocount)) {
-                counter++;
-            }
-        }
-        return counter;
     }
 
     private static String normalizeDiscountCode(String discountCode) {

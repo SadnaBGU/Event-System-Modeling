@@ -4,6 +4,7 @@ import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.zone.ZoneId;
 
 import com.eventsystem.domain.event.VenueMap;
 import org.junit.jupiter.api.Test;
@@ -130,5 +131,69 @@ class InMemoryEventRepositoryTest {
 
         assertThatThrownBy(() -> repository.findByCompany(null))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void findPublishedEvents_returnsOnlyPublishedEvents() {
+        InMemoryEventRepository repository = new InMemoryEventRepository();
+
+        Event publishedEvent1 = createPublishableEvent("published-1", "company-1");
+        Event publishedEvent2 = createPublishableEvent("published-2", "company-2");
+        Event draftEvent = createEvent("draft-1", "company-1");
+        Event cancelledEvent = createPublishableEvent("cancelled-1", "company-1");
+        Event soldOutEvent = createPublishableEvent("sold-out-1", "company-1");
+
+        publishedEvent1.publish();
+        publishedEvent2.publish();
+
+        cancelledEvent.publish();
+        cancelledEvent.cancel();
+
+        soldOutEvent.publish();
+        soldOutEvent.markSoldOut();
+
+        repository.save(publishedEvent1);
+        repository.save(publishedEvent2);
+        repository.save(draftEvent);
+        repository.save(cancelledEvent);
+        repository.save(soldOutEvent);
+
+        List<Event> found = repository.findPublishedEvents();
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(publishedEvent1, publishedEvent2)
+                .doesNotContain(draftEvent, cancelledEvent, soldOutEvent);
+    }
+
+    @Test
+    void findPublishedEvents_returnsEmptyListWhenRepositoryIsEmpty() {
+        InMemoryEventRepository repository = new InMemoryEventRepository();
+
+        List<Event> found = repository.findPublishedEvents();
+
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void findPublishedEvents_returnsEmptyListWhenNoEventIsPublished() {
+        InMemoryEventRepository repository = new InMemoryEventRepository();
+
+        Event draftEvent = createEvent("draft-1", "company-1");
+        Event cancelledEvent = createPublishableEvent("cancelled-1", "company-1");
+        cancelledEvent.publish();
+        cancelledEvent.cancel();
+
+        repository.save(draftEvent);
+        repository.save(cancelledEvent);
+
+        List<Event> found = repository.findPublishedEvents();
+
+        assertThat(found).isEmpty();
+    }
+
+    private Event createPublishableEvent(String eventId, String companyId) {
+        Event event = createEvent(eventId, companyId);
+        event.addZone(new ZoneId(eventId + "-zone"));
+        return event;
     }
 }

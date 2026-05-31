@@ -8,8 +8,10 @@ import com.eventsystem.domain.policy.basic.IBasicPolicy;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.eventsystem.domain.policy.PolicyTestFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -287,6 +289,237 @@ class CompositePolicyTest {
                 if (!validate(context)) {
                     throw new PurchasePolicyException("too few tickets");
                 }
+            }
+        };
+    }
+
+
+    @Test
+    void compositePoliciesExposeImmutableChildrenAndCompositeMarker_UAT44() {
+        IPolicy first = passingPolicy();
+        IPolicy second = passingPolicy();
+        AndPolicy andPolicy = new AndPolicy(List.of(first, second));
+        OrPolicy orPolicy = new OrPolicy(List.of(first, second));
+
+        assertThat(andPolicy.isComposite()).isTrue();
+        assertThat(orPolicy.isComposite()).isTrue();
+        assertThat(andPolicy.isValidPolicy()).isTrue();
+        assertThat(orPolicy.isValidPolicy()).isTrue();
+        assertThat(andPolicy.children()).containsExactly(first, second);
+        assertThat(orPolicy.children()).containsExactly(first, second);
+
+        assertThatThrownBy(() -> andPolicy.children().add(passingPolicy()))
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> orPolicy.children().add(passingPolicy()))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void compositePolicyValidityReturnsFalseForNullEmptyNullChildAndInvalidChild_UAT48() {
+        assertThat(customCompositeReturning(null).isValidPolicy()).isFalse();
+        assertThat(customCompositeReturning(List.of()).isValidPolicy()).isFalse();
+
+        List<IPolicy> policiesWithNull = new ArrayList<>();
+        policiesWithNull.add(passingPolicy());
+        policiesWithNull.add(null);
+        assertThat(customCompositeReturning(policiesWithNull).isValidPolicy()).isFalse();
+
+        IPolicy invalidChild = new IBasicPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return true;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                // pass
+            }
+
+            @Override
+            public boolean isValidPolicy() {
+                return false;
+            }
+        };
+
+        assertThat(customCompositeReturning(List.of(passingPolicy(), invalidChild)).isValidPolicy()).isFalse();
+    }
+
+    @Test
+    void andPolicyRequireCallsAllChildrenWhenAllPass_UAT44() {
+        AtomicInteger requireCalls = new AtomicInteger(0);
+        IPolicy first = trackingPolicy(true, requireCalls, false, "first failed");
+        IPolicy second = trackingPolicy(true, requireCalls, false, "second failed");
+
+        AndPolicy policy = new AndPolicy(List.of(first, second));
+
+        assertThatCode(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+        assertThat(requireCalls).hasValue(2);
+    }
+
+    @Test
+    void orPolicyRequireDoesNothingWhenAtLeastOneChildValid_UAT44() {
+        AtomicInteger requireCalls = new AtomicInteger(0);
+        IPolicy invalidButWouldThrow = trackingPolicy(false, requireCalls, true, "should not be called");
+        IPolicy valid = trackingPolicy(true, requireCalls, false, "valid should not need require");
+
+        OrPolicy policy = new OrPolicy(List.of(invalidButWouldThrow, valid));
+
+        assertThatCode(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+        assertThat(requireCalls).hasValue(0);
+    }
+
+    @Test
+    void orPolicyRequireCallsChildrenWhenAllValidateFalse_UAT27() {
+        AtomicInteger requireCalls = new AtomicInteger(0);
+        IPolicy first = trackingPolicy(false, requireCalls, false, "first failed");
+        IPolicy second = trackingPolicy(false, requireCalls, false, "second failed");
+
+        OrPolicy policy = new OrPolicy(List.of(first, second));
+
+        assertThatCode(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .doesNotThrowAnyException();
+        assertThat(requireCalls).hasValue(2);
+    }
+
+    @Test
+    void orPolicyRequirePropagatesFirstChildFailureWhenAllValidateFalse_UAT27() {
+        IPolicy first = trackingPolicy(false, new AtomicInteger(0), true, "first failed");
+        IPolicy second = trackingPolicy(false, new AtomicInteger(0), true, "second failed");
+
+        OrPolicy policy = new OrPolicy(List.of(first, second));
+
+        assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(PurchasePolicyException.class)
+                .hasMessageContaining("first failed");
+    }
+
+    @Test
+    void zoneSpecificPolicyListConstructorBuildsAndPolicyOverFilteredTickets_UAT45() {
+        IPolicy exactlyTwoTickets = new IBasicPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return context.ticketCount() == 2;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                if (!validate(context)) {
+                    throw new PurchasePolicyException("expected exactly two affected-zone tickets");
+                }
+            }
+        };
+
+        IPolicy onlyVip = new ZoneSpecificPolicy(
+                java.util.Set.of(VIP_ZONE),
+                List.of(exactlyTwoTickets),
+                false
+        );
+
+        assertThat(onlyVip.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE))).isTrue();
+        assertThat(onlyVip.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE))).isFalse();
+        assertThatCode(() -> onlyVip.require(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void zoneSpecificPolicyRequirePassesFilteredContextToInnerPolicy_UAT45() {
+        AtomicInteger seenTicketCount = new AtomicInteger(-1);
+
+        IPolicy inner = new IBasicPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return context.ticketCount() == 2;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                seenTicketCount.set(context.ticketCount());
+                if (context.ticketCount() != 2) {
+                    throw new PurchasePolicyException("wrong filtered count");
+                }
+            }
+        };
+
+        ZoneSpecificPolicy policy = new ZoneSpecificPolicy(java.util.Set.of(VIP_ZONE), inner, false);
+
+        assertThatCode(() -> policy.require(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE)))
+                .doesNotThrowAnyException();
+        assertThat(seenTicketCount).hasValue(2);
+    }
+
+    @Test
+    void deeplyNestedCompositePolicyEvaluatesThroughAndOrZoneLayers_UAT44_UAT45() {
+        IPolicy nested = new AndPolicy(List.of(
+                new OrPolicy(List.of(failingPolicy("irrelevant failure"), passingPolicy())),
+                new ZoneSpecificPolicy(java.util.Set.of(VIP_ZONE), ticketCountMustBe(2), false)
+        ));
+
+        assertThat(nested.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE))).isTrue();
+        assertThat(nested.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE))).isFalse();
+
+        assertThatCode(() -> nested.require(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE)))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> nested.require(contextWithTickets(VIP_ZONE, REGULAR_ZONE)))
+                .isInstanceOf(PurchasePolicyException.class)
+                .hasMessageContaining("Purchase policy violation for zones")
+                .hasMessageContaining("expected exactly 2 tickets");
+    }
+
+    private static IPolicy trackingPolicy(
+            boolean validateResult,
+            AtomicInteger requireCalls,
+            boolean throwOnRequire,
+            String message
+    ) {
+        return new IBasicPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return validateResult;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                requireCalls.incrementAndGet();
+                if (throwOnRequire) {
+                    throw new PurchasePolicyException(message);
+                }
+            }
+        };
+    }
+
+    private static IPolicy ticketCountMustBe(int expected) {
+        return new IBasicPolicy() {
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return context.ticketCount() == expected;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                if (!validate(context)) {
+                    throw new PurchasePolicyException("expected exactly " + expected + " tickets");
+                }
+            }
+        };
+    }
+
+    private static ICompositePolicy customCompositeReturning(List<IPolicy> children) {
+        return new ICompositePolicy() {
+            @Override
+            public List<IPolicy> children() {
+                return children;
+            }
+
+            @Override
+            public boolean validate(PurchaseContext context) {
+                return false;
+            }
+
+            @Override
+            public void require(PurchaseContext context) {
+                // not relevant for isValidPolicy tests
             }
         };
     }
