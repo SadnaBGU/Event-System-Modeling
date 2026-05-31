@@ -6,6 +6,7 @@ import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
 import com.eventsystem.application.security.ITokenService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,12 @@ class EventLotteryControllerTest {
 
     @MockBean
     private AuthenticationInterceptor authenticationInterceptor;
+
+    @SuppressWarnings("null")
+    @BeforeEach
+    void allowMvcRequests() throws Exception {
+        org.mockito.Mockito.when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @SuppressWarnings("null")
     @Test
