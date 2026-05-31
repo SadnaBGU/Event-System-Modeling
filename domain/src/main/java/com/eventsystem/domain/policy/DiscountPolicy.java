@@ -152,6 +152,13 @@ public final class DiscountPolicy {
         }
     }
 
+    public void clearAllEventsFromScope() {
+        this.scope = new PolicyScope(scope.isCompanyWide(), Set.of());
+        if(!scope.isScopedToEventsOrCompany()) {
+            deactivate();
+        }
+    }
+
     public List<Discount> discounts() {
         return List.copyOf(discounts);
     }

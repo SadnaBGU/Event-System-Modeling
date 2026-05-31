@@ -1,5 +1,6 @@
 package com.eventsystem.application.member;
 
+import java.util.Collection;
 import java.util.Optional;
 
 import com.eventsystem.domain.member.Member;
@@ -14,6 +15,8 @@ public interface IMemberRepository {
     Optional<Member> findById(MemberId memberId);
 
     Optional<Member> findByUsername(String username);
+
+    Collection<Member> findAll();
 
     void save(Member member);
 }

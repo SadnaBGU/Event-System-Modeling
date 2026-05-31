@@ -86,6 +86,11 @@ class ProductionCompanyServiceConcurrencyTest {
         }
 
         @Override
+        public java.util.Collection<Member> findAll() {
+            return members.values();
+        }
+
+        @Override
         public void save(Member member) {
             members.put(member.memberId(), member);
         }

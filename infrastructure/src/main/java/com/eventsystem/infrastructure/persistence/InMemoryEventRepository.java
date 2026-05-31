@@ -3,6 +3,8 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.application.event.IEventRepository;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.company.CompanyId;
+
 
 import java.util.List;
 import java.util.Objects;
@@ -23,12 +25,21 @@ public class InMemoryEventRepository implements IEventRepository {
     }
 
     @Override
-    public List<Event> findByCompany(String companyId) {
+    public List<Event> findByCompany(CompanyId companyId) {
         Objects.requireNonNull(companyId, "company id must not be null");
 
         return events.values()
                 .stream()
-                .filter(event -> event.companyId().value().equals(companyId))
+                .filter(event -> event.companyId().equals(companyId))
+                .toList();
+    }
+
+    @Override
+    public List<Event> findPublishedEvents() {
+
+        return events.values()
+                .stream()
+                .filter(event -> event.isPublished())
                 .toList();
     }
 

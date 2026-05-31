@@ -1,6 +1,6 @@
 package com.eventsystem.domain.event;
 
-import com.eventsystem.domain.zone.ZoneId; // TODO -to be implemnted
+import com.eventsystem.domain.zone.ZoneId; 
 
 public record MapElement( String elementType, String label, int positionX,
                             int positionY, ZoneId linkedZoneId)
@@ -20,5 +20,3 @@ public record MapElement( String elementType, String label, int positionX,
     }
 
 }
-
-// TODO - Verify if MapElement and VenueMap should be entities (as in the ClassDiagram) or Records (So immutable and just hold data)    

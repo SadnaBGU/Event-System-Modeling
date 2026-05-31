@@ -29,7 +29,7 @@ public record EventDetails( String name, List<LocalDateTime> dates, String categ
         }
 
         if (!isValidStringArg(description)) {
-            throw new IllegalArgumentException("description must not be blank"); //TODO- should enforce NON-EMPTY description?
+            throw new IllegalArgumentException("description must not be blank");
         }
     }
 

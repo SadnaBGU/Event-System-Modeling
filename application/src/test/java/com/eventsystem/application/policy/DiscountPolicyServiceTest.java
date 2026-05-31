@@ -1,8 +1,13 @@
 package com.eventsystem.application.policy;
 
+import com.eventsystem.application.company.ICompanyPermissionServicePort;
+import com.eventsystem.application.event.IEventManagementPort;
+import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.member.MemberId;
+
 import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.DiscountPolicy;
 import com.eventsystem.domain.policy.DiscountPolicyId;
@@ -35,26 +40,33 @@ class DiscountPolicyServiceTest {
     private IDiscountPolicyRepository discountPolicyRepository;
 
     @Mock
-    private IDiscountPermissionChecker permissionChecker;
+    private ICompanyPermissionServicePort permissionChecker;
+
+    @Mock
+    private IEventManagementPort eventServicePort;
+
+    @Mock
+    private IMemberInformationPort memberInfoPort;
 
 
     private DiscountPolicyService service;
 
-    private static final String ACTOR_ID = "actor-1";
-    private static final String COMPANY_ID_VALUE = "company-1";
-    private static final String OTHER_COMPANY_ID_VALUE = "company-2";
+    private static final String ACTOR_ID_STR = "actor-1";
+    private static final String COMPANY_ID_STR = "company-1";
+    private static final String OTHER_COMPANY_ID_STR = "company-2";
 
-    private static final CompanyId COMPANY_ID = new CompanyId(COMPANY_ID_VALUE);
-    private static final CompanyId OTHER_COMPANY_ID = new CompanyId(OTHER_COMPANY_ID_VALUE);
+    private static final MemberId ACTOR_ID = new MemberId(ACTOR_ID_STR);
+    private static final CompanyId COMPANY_ID = new CompanyId(COMPANY_ID_STR);
+    private static final CompanyId OTHER_COMPANY_ID = new CompanyId(OTHER_COMPANY_ID_STR);
 
     private static final EventId EVENT_ID = new EventId("event-1");
-    private static final EventId OTHER_EVENT_ID = new EventId("event-2");
+    //private static final EventId OTHER_EVENT_ID = new EventId("event-2");
 
     private static final ZoneId REGULAR_ZONE = new ZoneId("regular-zone");
 
     @BeforeEach
     void setUp() {
-        service = new DiscountPolicyService(discountPolicyRepository, permissionChecker);
+        service = new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, memberInfoPort);
     }
 
     private DiscountPolicy companyWideWithDiscount() {
@@ -99,9 +111,9 @@ class DiscountPolicyServiceTest {
     void saveDiscountPolicy_whenAuthorized_savesPolicy_UAT45() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
 
-        service.saveDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy);
+        service.saveDiscountPolicy(ACTOR_ID, COMPANY_ID, policy);
 
         verify(discountPolicyRepository).save(policy);
     }
@@ -110,9 +122,9 @@ class DiscountPolicyServiceTest {
     void saveDiscountPolicy_whenUnauthorized_throwsAndDoesNotSave() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(false);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.saveDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy))
+        assertThatThrownBy(() -> service.saveDiscountPolicy(ACTOR_ID, COMPANY_ID, policy))
                 .isInstanceOf(SecurityException.class);
 
         verify(discountPolicyRepository, never()).save(any());
@@ -122,9 +134,9 @@ class DiscountPolicyServiceTest {
     void saveDiscountPolicy_whenCompanyArgumentDoesNotMatchPolicyCompany_shouldThrowAndNotSave() {
         DiscountPolicy policy = companyWideWithDiscount();
         policy.addDiscount(Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20)));
-        when(permissionChecker.canManagePolicies(ACTOR_ID, OTHER_COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, OTHER_COMPANY_ID)).thenReturn(true);
         policy.activate();
-        assertThatThrownBy(() -> service.saveDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID_VALUE, policy))
+        assertThatThrownBy(() -> service.saveDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID, policy))
                 .isInstanceOf(SecurityException.class);
 
         verify(discountPolicyRepository, never()).save(any());
@@ -203,10 +215,10 @@ class DiscountPolicyServiceTest {
     void activateDiscountPolicy_whenAuthorizedAndCompanyOwnsPolicy_activatesAndSaves_UAT45() {
         DiscountPolicy policy = companyWideWithDiscount();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        service.activateDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy.id());
+        service.activateDiscountPolicy(ACTOR_ID, COMPANY_ID, policy.id());
 
         assertThat(policy.isActive()).isTrue();
         verify(discountPolicyRepository).save(policy);
@@ -216,9 +228,9 @@ class DiscountPolicyServiceTest {
     void activateDiscountPolicy_whenUnauthorized_throwsAndDoesNotSave() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(false);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.activateDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy.id()))
+        assertThatThrownBy(() -> service.activateDiscountPolicy(ACTOR_ID, COMPANY_ID, policy.id()))
                 .isInstanceOf(SecurityException.class);
 
         verify(discountPolicyRepository, never()).save(any());
@@ -228,10 +240,10 @@ class DiscountPolicyServiceTest {
     void activateDiscountPolicy_whenCompanyDoesNotOwnPolicy_throwsAndDoesNotSave() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, OTHER_COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, OTHER_COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        assertThatThrownBy(() -> service.activateDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID_VALUE, policy.id()))
+        assertThatThrownBy(() -> service.activateDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID, policy.id()))
                 .isInstanceOf(SecurityException.class)
                 .hasMessageContaining("other");
 
@@ -243,10 +255,10 @@ class DiscountPolicyServiceTest {
         DiscountPolicy policy = companyWideWithDiscount();
         policy.activate();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        service.deactivateDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy.id());
+        service.deactivateDiscountPolicy(ACTOR_ID, COMPANY_ID, policy.id());
 
         assertThat(policy.isActive()).isFalse();
         verify(discountPolicyRepository).save(policy);
@@ -258,10 +270,10 @@ class DiscountPolicyServiceTest {
         DiscountPolicy policy = companyWidePolicy();
         Discount discount = Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20));
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy.id(), discount);
+        service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID, policy.id(), discount);
 
         assertThat(policy.discounts()).contains(discount);
         verify(discountPolicyRepository).save(policy);
@@ -272,11 +284,11 @@ class DiscountPolicyServiceTest {
         DiscountPolicy policy = companyWidePolicy();
         Discount discount = Discount.GeneralDiscount("Visible", BigDecimal.valueOf(20));
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, OTHER_COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, OTHER_COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
         assertThatThrownBy(() ->
-                service.addDiscountToPolicy(ACTOR_ID, OTHER_COMPANY_ID_VALUE, policy.id(), discount)
+                service.addDiscountToPolicy(ACTOR_ID, OTHER_COMPANY_ID, policy.id(), discount)
         ).isInstanceOf(SecurityException.class);
 
         verify(discountPolicyRepository, never()).save(any());
@@ -286,10 +298,10 @@ class DiscountPolicyServiceTest {
     void deleteDiscountPolicy_whenAuthorizedAndCompanyOwnsPolicy_deletesPolicy() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        service.deleteDiscountPolicy(ACTOR_ID, COMPANY_ID_VALUE, policy.id());
+        service.deleteDiscountPolicy(ACTOR_ID, COMPANY_ID, policy.id());
 
         verify(discountPolicyRepository).deleteById(policy.id());
     }
@@ -298,10 +310,10 @@ class DiscountPolicyServiceTest {
     void deleteDiscountPolicy_whenCompanyDoesNotOwnPolicy_throwsAndDoesNotDelete() {
         DiscountPolicy policy = companyWidePolicy();
 
-        when(permissionChecker.canManagePolicies(ACTOR_ID, OTHER_COMPANY_ID_VALUE)).thenReturn(true);
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, OTHER_COMPANY_ID)).thenReturn(true);
         when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
-        assertThatThrownBy(() -> service.deleteDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID_VALUE, policy.id()))
+        assertThatThrownBy(() -> service.deleteDiscountPolicy(ACTOR_ID, OTHER_COMPANY_ID, policy.id()))
                 .isInstanceOf(SecurityException.class);
 
         verify(discountPolicyRepository, never()).deleteById(any());
@@ -322,12 +334,7 @@ class DiscountPolicyServiceTest {
         when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                 .thenReturn(List.of());
 
-        DiscountSummary summary = service.calculateDiscountSummary(
-                COMPANY_ID,
-                EVENT_ID,
-                purchaseContext(),
-                baseCost100()
-        );
+        DiscountSummary summary = service.calculateDiscountSummary(purchaseContext(), baseCost100());
 
         assertThat(summary.appliedDiscountsNames()).isEmpty();
         assertThat(summary.totalDiscount()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -343,12 +350,7 @@ class DiscountPolicyServiceTest {
         when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                 .thenReturn(List.of(policy));
 
-        DiscountSummary summary = service.calculateDiscountSummary(
-                COMPANY_ID,
-                EVENT_ID,
-                purchaseContext(),
-                baseCost100()
-        );
+        DiscountSummary summary = service.calculateDiscountSummary(purchaseContext(), baseCost100());
 
         assertThat(summary.appliedDiscountsNames()).containsExactly("Visible");
         assertThat(summary.totalDiscount()).isEqualByComparingTo("20");
@@ -367,12 +369,7 @@ class DiscountPolicyServiceTest {
         when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                 .thenReturn(List.of(smallPolicy, largePolicy));
 
-        DiscountSummary summary = service.calculateDiscountSummary(
-                COMPANY_ID,
-                EVENT_ID,
-                purchaseContext(),
-                baseCost100()
-        );
+        DiscountSummary summary = service.calculateDiscountSummary(purchaseContext(), baseCost100());
 
         assertThat(summary.appliedDiscountsNames()).containsExactly("Large");
         assertThat(summary.totalDiscount()).isEqualByComparingTo("25");
@@ -387,12 +384,7 @@ class DiscountPolicyServiceTest {
         when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                 .thenReturn(List.of(policy));
 
-        DiscountSnapshot snapshot = service.generateDiscountSnapshot(
-                COMPANY_ID,
-                EVENT_ID,
-                purchaseContext(),
-                baseCost100()
-        );
+        DiscountSnapshot snapshot = service.generateDiscountSnapshot(purchaseContext(), baseCost100());
 
         assertThat(snapshot.discountName()).contains("Visible");
         assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo("20");
@@ -403,7 +395,7 @@ class DiscountPolicyServiceTest {
     void fromPurchaseInfo_withoutDiscountCode_usesProvidedBirthDateAndNullCode() {
         LocalDate birthDate = LocalDate.of(2000, 1, 1);
 
-        PurchaseContext context = service.fromPurchaseInfo(
+        PurchaseContext context = PurchaseContext.fromPurchaseInfo(
                 EVENT_ID,
                 COMPANY_ID,
                 List.of(REGULAR_ZONE),
@@ -421,7 +413,7 @@ class DiscountPolicyServiceTest {
     void fromPurchaseInfo_withDiscountCode_trimsCodeAndUsesProvidedBirthDate() {
         LocalDate birthDate = LocalDate.of(2000, 1, 1);
 
-        PurchaseContext context = service.fromPurchaseInfo(
+        PurchaseContext context = PurchaseContext.fromPurchaseInfo(
                 EVENT_ID,
                 COMPANY_ID,
                 List.of(REGULAR_ZONE),
@@ -437,7 +429,7 @@ class DiscountPolicyServiceTest {
     void fromPurchaseInfo_withBlankDiscountCode_setsCodeToNull() {
         LocalDate birthDate = LocalDate.of(2000, 1, 1);
 
-        PurchaseContext context = service.fromPurchaseInfo(
+        PurchaseContext context = PurchaseContext.fromPurchaseInfo(
                 EVENT_ID,
                 COMPANY_ID,
                 List.of(REGULAR_ZONE),
@@ -450,10 +442,16 @@ class DiscountPolicyServiceTest {
 
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new DiscountPolicyService(null, permissionChecker))
+        assertThatThrownBy(() -> new DiscountPolicyService(null, permissionChecker, eventServicePort, memberInfoPort))
                 .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, null))
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, null, eventServicePort, memberInfoPort))
+                .isInstanceOf(NullPointerException.class);
+                
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, null, memberInfoPort))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, null))
                 .isInstanceOf(NullPointerException.class);
     }
 }

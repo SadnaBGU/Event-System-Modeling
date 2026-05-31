@@ -3,6 +3,8 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.company.CompanyId;
+
 import com.eventsystem.domain.event.VenueMap;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class InMemoryEventRepositoryTest {
+
+    private CompanyId compId = new CompanyId("company-1");
 
     private EventDetails defaultDetails() {
         return new EventDetails(
@@ -68,7 +72,7 @@ class InMemoryEventRepositoryTest {
         repository.save(companyOneEvent2);
         repository.save(companyTwoEvent);
 
-        List<Event> found = repository.findByCompany("company-1");
+        List<Event> found = repository.findByCompany(compId);
 
         assertThat(found)
                 .containsExactlyInAnyOrder(companyOneEvent1, companyOneEvent2)
@@ -81,7 +85,7 @@ class InMemoryEventRepositoryTest {
 
         repository.save(createEvent("event-1", "company-1"));
 
-        List<Event> found = repository.findByCompany("company-2");
+        List<Event> found = repository.findByCompany(new CompanyId("company-2"));
 
         assertThat(found).isEmpty();
     }
@@ -100,8 +104,8 @@ class InMemoryEventRepositoryTest {
 
         assertThat(found).isPresent();
         assertThat(found.get()).isSameAs(replacement);
-        assertThat(repository.findByCompany("company-1")).isEmpty();
-        assertThat(repository.findByCompany("company-2")).containsExactly(replacement);
+        assertThat(repository.findByCompany(compId)).isEmpty();
+        assertThat(repository.findByCompany(new CompanyId("company-2"))).containsExactly(replacement);
     }
 
     @Test

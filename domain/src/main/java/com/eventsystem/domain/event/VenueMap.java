@@ -51,4 +51,3 @@ public final class VenueMap {
     }
 }
 
-// TODO - Verify if MapElement and VenueMap should be entities (as in the ClassDiagram) or Records (So immutable and just hold data)

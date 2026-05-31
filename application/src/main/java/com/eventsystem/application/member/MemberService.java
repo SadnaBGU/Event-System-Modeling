@@ -3,10 +3,12 @@ package com.eventsystem.application.member;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.member.PersonalDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -15,7 +17,7 @@ import java.util.Objects;
  * All write operations require an authenticated {@code actor} {@link MemberId}.
  * In V1 a member may only act on themselves; cross-member operations are an admin concern.
  */
-public class MemberService {
+public class MemberService implements IMemberInformationPort{
 
     private static final Logger log = LoggerFactory.getLogger(MemberService.class);
 
@@ -64,4 +66,18 @@ public class MemberService {
                     + " is not authorized to act on member " + target.value());
         }
     }
+
+
+    //Added for policy checking
+    @Override
+    public LocalDate getMemberBirthdate(MemberId memberId) {
+        return load(memberId).getPersonalDetails().dateOfBirth();
+    }
+
+    @Override
+    public MemberStatus getMemberStatus(MemberId memberId) {
+        return load(memberId).getStatus();
+    }
+
+
 }
