@@ -2,7 +2,10 @@ package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.member.MemberStatus;
+import com.eventsystem.domain.member.Suspension;
 import com.eventsystem.domain.platform.Platform;
 import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.domain.shared.ProviderId;
@@ -10,11 +13,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Use cases (I.1, I.2): manage the singleton {@link Platform} — admin set,
  * provider registries, global tunables, lifecycle.
+ * Use cases (II.6.7, II.6.8, II.6.9): suspend, unsuspend, and view member suspensions.
  *
  * Every mutating call requires the {@code actor} to already be a system administrator.
  */
@@ -110,6 +117,57 @@ public class AdminService {
         log.info("Queue load threshold set to {} by admin={}", threshold, actor.value());
     }
 
+    // ── II.6.7 — Suspend member ──────────────────────────────────────────────
+
+    /**
+     * Suspends a member for the given duration.
+     * @param duration how long to suspend; {@code null} means permanent
+     */
+    public void suspendMember(MemberId actor, MemberId target, Duration duration) {
+        requireAdmin(actor);
+        Objects.requireNonNull(target, "target must not be null");
+        Member member = loadMember(target);
+        member.suspend(Instant.now(), duration);
+        memberRepo.save(member);
+        log.info("Member {} suspended by admin={}, duration={}", target.value(), actor.value(),
+                duration == null ? "PERMANENT" : duration);
+    }
+
+    // ── II.6.8 — Unsuspend member ────────────────────────────────────────────
+
+    public void unsuspendMember(MemberId actor, MemberId target) {
+        requireAdmin(actor);
+        Objects.requireNonNull(target, "target must not be null");
+        Member member = loadMember(target);
+        member.unsuspend();
+        memberRepo.save(member);
+        log.info("Member {} unsuspended by admin={}", target.value(), actor.value());
+    }
+
+    // ── II.6.9 — View suspensions ────────────────────────────────────────────
+
+    /**
+     * Returns all members currently in SUSPENDED status, with their suspension details.
+     */
+    public List<SuspensionDto> listSuspensions(MemberId actor) {
+        requireAdmin(actor);
+        return memberRepo.findAll().stream()
+                .filter(m -> m.getStatus() == MemberStatus.SUSPENDED)
+                .map(m -> {
+                    Suspension s = m.getSuspension().orElseThrow();
+                    return new SuspensionDto(
+                            m.getMemberId().value(),
+                            m.getUsername(),
+                            s.suspendedAt(),
+                            s.isPermanent() ? "PERMANENT" : s.duration().toString(),
+                            s.endsAt()
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private Platform requireAdmin(MemberId actor) {
         Objects.requireNonNull(actor, "actor must not be null");
         Platform p = platformRepo.findInstance()
@@ -118,6 +176,11 @@ public class AdminService {
             throw new NotAuthorizedException(actor.value());
         }
         return p;
+    }
+
+    private Member loadMember(MemberId memberId) {
+        return memberRepo.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId.value()));
     }
 
     private static PlatformDto toDto(Platform p) {
