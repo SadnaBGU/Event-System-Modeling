@@ -15,6 +15,7 @@ import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -51,6 +52,11 @@ class EventCatalogControllerTest {
 
     @org.springframework.boot.test.mock.mockito.MockBean
     private AuthenticationInterceptor authenticationInterceptor;
+
+    @BeforeEach
+    void allowMvcRequests() throws Exception {
+        when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     private Event sampleEvent() {
         EventDetails details = new EventDetails(
@@ -89,7 +95,6 @@ class EventCatalogControllerTest {
                         .param("page", "0")
                         .param("size", "20")
                 .accept(MediaType.APPLICATION_JSON))
-            .andDo(result -> System.out.println("SEARCH BODY=" + result.getResponse().getContentAsString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
@@ -112,7 +117,6 @@ class EventCatalogControllerTest {
 
         mockMvc.perform(get("/api/events/EVT-1")
                         .accept(MediaType.APPLICATION_JSON))
-            .andDo(result -> System.out.println("DETAIL BODY=" + result.getResponse().getContentAsString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.eventId").value("EVT-1"))
                 .andExpect(jsonPath("$.eventName").value("Desert Rock Festival"))
