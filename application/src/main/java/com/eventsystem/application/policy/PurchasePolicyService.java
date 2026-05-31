@@ -4,6 +4,8 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
+import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
@@ -11,11 +13,13 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PolicyScope;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.policy.PurchasePolicyId;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +39,15 @@ public class PurchasePolicyService implements IPurchasePolicyValidationPort,IPur
     private final ICompanyPermissionServicePort permissionChecker;
     private final IEventManagementPort eventOwnershipChecker;
     private final IMemberInformationPort memberInfoPort;
+    private final PolicyCommandAssembler policyCommandFactory;
     
 
 
     public PurchasePolicyService(IPurchasePolicyRepository purchasePolicyRepository,
                                  ICompanyPermissionServicePort permissionChecker,
                                  IEventManagementPort eventOwnershipChecker,
-                                 IMemberInformationPort memberInfoPort
+                                 IMemberInformationPort memberInfoPort,
+                                 PolicyCommandAssembler policyCommandFactory
                                 ) {
         this.purchasePolicyRepository = Objects.requireNonNull(
                 purchasePolicyRepository,
@@ -57,6 +63,10 @@ public class PurchasePolicyService implements IPurchasePolicyValidationPort,IPur
         );
         this.memberInfoPort = Objects.requireNonNull(
                 memberInfoPort,
+                "memberInfoPort must not be null"
+        );
+        this.policyCommandFactory = Objects.requireNonNull(
+                policyCommandFactory,
                 "memberInfoPort must not be null"
         );
     }
@@ -605,6 +615,35 @@ public class PurchasePolicyService implements IPurchasePolicyValidationPort,IPur
         List<ZoneId> zonesOfEachTicket = eventOwnershipChecker.getZonesOfTicketsForEvent(eventId,items);
         LocalDate buyerBirthday = memberInfoPort.getMemberBirthdate(new MemberId(buyerRef.memberId()));
         return new PurchaseContext(eventId, companyId, zonesOfEachTicket, buyerBirthday, null);
+    }
+
+    public PurchasePolicyId createPurchasePolicy(PurchasePolicyCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+
+        MemberId actorId = new MemberId(command.actorId());
+        CompanyId companyId = new CompanyId(command.companyId());
+
+        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        PolicyScope scope = policyCommandFactory.toScope(command.scope());
+
+        for (EventId eventId : scope.eventIds()) {
+            requireCompanyOwnsEvent(companyId, eventId);
+        }
+
+        IPolicy rule = policyCommandFactory.toPolicy(command.rule());
+
+        PurchasePolicy policy = new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                command.policyName(),
+                scope,
+                rule
+        );
+
+        purchasePolicyRepository.save(policy);
+
+        return policy.id();
     }
 
 }

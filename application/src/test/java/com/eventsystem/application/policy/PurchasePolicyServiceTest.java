@@ -4,6 +4,7 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
@@ -11,6 +12,7 @@ import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.PolicyBuilder;
 import com.eventsystem.domain.policy.PolicyScope;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
@@ -56,6 +58,9 @@ class PurchasePolicyServiceTest {
     @Mock
     private IMemberInformationPort memberInfoPort;
 
+    @Mock
+    private PolicyCommandAssembler policyAssembler;
+
     private PurchasePolicyService service;
 
     private static final MemberId ACTOR_ID = new MemberId("actor-1");
@@ -71,7 +76,7 @@ class PurchasePolicyServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort);
+        service = new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort, policyAssembler);
     }
 
     private PurchaseContext purchaseContext(int ticketCount, LocalDate buyerBirthDate) {
@@ -153,19 +158,22 @@ class PurchasePolicyServiceTest {
 
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new PurchasePolicyService(null, permissionChecker, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(null, permissionChecker, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("purchasePolicyRepository");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, null, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, null, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("permissionChecker");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, null, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, null, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("eventOwnershipChecker");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, null))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, null, policyAssembler))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("memberInfoPort");
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("memberInfoPort");
     }

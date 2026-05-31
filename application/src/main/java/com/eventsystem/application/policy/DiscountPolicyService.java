@@ -660,4 +660,6 @@ public class DiscountPolicyService implements IDiscountApplicationPort {
         return new PurchaseContext(eventId, companyId, zonesOfEachTicket, buyerBirthday, discountCode);
     }
 
+    
+
 }
