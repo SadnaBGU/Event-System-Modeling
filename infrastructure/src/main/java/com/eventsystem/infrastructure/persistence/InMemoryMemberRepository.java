@@ -4,6 +4,8 @@ import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +33,11 @@ public class InMemoryMemberRepository implements IMemberRepository {
         Objects.requireNonNull(username, "username must not be null");
         MemberId id = idByUsername.get(username);
         return id == null ? Optional.empty() : Optional.ofNullable(byId.get(id));
+    }
+
+    @Override
+    public Collection<Member> findAll() {
+        return Collections.unmodifiableCollection(byId.values());
     }
 
     @Override

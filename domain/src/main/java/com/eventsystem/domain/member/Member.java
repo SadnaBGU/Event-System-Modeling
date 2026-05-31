@@ -1,9 +1,12 @@
 package com.eventsystem.domain.member;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Aggregate Root — a registered platform user.
@@ -13,6 +16,8 @@ import java.util.Objects;
  * - {@code memberId}, {@code username}, {@code hashedCredentials}, {@code personalDetails} are non-null.
  * - {@code username} is immutable after creation.
  * - A {@link MemberStatus#CANCELLED} member cannot be modified or receive new notifications.
+ * - A {@link MemberStatus#SUSPENDED} member cannot modify profile or credentials, but can receive
+ *   notifications and perform read-only operations.
  */
 public class Member {
 
@@ -21,6 +26,7 @@ public class Member {
     private HashedCredentials hashedCredentials;
     private PersonalDetails personalDetails;
     private MemberStatus status;
+    private Suspension suspension;
     private final List<Notification> notificationInbox;
 
     public Member(MemberId memberId,
@@ -62,7 +68,7 @@ public class Member {
     }
 
     public void addNotification(Notification notification) {
-        requireActive();
+        requireNotCancelled();
         Objects.requireNonNull(notification, "notification must not be null");
         notificationInbox.add(notification);
     }
@@ -89,11 +95,45 @@ public class Member {
         this.status = MemberStatus.CANCELLED;
     }
 
-    private void requireActive() {
+    // ── Suspension (II.6.7 / II.6.8) ────────────────────────────────────────
+
+    /**
+     * Suspends this member.
+     * @param now      current time (injected so domain stays clock-independent)
+     * @param duration how long to suspend; {@code null} means permanent
+     */
+    public void suspend(Instant now, Duration duration) {
+        Objects.requireNonNull(now, "now must not be null");
         if (status == MemberStatus.CANCELLED) {
-            throw new IllegalStateException("Member " + username + " is cancelled and cannot be modified");
+            throw new IllegalStateException("Cannot suspend a cancelled member: " + username);
         }
+        this.suspension = new Suspension(now, duration);
+        this.status = MemberStatus.SUSPENDED;
     }
+
+    /** Lifts an active suspension, returning the member to ACTIVE status. */
+    public void unsuspend() {
+        if (status != MemberStatus.SUSPENDED) {
+            throw new IllegalStateException("Member " + username + " is not suspended");
+        }
+        this.suspension = null;
+        this.status = MemberStatus.ACTIVE;
+    }
+
+    /**
+     * Returns true if the member is currently suspended at the given instant.
+     * A temporary suspension that has already expired is treated as not suspended.
+     */
+    public boolean isSuspendedAt(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        return status == MemberStatus.SUSPENDED && !suspension.isExpiredAt(now);
+    }
+
+    public Optional<Suspension> getSuspension() {
+        return Optional.ofNullable(suspension);
+    }
+
+    // ── Accessors ────────────────────────────────────────────────────────────
 
     public MemberId getMemberId() {
         return memberId;
@@ -134,5 +174,22 @@ public class Member {
     @Override
     public int hashCode() {
         return memberId.hashCode();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private void requireActive() {
+        if (status == MemberStatus.CANCELLED) {
+            throw new IllegalStateException("Member " + username + " is cancelled and cannot be modified");
+        }
+        if (status == MemberStatus.SUSPENDED) {
+            throw new IllegalStateException("Member " + username + " is suspended and cannot perform this action");
+        }
+    }
+
+    private void requireNotCancelled() {
+        if (status == MemberStatus.CANCELLED) {
+            throw new IllegalStateException("Member " + username + " is cancelled and cannot be modified");
+        }
     }
 }
