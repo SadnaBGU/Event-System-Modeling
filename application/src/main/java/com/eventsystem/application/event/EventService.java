@@ -1,70 +1,64 @@
 package com.eventsystem.application.event;
 
-import com.eventsystem.application.policy.IPurchasePolicyRepository;
+import com.eventsystem.application.company.ICompanyPermissionServicePort;
+
 import com.eventsystem.domain.event.*;
-import com.eventsystem.domain.policy.PurchasePolicy;
+import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.order.OrderItem;
+
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-public class EventService {
+public class EventService implements IEventManagementPort {
 
     private static final Logger logger = LoggerFactory.getLogger(EventService.class);
     private final IEventRepository eventRepository;
-    private final IPurchasePolicyRepository ppolicyRepository;
-    private final IEventPermissionChecker permissionChecker;
+    private final ICompanyPermissionServicePort permissionChecker;
 
-    public EventService(IEventRepository eventRepository, IEventPermissionChecker permissionChecker, IPurchasePolicyRepository ppolicyRepository) {
+    public EventService(IEventRepository eventRepository, ICompanyPermissionServicePort permissionChecker) {
         this.eventRepository = Objects.requireNonNull( eventRepository, "eventRepository must not be null");
-        this.ppolicyRepository = Objects.requireNonNull( ppolicyRepository, "purchasePolicyRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker,"permissionChecker must not be null");
     }
 
-    public EventId createDraft(String actorId, String companyId, EventDetails details, VenueMap venueMap) {
-        requireValidActor(actorId);
+    public EventId createDraft(MemberId actorId, CompanyId companyId, EventDetails details, VenueMap venueMap) {
         Objects.requireNonNull(details, "details must not be null");
         Objects.requireNonNull(venueMap, "venueMap must not be null");
 
-        requireManageEventsPermission(actorId, companyId);
+        requireManageEventPermission(actorId, companyId);
 
         Event event = Event.createDraft(companyId, details, venueMap);
         eventRepository.save(event);
-        ppolicyRepository.saveForEvent(event.id(), PurchasePolicy.AllowAll());
         logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
             event.id().value(), companyId, actorId);
         return event.id();
     }
 
-    public EventId createRestrictedPurchaseDraft(String actorId, String companyId,
-                                                 EventDetails details, VenueMap venueMap, PurchasePolicy policy) {
-        requireValidActor(actorId);
+    public EventId createDraft(MemberId actorId, CompanyId companyId, EventDetails details) {
         Objects.requireNonNull(details, "details must not be null");
-        Objects.requireNonNull(venueMap, "venueMap must not be null");
 
-        requireManageEventsPermission(actorId, companyId);
+        requireManageEventPermission(actorId, companyId);
 
-        Event event = Event.createDraft(companyId, details, venueMap);
+        Event event = Event.createDraft(companyId, details, VenueMap.empty());
         eventRepository.save(event);
-        ppolicyRepository.saveForEvent(event.id(), policy);
         logger.info("Draft event created. eventId={}, companyId={}, actorId={}",
             event.id().value(), companyId, actorId);
         return event.id();
     }
 
-    public void updateDetails( String actorId, EventId eventId, EventDetails newDetails ) {
-        requireValidActor(actorId);
+    public void updateDetails( MemberId actorId, EventId eventId, EventDetails newDetails ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newDetails, "newDetails must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.updateDetails(newDetails);
         eventRepository.save(event);
@@ -72,12 +66,11 @@ public class EventService {
             eventId.value(), event.companyId(), actorId);
     }
 
-    public void updateVenueMap( String actorId, EventId eventId, VenueMap newVenueMap ) {
-        requireValidActor(actorId);
+    public void updateVenueMap( MemberId actorId, EventId eventId, VenueMap newVenueMap ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(newVenueMap, "newVenueMap must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.updateVenueMap(newVenueMap);
         eventRepository.save(event);
@@ -85,12 +78,11 @@ public class EventService {
             eventId.value(), event.companyId(), actorId);
     }
 
-    public void addZone(String actorId, EventId eventId, ZoneId zoneId ) {
-        requireValidActor(actorId);
+    public void addZone(MemberId actorId, EventId eventId, ZoneId zoneId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.addZone(zoneId);
         eventRepository.save(event);
@@ -98,12 +90,11 @@ public class EventService {
             eventId.value(), zoneId.value(), event.companyId(), actorId);
     }
 
-    public void removeZone(String actorId, EventId eventId, ZoneId zoneId ) {
-        requireValidActor(actorId);
+    public void removeZone(MemberId actorId, EventId eventId, ZoneId zoneId ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.removeZone(zoneId);
         eventRepository.save(event);
@@ -111,74 +102,37 @@ public class EventService {
             eventId.value(), zoneId.value(), event.companyId(), actorId);
     }
 
-    public Optional<PurchasePolicy> findPurchasePolicy(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-
-        logger.debug("Finding purchase policy for event. eventId={}", eventId.value());
-
-        return ppolicyRepository.findByEventId(eventId);
-    }
-
-    public void setPurchasePolicy(String actorId, EventId eventId, PurchasePolicy policy) {
-        requireValidActor(actorId);
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        Objects.requireNonNull(policy, "policy must not be null");
-        Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
-        ppolicyRepository.saveForEvent(eventId, policy);
-        logger.info("Purchase Policy modified for Event. eventId={}, companyId={}, actorId={}",
-            eventId.value(), event.companyId(), actorId);
-    }
-
-    public void clearPurchasePolicy(String actorId, EventId eventId) {
-        requireValidActor(actorId);
+    public void publish(MemberId actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
-        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.AllowAll());
-        logger.info("Purchase Policy for Event was set to ALLOW ALL. eventId={}, companyId={}, actorId={}",
-            eventId.value(), event.companyId(), actorId);
-    }
-
-    public void publish(String actorId, EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        requireValidActor(actorId);
-        Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.publish();
         eventRepository.save(event);
         logger.info("Event published. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
-        if(ppolicyRepository.findByEventId(eventId).isEmpty()) {
-            ppolicyRepository.saveForEvent(eventId, PurchasePolicy.AllowAll());
-        }
     }
 
-    public void eventOver(String actorId, EventId eventId) { //TODO - ensure OVER is required
-        requireValidActor(actorId);
+    public void eventOver(MemberId actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.over();
         eventRepository.save(event);
-        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.NotAllowed());
         logger.info("Event marked as over. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
     }
 
-    public void cancel(String actorId, EventId eventId) {
-        requireValidActor(actorId);
+    public void cancel(MemberId actorId, EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.cancel();
         eventRepository.save(event);
         logger.info("Event cancelled. eventId={}, companyId={}, actorId={}",
             eventId.value(), event.companyId(), actorId);
-        ppolicyRepository.saveForEvent(eventId, PurchasePolicy.NotAllowed());
     }
 
     public Event findById(EventId eventId) {
@@ -187,13 +141,13 @@ public class EventService {
         return loadEvent(eventId);
     }
 
-    public List<Event> findByCompany(String companyId) {
+    public List<Event> findByCompany(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
         return eventRepository.findByCompany(companyId);
     }
 
-    public List<Event> findPublishedByCompany(String companyId) {
+    public List<Event> findPublishedByCompany(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
         return eventRepository.findByCompany(companyId)
@@ -202,29 +156,31 @@ public class EventService {
                 .toList();
     }
 
-    public void setSalesMethod(String actorId, EventId eventId, SalesMethod salesMethod) {
-        requireValidActor(actorId);
+    @Override
+    public void setSalesMethod(MemberId actorId, EventId eventId, SalesMethod salesMethod) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(salesMethod, "salesMethod must not be null");
+        
 
         Event event = loadEvent(eventId);
-        requireManageEventsPermission(actorId, event.companyId());
+        requireManageEventPermission(actorId, event.companyId());
 
         event.setSalesMethod(salesMethod);
         eventRepository.save(event);
         logger.info("Event sales method updated. eventId={}, salesMethod={}, companyId={}, actorId={}",
-            eventId.value(), salesMethod, event.companyId(), actorId);
+            eventId.value(), salesMethod, event.companyId(), actorId.value());
     }
 
-    public void setMethodRegular(String actorId, EventId eventId) {
+    public void setMethodRegular(MemberId actorId, EventId eventId) {
         setSalesMethod(actorId, eventId, SalesMethod.REGULAR);
     }
 
-    public void setMethodQueue(String actorId, EventId eventId) {
+    public void setMethodQueue(MemberId actorId, EventId eventId) {
         setSalesMethod(actorId, eventId, SalesMethod.VIRTUAL_QUEUE);
     }
 
-    public void setMethodLottery(String actorId, EventId eventId) {
+    public void setMethodLottery(MemberId actorId, EventId eventId) {
         setSalesMethod(actorId, eventId, SalesMethod.LOTTERY);
     }
 
@@ -236,31 +192,16 @@ public class EventService {
                 });
     }
 
-    private void requireValidActor(String actorId) {
-        Objects.requireNonNull(actorId, "actorId must not be null");
-        if (actorId.isBlank()) 
-        {
-            logger.warn("Invalid actor id: blank actorId");
-            throw new IllegalArgumentException("actorId must not be blank or null");
-        }
-    }
-
-    private void requireManageEventsPermission(String actorId, String companyId) {
+    private void requireManageEventPermission(MemberId actorId, CompanyId companyId) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
+
 
         if (!permissionChecker.canManageEvents(actorId, companyId)) {
-            logger.warn("Permission denied for event management. actorId={}, companyId={}",
+            logger.warn("Permission denied for event management. actorId={}, companyId={}, event={}",
                 actorId, companyId);
-            throw new SecurityException("actor is not allowed to manage events for company: " + companyId);
-        }
-        
-    }
-
-    private void requireManageEventsPermission(String actorId, CompanyId companyId) {
-        Objects.requireNonNull(actorId, "actorId must not be null");
-        Objects.requireNonNull(companyId, "companyId must not be null");
-        requireManageEventsPermission(actorId, companyId.value());
+            throw new SecurityException("actor is not allowed to manage events for company: " + companyId.value());
+        } 
     }
     
     public void requireZoneBelongsToEvent(EventId eventId, ZoneId zoneId) {
@@ -275,5 +216,55 @@ public class EventService {
     public Event getEvent(EventId eventId) {
         return loadEvent(eventId);
     }
+
+    @Override
+    public boolean isEventByCompany(EventId eventId, CompanyId companyId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Event event = loadEvent(eventId);
+        return event.companyId().value().equals(companyId.value());
+    }
+
+    @Override
+    public List<EventId> allEventsOfCompany(CompanyId companyId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
+        return eventRepository.findByCompany(companyId).stream().map(event -> event.id()).toList();
+    }
+
+    public List<EventId> allPublishedEvents() {
+        return eventRepository.findPublishedEvents().stream().map(event -> event.id()).toList();
+    }
+
+    @Override
+    public CompanyId companyOfEvent(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        return loadEvent(eventId).companyId();
+    }
+
+    @Override
+    public List<ZoneId> getZonesOfTicketsForEvent(EventId eventId, List<OrderItem> items) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(items, "items must not be null");
+
+        Event event = loadEvent(eventId);
+        List<ZoneId> zonesOfEachTickets = new ArrayList<>();
+        for (OrderItem item : items) {
+            ZoneId zoneOfItem = new ZoneId(item.getZoneId());
+            if (!event.isZoneInEvent(zoneOfItem)) {
+                throw new IllegalArgumentException("item zones cannot have zones not in event");
+            }
+            for (int i = 0; i < item.getQuantity(); i++) {
+                zonesOfEachTickets.add(zoneOfItem);
+            }
+        }
+        return zonesOfEachTickets;
+    }
+
+    public boolean isZoneInEvent(EventId eventId, ZoneId zoneId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(zoneId, "zoneId must not be null");
+        Event event = loadEvent(eventId);
+        return event.isZoneInEvent(zoneId);
+    }  
 
 }

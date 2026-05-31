@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,17 +37,26 @@ import com.eventsystem.application.appexceptions.PriceCalcException;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.policy.IDiscountApplicationPort;
+import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
+import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.PolicyValidationResult;
+import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+
+import com.eventsystem.application.appexceptions.IssuanceFailedException;
+import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.event.EventId;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutSagaTest {
@@ -59,6 +69,8 @@ class CheckoutSagaTest {
     @Mock private INotificationPort notificationPort;
     @Mock private IZoneRepository zoneRepository;
     @Mock private IEventQueryPort eventQueryPort;
+    @Mock private IPurchasePolicyValidationPort purchasePolicyPort;
+    @Mock private IDiscountApplicationPort discountPort;
 
     // This is the class we are testing, and we want to inject the Mocks into it
     @InjectMocks private CheckoutSaga checkoutSaga;
@@ -90,14 +102,40 @@ class CheckoutSagaTest {
         }).when(zoneRepository).withLock(any(ZoneId.class), any(Runnable.class));
     }
 
+    private PolicyValidationResult successResult = new PolicyValidationResult(true, null);
+    private PolicyValidationResult failResult = new PolicyValidationResult(false, "FAIL");
+
+    private PurchaseContext purchaseContext() {
+        return new PurchaseContext(
+                new EventId(EVENT_ID),
+                new CompanyId("company-1"),
+                List.of(new ZoneId("VIP-ZONE")),
+                LocalDate.now().minusYears(25),
+                null
+        );
+    }
+
+    private void mockPurchaseContextCreation() {
+        when(purchasePolicyPort.createPurchaseContext(any(EventId.class), any(BuyerReference.class), any()))
+                .thenReturn(purchaseContext());
+    }
+
+    private void mockSuccessfulPolicyValidation() {
+        mockPurchaseContextCreation();
+        when(purchasePolicyPort.evaluatePurchasePolicyFor(any(PurchaseContext.class)))
+                .thenReturn(successResult);
+    }
+
+    private void mockNoDiscount() {
+        when(discountPort.generateDiscountSnapshot(any(PurchaseContext.class), any(Money.class)))
+                .thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
+    }
+
     @Test
     void executeCheckout_HappyPath_CompletesSuccessfully() {
         // Arrange - defining the behavior of all the mocks to simulate a successful checkout process
-        when(eventQueryPort.validatePurchasePolicy(eq(EVENT_ID), eq(testBuyer), any()))
-                .thenReturn(true);
-        
-        when(eventQueryPort.applyDiscount(eq(EVENT_ID), any(), any()))
-                .thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
                 
         when(paymentGateway.charge(eq(ORDER_ID), any(), eq(testBuyer), any()))
                 .thenReturn(PaymentResult.successful("TXN-777"));
@@ -120,9 +158,9 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_TicketIssuanceFails_TriggersCompensatingAction() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
-        
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
+
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.successful("TXN-777"));
                 
@@ -174,7 +212,7 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_PolicyViolation_ThrowsException() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(false);
+        when(purchasePolicyPort.evaluatePurchasePolicyFor(any())).thenReturn(failResult);
 
         // Act & Assert
         assertThrows(OrderViolatesPolicyException.class, () -> {
@@ -187,9 +225,9 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_PaymentDeclined_ThrowsException() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
-        
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
+
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.failed("Insufficient funds"));
 
@@ -205,9 +243,9 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_IssuanceThrowsException_TriggersCrashCompensation() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
-        
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
+
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenReturn(PaymentResult.successful("TXN-999"));
                 
@@ -233,9 +271,9 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_PaymentGatewayTimeout_AbortsCheckout() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any())).thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
-        
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
+
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Payment Gateway Timeout"));
 
@@ -254,7 +292,7 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_PolicyValidationThrows_MapsToPolicyViolationException() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any()))
+        when(purchasePolicyPort.evaluatePurchasePolicyFor(any()))
                 .thenThrow(new RuntimeException("Policy subsystem unavailable"));
 
         // Act & Assert
@@ -269,8 +307,8 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_DiscountEvaluationFails_ThrowsPriceCalcException() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any()))
+        mockSuccessfulPolicyValidation();
+        when(discountPort.generateDiscountSnapshot(any(), any()))
                 .thenThrow(new RuntimeException("Discount service down"));
 
         // Act & Assert
@@ -286,9 +324,9 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_PaymentGatewayThrows_ThrowsPaymentFailedExceptionAndNotifies() {
         // Arrange
-        when(eventQueryPort.validatePurchasePolicy(any(), any(), any())).thenReturn(true);
-        when(eventQueryPort.applyDiscount(any(), any(), any()))
-                .thenReturn(new DiscountSnapshot("None", Money.of(BigDecimal.ZERO, "USD")));
+        mockSuccessfulPolicyValidation();
+        mockNoDiscount();
+        
         when(paymentGateway.charge(any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Gateway unavailable"));
 

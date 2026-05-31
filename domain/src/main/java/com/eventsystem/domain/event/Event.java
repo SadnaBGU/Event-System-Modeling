@@ -21,7 +21,7 @@ public class Event {
     private EventStatus status;
     private final Set<ZoneId> zones;
 
-    private SalesMethod salesMethod; //TODO -verify if correct structure and implementation
+    private SalesMethod salesMethod;
 
 
      public Event( EventId id, CompanyId companyId, EventDetails details, VenueMap venueMap) {
@@ -48,7 +48,7 @@ public class Event {
         this(new EventId(id), companyId, details, venueMap);
     }
 
-    public static Event createDraft( String companyId, EventDetails details, VenueMap venueMap) {
+    public static Event createDraft( CompanyId companyId, EventDetails details, VenueMap venueMap) {
         return new Event( EventId.random(), companyId, details, venueMap );
     }
 
@@ -116,24 +116,6 @@ public class Event {
         this.venueMap = Objects.requireNonNull(newVenueMap, "venue map must not be null");
     }
 
-    /* TODO - requires adding POLICIES
-    public synchronized void setPurchasePolicy(PurchasePolicy policy){
-
-    }
-
-    public synchronized void setDiscountPolicy(DiscountPolicy policy){
-
-    }
-    */
-
-    public boolean isValidDiscountCode(String discountCode) { //TODO - placeholder until discounts are implemented
-        return false;
-    }
-
-    public DiscountSnapshot getDiscountSnapshot(String discountCode, Money baseTotal) { //TODO - placeholder until discounts are implemented
-        return new DiscountSnapshot("YES_DISCOUNT", Money.of(BigDecimal.ZERO, baseTotal.currency()) );
-    }
-
     public synchronized void addZone(ZoneId zoneId) {
         requireDraft("Cannot add zone after event is published");
 
@@ -162,7 +144,7 @@ public class Event {
         }
 
         if (zones.isEmpty()) {
-            throw new EventDomainException("Cannont publish event with no defined zones"); //TODO - verify if this check is required
+            throw new EventDomainException("Cannont publish event with no defined zones");
         }
 
         status = EventStatus.PUBLISHED;
@@ -173,14 +155,14 @@ public class Event {
             return;
         }
 
-        if (status == EventStatus.OVER) { //TODO - Check if EventStatus.OVER is needed
+        if (status == EventStatus.OVER) { 
             throw new EventDomainException("Cannot cancel an event that ended");
         }
 
         status = EventStatus.CANCELLED;
     }
 
-    public synchronized void over() { //TODO - Check if EventStatus.OVER is needed
+    public synchronized void over() {
         if (status == EventStatus.OVER) {
             return;
         }
@@ -255,7 +237,7 @@ public class Event {
     return status == EventStatus.SOLD_OUT;
     }
 
-    public synchronized boolean isOver() { //TODO - Check if EventStatus.OVER is needed
+    public synchronized boolean isOver() {
         return status == EventStatus.OVER;
     }
 
