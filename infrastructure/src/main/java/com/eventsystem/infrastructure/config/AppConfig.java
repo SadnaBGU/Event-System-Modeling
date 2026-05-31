@@ -50,6 +50,7 @@ import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.shared.Money;
+import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.infrastructure.persistence.InMemoryActiveOrderRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryEventRepository;
@@ -307,6 +308,13 @@ public class AppConfig {
     public EventService eventService(IEventRepository eventRepo,
                                      ICompanyPermissionServicePort companyPermissionServicePort) {
         return new EventService(eventRepo, companyPermissionServicePort);
+    }
+
+    @Bean
+    public EventCatalogService eventCatalogService(IEventRepository eventRepo,
+                                                   IZoneRepository zoneRepo,
+                                                   IProductionCompanyRepository productionCompanyRepository) {
+        return new EventCatalogService(eventRepo, zoneRepo, productionCompanyRepository);
     }
 
     @Bean

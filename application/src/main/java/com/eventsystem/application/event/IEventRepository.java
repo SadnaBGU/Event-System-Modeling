@@ -16,5 +16,7 @@ public interface IEventRepository {
 
     List<Event> findPublishedEvents();
 
+    List<Event> findAll();
+
     void save(Event event);
 }

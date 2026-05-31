@@ -5,6 +5,7 @@ import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,7 +44,7 @@ public class GlobalExceptionHandler {
     }
 
     // 3. Handling not found exceptions - resources not found (404 Not Found)
-    @ExceptionHandler({MemberNotFoundException.class, OrderNotFoundException.class})
+    @ExceptionHandler({MemberNotFoundException.class, OrderNotFoundException.class, LotteryNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFoundExceptions(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
     }
@@ -74,7 +75,7 @@ public class GlobalExceptionHandler {
         if (ex instanceof AuthenticationException) return "AUTH_INVALID";
         if (ex instanceof NotAuthorizedException || ex instanceof SecurityException) return "FORBIDDEN";
         if (ex instanceof AlreadyExistsOrderException) return "CONFLICT";
-        if (ex instanceof MemberNotFoundException || ex instanceof OrderNotFoundException) return "NOT_FOUND";
+        if (ex instanceof MemberNotFoundException || ex instanceof OrderNotFoundException || ex instanceof LotteryNotFoundException) return "NOT_FOUND";
         // Default for domain/validation/runtime exceptions
         return "DOMAIN_ERROR";
     }
