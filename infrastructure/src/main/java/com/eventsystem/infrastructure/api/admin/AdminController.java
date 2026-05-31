@@ -30,10 +30,10 @@ public class AdminController {
     }
 
     /**
-     * POST /api/admin/members/{memberId}/suspend
+     * POST /api/admin/members/{memberId}/suspensions
      * Body (optional): { "durationDays": 7 }  — omit or 0 for permanent
      */
-    @PostMapping("/members/{memberId}/suspend")
+    @PostMapping("/members/{memberId}/suspensions")
     public ResponseEntity<Void> suspendMember(
             @RequestAttribute("authenticatedMemberId") MemberId actor,
             @PathVariable String memberId,
@@ -43,14 +43,16 @@ public class AdminController {
                 ? Duration.ofDays(body.durationDays())
                 : null;
 
-        adminService.suspendMember(actor, new MemberId(memberId), duration);
+        String reason = (body != null) ? body.reason() : null;
+
+        adminService.suspendMember(actor, new MemberId(memberId), duration, reason);
         return ResponseEntity.ok().build();
     }
 
     /**
-     * DELETE /api/admin/members/{memberId}/suspend
+     * DELETE /api/admin/members/{memberId}/suspensions
      */
-    @DeleteMapping("/members/{memberId}/suspend")
+    @DeleteMapping("/members/{memberId}/suspensions")
     public ResponseEntity<Void> unsuspendMember(
             @RequestAttribute("authenticatedMemberId") MemberId actor,
             @PathVariable String memberId) {
@@ -70,5 +72,5 @@ public class AdminController {
         return ResponseEntity.ok(adminService.listSuspensions(actor));
     }
 
-    record SuspendRequest(Integer durationDays) {}
+    record SuspendRequest(Integer durationDays, String reason) {}
 }

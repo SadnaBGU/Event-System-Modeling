@@ -50,7 +50,7 @@ class AdminSuspensionTest {
         Member target = new Member(targetId);
         when(memberRepo.findById(targetId)).thenReturn(Optional.of(target));
 
-        service.suspendMember(adminId, targetId, Duration.ofDays(7));
+        service.suspendMember(adminId, targetId, Duration.ofDays(7), "Violation of terms");
 
         assertThat(target.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
         assertThat(target.getSuspension()).isPresent();
@@ -63,7 +63,7 @@ class AdminSuspensionTest {
         Member target = new Member(targetId);
         when(memberRepo.findById(targetId)).thenReturn(Optional.of(target));
 
-        service.suspendMember(adminId, targetId, null);
+        service.suspendMember(adminId, targetId, null, "Permanent suspension");
 
         assertThat(target.getSuspension().get().isPermanent()).isTrue();
         verify(memberRepo).save(target);
@@ -73,7 +73,7 @@ class AdminSuspensionTest {
     void suspendMember_notAdmin_throws() {
         MemberId nonAdmin = MemberId.random();
         assertThatExceptionOfType(NotAuthorizedException.class)
-                .isThrownBy(() -> service.suspendMember(nonAdmin, targetId, Duration.ofDays(1)));
+                .isThrownBy(() -> service.suspendMember(nonAdmin, targetId, Duration.ofDays(1), "Violation of terms"));
         verify(memberRepo, never()).save(any());
     }
 
@@ -82,7 +82,7 @@ class AdminSuspensionTest {
         when(memberRepo.findById(targetId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.suspendMember(adminId, targetId, Duration.ofDays(1)));
+                .isThrownBy(() -> service.suspendMember(adminId, targetId, Duration.ofDays(1), "Violation of terms"));
         verify(memberRepo, never()).save(any());
     }
 
@@ -91,7 +91,7 @@ class AdminSuspensionTest {
     @Test
     void unsuspendMember_liftsSuspension() {
         Member target = new Member(targetId);
-        target.suspend(Instant.now(), Duration.ofDays(7));
+        target.suspend(Instant.now(), Duration.ofDays(7), "Violation of terms");
         when(memberRepo.findById(targetId)).thenReturn(Optional.of(target));
 
         service.unsuspendMember(adminId, targetId);
@@ -123,7 +123,7 @@ class AdminSuspensionTest {
     @Test
     void listSuspensions_returnsSuspendedMembers() {
         Member suspended = new Member(targetId);
-        suspended.suspend(Instant.now(), Duration.ofDays(3));
+        suspended.suspend(Instant.now(), Duration.ofDays(3), "Violation of terms");
 
         Member active = new Member(MemberId.random());
 
@@ -140,7 +140,7 @@ class AdminSuspensionTest {
     @Test
     void listSuspensions_permanentSuspension_showsNullEndsAt() {
         Member suspended = new Member(targetId);
-        suspended.suspend(Instant.now(), null);
+        suspended.suspend(Instant.now(), null, "Permanent suspension");
         when(memberRepo.findAll()).thenReturn(List.of(suspended));
 
         List<SuspensionDto> result = service.listSuspensions(adminId);

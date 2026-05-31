@@ -1,10 +1,16 @@
 package com.eventsystem.infrastructure.security;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
+import com.eventsystem.application.appexceptions.MemberNotFoundException;
+import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.time.Instant;
+
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -13,14 +19,17 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AuthenticationInterceptor implements HandlerInterceptor {
 
     private final ITokenService tokenService;
+    private final IMemberRepository memberRepository;
 
-    public AuthenticationInterceptor(ITokenService tokenService) {
+    public AuthenticationInterceptor(ITokenService tokenService, IMemberRepository memberRepository) {
         this.tokenService = tokenService;
+        this.memberRepository = memberRepository;
     }
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+        String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
             return true;
         }
 
@@ -36,11 +45,22 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         try {
             // 3. Verify the token and extract claims (like MemberId)
             ITokenService.TokenClaims claims = tokenService.verifyToken(token);
-            
-            // 4. Inject the MemberId into the request!
+            MemberId memberId = claims.subject();
+
+            // 4. Enforce suspended account check
+            if(!"GET".equalsIgnoreCase(method)) {
+                Member member = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new MemberNotFoundException(memberId));
+
+                if (member.isSuspendedAt(Instant.now())) {
+                    throw new SecurityException("Account is suspended. Access denied.");
+                }
+            }
+
+            // 5. Inject the MemberId into the request!
             // Now every controller can use @RequestAttribute("authenticatedMemberId")
-            request.setAttribute("authenticatedMemberId", claims.subject());
-            
+            request.setAttribute("authenticatedMemberId", memberId);
+
             return true;
             
         } catch (ITokenService.InvalidTokenException e) {
