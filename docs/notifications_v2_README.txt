@@ -9,7 +9,6 @@ Files
 - OpenAPI (YAML): `docs/api/notifications.yaml`
 - OpenAPI JSON export: `docs/api/output/notifications.openapi.json`
 - JSON Schemas: `docs/api/output/schemas/Notification.json`, `docs/api/output/schemas/NotificationsEnvelope.json`
-- UI contract: `docs/api/notifications_ui_contract.md`
 
 Notes for integrators
 - Use STOMP subscription for real-time pushes and call the backlog endpoint on connect to reconcile missed messages.
