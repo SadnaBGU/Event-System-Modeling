@@ -109,7 +109,7 @@ public class PurchasePolicy{
         this.scope = new PolicyScope(scope.isCompanyWide(), affectedEvents);
     }
 
-    public IPolicy discounts() {
+    public IPolicy policy() {
         return policy;
     }
 

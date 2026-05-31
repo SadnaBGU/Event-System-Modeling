@@ -1,0 +1,152 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Purchase Record domain:
+%% Updated PurchaseRecord design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_PurchaseRecord {
+
+        class PurchaseRecord
+        class PurchasedItem
+        class BuyerSnapshot
+        class EventSnapshot
+        class DiscountSnapshot
+        class PurchaseRecordId
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE PurchaseRecord:
+%% Immutable receipt/history snapshot created after successful checkout.
+%% No mutating domain methods: all data is snapshotted at creation.
+%% ══════════════════════════════════════════
+
+    class PurchaseRecord:::aggregate {
+        <<Aggregate Root>>
+        - PurchaseRecordId recordId
+        - MemberId buyerId
+        - BuyerSnapshot buyerSnapshot
+        - EventSnapshot eventSnapshot
+        - List~PurchasedItem~ items
+        - Money totalPaid
+        - List~DiscountSnapshot~ discountsApplied
+        - Instant purchaseTimestamp
+        - PaymentConfirmationId paymentConfirmationId
+        - TicketIssuanceConfirmationId ticketIssuanceConfirmationId
+        + create(MemberId, BuyerSnapshot, EventSnapshot, List~PurchasedItem~, Money, List~DiscountSnapshot~, PaymentConfirmationId, TicketIssuanceConfirmationId) PurchaseRecord
+    }
+
+%% ══════════════════════════════════════════
+%% VALUE OBJECTS
+%% ══════════════════════════════════════════
+
+    class PurchaseRecordId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class PurchasedItem:::valueObject {
+        <<Value Object>>
+        - String zoneName
+        - SeatId seatId
+        - int quantity
+        - Money priceAtPurchase
+    }
+
+    class BuyerSnapshot:::valueObject {
+        <<Value Object>>
+        - String displayName
+    }
+
+    class EventSnapshot:::valueObject {
+        <<Value Object>>
+        - EventId eventId
+        - String eventName
+        - String companyName
+        - LocalDate eventDate
+        - String location
+    }
+
+    class DiscountSnapshot:::valueObject {
+        <<Value Object>>
+        - String discountName
+        - Money discountAmount
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    PurchaseRecord "1" *-- "1" PurchaseRecordId
+    PurchaseRecord "1" *-- "1..n" PurchasedItem : purchased items
+    PurchaseRecord "1" *-- "1" BuyerSnapshot : buyer snapshot
+    PurchaseRecord "1" *-- "1" EventSnapshot : event snapshot
+    PurchaseRecord "1" *-- "0..n" DiscountSnapshot : discounts applied
+
+%% ══════════════════════════════════════════
+%% EXTERNAL DOMAIN REFERENCES
+%% ══════════════════════════════════════════
+
+    namespace Domain_Member {
+        class MemberId:::external
+    }
+
+    namespace Domain_Event {
+        class EventId:::external
+        class SeatId:::external
+    }
+
+    namespace Domain_Shared {
+        class Money:::external
+    }
+
+    namespace Domain_Payment {
+        class PaymentConfirmationId:::external
+    }
+
+    namespace Domain_TicketSupply {
+        class TicketIssuanceConfirmationId:::external
+    }
+
+%% External relations:
+    PurchaseRecord ..> MemberId : buyer id
+    PurchaseRecord ..> Money : total paid
+    PurchaseRecord ..> PaymentConfirmationId : payment confirmation
+    PurchaseRecord ..> TicketIssuanceConfirmationId : ticket issuance confirmation
+
+    PurchasedItem ..> SeatId : seat id
+    PurchasedItem ..> Money : price at purchase
+
+    EventSnapshot ..> EventId : event id
+
+    DiscountSnapshot ..> Money : discount amount
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how purchase records are stored and queried.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class PurchaseRecordRepository:::repository
+    }
+
+    class PurchaseRecordRepository {
+        <<Repository>>
+        - Map~PurchaseRecordId, PurchaseRecord~ store
+    }
+
+    PurchaseRecordRepository ..> PurchaseRecord : stores / queries records
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000
+

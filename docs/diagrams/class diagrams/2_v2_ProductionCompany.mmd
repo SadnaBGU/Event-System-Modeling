@@ -1,0 +1,189 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Production Company domain:
+%% Updated ProductionCompany design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_Company {
+
+        class ProductionCompany
+
+        class AppointmentTree
+        class OwnerNode
+        class ManagerNode
+        class Permission
+
+        class CompanyId
+        class CompanyDetails
+        class CompanyStatus
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE ProductionCompany:
+%% Company lifecycle, details, founder, owners, managers, and permissions.
+%% Policies, events, venues, and reports are managed by separate domains/services.
+%% ══════════════════════════════════════════
+
+    class ProductionCompany:::aggregate {
+        <<Aggregate Root>>
+        - CompanyId companyId
+        - MemberId founderId
+        - CompanyDetails companyDetails
+        - CompanyStatus status
+        - AppointmentTree appointmentTree
+        + create(MemberId, String, String, double) ProductionCompany
+        + appointOwner(MemberId, MemberId) void
+        + removeOwner(MemberId, MemberId) void
+        + relinquishOwnership(MemberId) void
+        + appointManager(MemberId, MemberId, Set~Permission~) void
+        + appointManagerToManager(MemberId, MemberId, Set~Permission~) void
+        + removeManager(MemberId, MemberId) void
+        + modifyManagerPermissions(MemberId, MemberId, Set~Permission~) void
+        + acceptAppointment(MemberId) void
+        + suspend() void
+        + terminate() void
+        + adminClose() void
+        + reopen() void
+        + isOwner(MemberId) boolean
+        + isManager(MemberId) boolean
+        + hasPermission(MemberId, Permission) boolean
+        + getAppointmentSubTree(MemberId) List~MemberId~
+        + updateName(String) void
+        + updateDescription(String) void
+        + updateRating(double) void
+    }
+
+%% ══════════════════════════════════════════
+%% VALUE OBJECTS, ENTITIES AND ENUMS
+%% ══════════════════════════════════════════
+
+    class CompanyId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class CompanyDetails:::valueObject {
+        <<Value Object>>
+        - String name
+        - String description
+        - double rating
+    }
+
+    class CompanyStatus:::enum {
+        <<enumeration>>
+        ACTIVE
+        SUSPENDED
+        ADMIN_CLOSED
+        TERMINATED
+    }
+
+    class AppointmentTree:::entity {
+        <<Entity>>
+        - OwnerNode root
+        + appointOwner(MemberId, MemberId) void
+        + removeOwner(MemberId, MemberId) void
+        + appointManager(MemberId, MemberId, Set~Permission~) void
+        + appointManagerToManager(MemberId, MemberId, Set~Permission~) void
+        + removeManager(MemberId, MemberId) void
+        + modifyManagerPermissions(MemberId, MemberId, Set~Permission~) void
+        + acceptAppointment(MemberId) void
+        + findOwner(MemberId) Optional~OwnerNode~
+        + findManager(MemberId) Optional~ManagerNode~
+        + getAppointmentSubTree(MemberId) List~MemberId~
+    }
+
+    class OwnerNode:::entity {
+        <<Entity>>
+        - MemberId memberId
+        - MemberId appointerId
+        - boolean accepted
+        - List~OwnerNode~ appointedOwners
+        - List~ManagerNode~ appointedManagers
+        + addOwner(OwnerNode) void
+        + addManager(ManagerNode) void
+        + removeOwner(MemberId) Optional~OwnerNode~
+        + removeManager(MemberId) Optional~ManagerNode~
+    }
+
+    class ManagerNode:::entity {
+        <<Entity>>
+        - MemberId memberId
+        - MemberId appointerId
+        - Set~Permission~ permissions
+        - boolean accepted
+        - List~ManagerNode~ appointedManagers
+        + hasPermission(Permission) boolean
+        + replacePermissions(Set~Permission~) void
+        + addManager(ManagerNode) void
+        + removeManager(MemberId) Optional~ManagerNode~
+    }
+
+    class Permission:::enum {
+        <<enumeration>>
+        EVENT_INVENTORY_MANAGEMENT
+        VENUE_CONFIGURATION
+        MODIFY_POLICIES
+        VIEW_PURCHASE_HISTORY
+        GENERATE_SALES_REPORT
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    ProductionCompany "1" *-- "1" CompanyId
+    ProductionCompany "1" *-- "1" CompanyDetails
+    ProductionCompany "1" *-- "1" AppointmentTree
+    ProductionCompany --> CompanyStatus
+
+    AppointmentTree "1" *-- "1" OwnerNode : root
+    OwnerNode "1" *-- "0..n" OwnerNode : appointed owners
+    OwnerNode "1" *-- "0..n" ManagerNode : appointed managers
+    ManagerNode "1" *-- "0..n" ManagerNode : appointed managers
+    ManagerNode --> Permission
+
+%% ══════════════════════════════════════════
+%% EXTERNAL DOMAIN REFERENCES
+%% ══════════════════════════════════════════
+
+    namespace Domain_Member {
+        class MemberId:::external
+    }
+
+%% External relations:
+    ProductionCompany ..> MemberId : founder id
+    AppointmentTree ..> MemberId : member identities
+    OwnerNode ..> MemberId : owner identity
+    ManagerNode ..> MemberId : manager identity
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how ProductionCompany aggregates are stored and loaded.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class ProductionCompanyRepository:::repository
+    }
+
+    class ProductionCompanyRepository {
+        <<Repository>>
+        - ConcurrentMap~CompanyId, ProductionCompany~ companiesById
+        - ConcurrentMap~String, CompanyId~ companyNameToId
+    }
+
+    ProductionCompanyRepository ..> ProductionCompany : manages persistence
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000

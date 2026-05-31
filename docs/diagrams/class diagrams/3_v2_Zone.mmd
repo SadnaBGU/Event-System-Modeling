@@ -1,0 +1,146 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Zone domain:
+%% Updated Zone design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_Zone {
+
+        class Zone
+        class ZoneId
+        class Row
+        class Seat
+        class SeatId
+        class ZoneType
+        class SeatStatus
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE Zone:
+%% Separate inventory aggregate for seated or standing ticket availability.
+%% Handles reservation, release, and sale state transitions.
+%% ══════════════════════════════════════════
+
+    class Zone:::aggregate {
+        <<Aggregate Root>>
+        - ZoneId zoneId
+        - EventId eventId
+        - String zoneName
+        - ZoneType zoneType
+        - Money pricePerTicket
+        - long version
+        - List~Row~ rows
+        - int totalCapacity
+        - int availableCount
+        + createSeated(ZoneId, EventId, String, Money, List~Row~) Zone
+        + createStanding(ZoneId, EventId, String, Money, int) Zone
+        + reserveSeat(SeatId) void
+        + releaseSeat(SeatId) void
+        + markSold(SeatId) void
+        + reserveStanding(int) void
+        + releaseStanding(int) void
+        + markSoldStanding(int) void
+    }
+
+%% ══════════════════════════════════════════
+%% ENTITIES, VALUE OBJECTS AND ENUMS
+%% ══════════════════════════════════════════
+
+    class ZoneId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class Row:::entity {
+        <<Entity>>
+        - String rowLabel
+        - List~Seat~ seats
+    }
+
+    class Seat:::entity {
+        <<Entity>>
+        - SeatId seatId
+        - String rowLabel
+        - int seatNumber
+        - SeatStatus status
+        + reserve() void
+        + release() void
+        + markSold() void
+    }
+
+    class SeatId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class ZoneType:::enum {
+        <<enumeration>>
+        SEATED
+        STANDING
+    }
+
+    class SeatStatus:::enum {
+        <<enumeration>>
+        AVAILABLE
+        RESERVED
+        SOLD
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    Zone "1" *-- "1" ZoneId
+    Zone "1" *-- "0..n" Row
+    Zone --> ZoneType
+
+    Row "1" *-- "1..n" Seat
+    Seat "1" *-- "1" SeatId
+    Seat --> SeatStatus
+
+%% ══════════════════════════════════════════
+%% EXTERNAL DOMAIN REFERENCES
+%% ══════════════════════════════════════════
+
+    namespace Domain_Event {
+        class EventId:::external
+    }
+
+    namespace Domain_Shared {
+        class Money:::external
+    }
+
+%% External relations:
+    Zone ..> EventId : parent event id
+    Zone ..> Money : ticket price
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how Zone aggregates are stored and loaded.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class ZoneRepository:::repository
+    }
+
+    class ZoneRepository {
+        <<Repository>>
+        - Map~String, Zone~ store
+        - ConcurrentHashMap~String, ReentrantLock~ zoneLocks
+    }
+
+    ZoneRepository ..> Zone : manages persistance
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000

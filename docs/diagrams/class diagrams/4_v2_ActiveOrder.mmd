@@ -1,0 +1,167 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Active Order domain:
+%% Updated ActiveOrder design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_Order {
+
+        class ActiveOrder
+        class OrderId
+        class OrderItem
+        class BuyerReference
+        class OrderStatus
+        class BuyerType
+        class OrderFactory
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE ActiveOrder:
+%% Temporary buyer-owned reservation for a single event.
+%% Checkout converts it to a completed purchase; expiration/cancel releases items.
+%% ══════════════════════════════════════════
+
+    class ActiveOrder:::aggregate {
+        <<Aggregate Root>>
+        - OrderId orderId
+        - BuyerReference buyerRef
+        - EventId eventId
+        - List~OrderItem~ items
+        - Instant reservationExpiry
+        - OrderStatus status
+        - long version
+        + addItem(OrderItem) void
+        + removeItem(ZoneId, SeatId) void
+        + checkout() void
+        + expire() List~OrderItem~
+        + cancel() List~OrderItem~
+        + isExpired() boolean
+        + calculateBaseTotal() Money
+    }
+
+%% ══════════════════════════════════════════
+%% ENTITIES, VALUE OBJECTS AND ENUMS
+%% ══════════════════════════════════════════
+
+    class OrderId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class OrderItem:::entity {
+        <<Entity>>
+        - ZoneId zoneId
+        - SeatId seatId
+        - int quantity
+        - Money unitPrice
+        + getZoneId() ZoneId
+        + getSeatId() SeatId
+        + getQuantity() int
+        + getUnitPrice() Money
+    }
+
+    class BuyerReference:::valueObject {
+        <<Value Object>>
+        - BuyerType type
+        - SessionId sessionId
+        - MemberId memberId
+    }
+
+    class OrderStatus:::enum {
+        <<enumeration>>
+        ACTIVE
+        CHECKED_OUT
+        EXPIRED
+        CANCELLED
+    }
+
+    class BuyerType:::enum {
+        <<enumeration>>
+        GUEST
+        MEMBER
+    }
+
+    class OrderFactory:::factory {
+        <<Factory>>
+        + createOrder(BuyerReference, EventId, Instant) ActiveOrder
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    ActiveOrder "1" *-- "1" OrderId
+    ActiveOrder "1" *-- "1" BuyerReference
+    ActiveOrder "1" *-- "0..n" OrderItem
+    ActiveOrder --> OrderStatus
+
+    BuyerReference --> BuyerType
+
+    OrderFactory ..> ActiveOrder : creates
+    OrderFactory ..> BuyerReference
+
+%% ══════════════════════════════════════════
+%% EXTERNAL DOMAIN REFERENCES
+%% ══════════════════════════════════════════
+
+    namespace Domain_Event {
+        class EventId:::external
+    }
+
+    namespace Domain_Event {
+        class ZoneId:::external
+        class SeatId:::external
+    }
+
+    namespace Domain_Member {
+        class MemberId:::external
+    }
+
+    namespace Domain_Session {
+        class SessionId:::external
+    }
+
+    namespace Domain_Shared {
+        class Money:::external
+    }
+
+%% External relations:
+    ActiveOrder ..> EventId : reserved event
+    OrderItem ..> ZoneId : zone id
+    OrderItem ..> SeatId : seat id
+    OrderItem ..> Money : unit price
+    BuyerReference ..> SessionId : guest session
+    BuyerReference ..> MemberId : member id
+    ActiveOrder ..> Money : base total
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how active orders are stored and loaded.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class ActiveOrderRepository:::repository
+    }
+
+    class ActiveOrderRepository {
+        <<Repository>>
+        - Map~OrderId, ActiveOrder~ store
+    }
+
+    ActiveOrderRepository ..> ActiveOrder : manages persistence
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef factory fill:#fff3bf,stroke:#f08c00,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000

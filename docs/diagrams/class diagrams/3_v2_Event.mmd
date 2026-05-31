@@ -1,0 +1,157 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Event domain:
+%% Updated Event design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_Event {
+
+        class Event
+        class EventId
+        class EventDetails
+        class VenueMap
+        class MapElement
+        class EventStatus
+        class SalesMethod
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE Event:
+%% Event lifecycle, details, venue map, sales method, and ZoneId membership.
+%% Zone inventory is managed by the separate Zone aggregate/domain.
+%% ══════════════════════════════════════════
+
+    class Event:::aggregate {
+        <<Aggregate Root>>
+        - EventId eventId
+        - CompanyId companyId
+        - EventDetails details
+        - VenueMap venueMap
+        - EventStatus status
+        - Set~ZoneId~ zones
+        - SalesMethod salesMethod
+        + createDraft(CompanyId, EventDetails, VenueMap) Event
+        + updateDetails(EventDetails) void
+        + updateVenueMap(VenueMap) void
+        + addZone(ZoneId) void
+        + removeZone(ZoneId) void
+        + requireZoneBelongsToEvent(ZoneId) void
+        + requirePurchasable() void
+        + publish() void
+        + cancel() void
+        + over() void
+        + markSoldOut() void
+        + setSalesMethod(SalesMethod) void
+        + isPurchasable() boolean
+    }
+
+%% ══════════════════════════════════════════
+%% VALUE OBJECTS AND ENUMS
+%% ══════════════════════════════════════════
+
+    class EventId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class EventDetails:::valueObject {
+        <<Value Object>>
+        - String name
+        - List~LocalDateTime~ dates
+        - String category
+        - String location
+        - String description
+    }
+
+    class VenueMap:::valueObject {
+        <<Value Object>>
+        - List~MapElement~ mapElements
+        + empty() VenueMap
+        + addElement(MapElement) VenueMap
+        + removeElement(MapElement) VenueMap
+    }
+
+    class MapElement:::valueObject {
+        <<Value Object>>
+        - String elementType
+        - String label
+        - int positionX
+        - int positionY
+        - ZoneId linkedZoneId
+    }
+
+    class EventStatus:::enum {
+        <<enumeration>>
+        DRAFT
+        PUBLISHED
+        SOLD_OUT
+        CANCELLED
+        OVER
+    }
+
+    class SalesMethod:::enum {
+        <<enumeration>>
+        REGULAR
+        VIRTUAL_QUEUE
+        LOTTERY
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    Event "1" *-- "1" EventId
+    Event "1" *-- "1" EventDetails
+    Event "1" *-- "1" VenueMap
+    Event "1" o-- "0..n" ZoneId : zones of Event
+    Event --> EventStatus
+    Event --> SalesMethod
+
+    VenueMap "1" *-- "0..n" MapElement
+    MapElement ..> ZoneId : linked zone
+
+%% ══════════════════════════════════════════
+%% EXTERNAL DOMAIN REFERENCES
+%% ══════════════════════════════════════════
+
+    namespace Domain_Company {
+        class CompanyId:::external
+    }
+
+    namespace Domain_Zone {
+        class ZoneId:::external
+    }
+
+%% External relations:
+    Event ..> CompanyId : owner company id
+    Event ..> ZoneId : event zone ids
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how Event aggregates are stored and loaded.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class EventRepository:::repository
+    }
+
+    class EventRepository {
+        <<Repository>>
+        - ConcurrentMap~EventId, Event~ events
+    }
+
+    EventRepository ..> Event : manages persistence
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000
