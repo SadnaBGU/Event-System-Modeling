@@ -5,5 +5,5 @@ public enum EventStatus {
     PUBLISHED,
     SOLD_OUT,
     CANCELLED,
-    OVER//TODO - check if Cancelled == Event Ended/Over, if NOT, Add ENDED/OVER status to mark finished events
+    OVER
 }

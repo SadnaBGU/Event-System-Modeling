@@ -201,7 +201,7 @@ class DiscountPolicyTest {
 
     @Test
     void policyConflictCanBeDetectedByEvaluatingPurchaseAndDiscountRules_UAT48() {
-        PurchasePolicy purchasePolicy = new PurchasePolicy(new com.eventsystem.domain.policy.basic.MaxTicketPolicy(4));
+        PurchasePolicy purchasePolicy = PurchasePolicy.NewMaxTicketPolicy(COMPANY_ID, "MaxTicket4", 4);
         Discount requiresFiveTickets = new Discount("Buy five", BigDecimal.valueOf(20), new MinTicketPolicy(5));
 
         assertThat(purchasePolicy.isPurchaseAllowedInContext(contextWithTickets(VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE, VIP_ZONE)))

@@ -4,14 +4,13 @@ import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
-import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 
 import java.util.Objects;
 import java.util.Set;
 
-public class ProductionCompanyService {
+public class ProductionCompanyService implements ICompanyPermissionServicePort{
     private final IProductionCompanyRepository productionCompanyRepository;
     private final IMemberRepository memberRepository;
 
@@ -149,5 +148,26 @@ public class ProductionCompanyService {
         if (memberRepository.findById(memberId).isEmpty()) {
             throw new CompanyDomainException("member not found");
         }
+    }
+
+    //Added for Event and policy managment by company
+    @Override
+    public boolean canManageEvents(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.EVENT_INVENTORY_MANAGEMENT);
+    }
+
+    @Override
+    public boolean canManageDiscountPolicies(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.MODIFY_POLICIES);
+    }
+
+    @Override
+    public boolean canManagePurchasePolicies(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.MODIFY_POLICIES);
+    }
+
+    @Override
+    public String getCompanyName(CompanyId companyId) {
+        return loadCompany(companyId).companyDetails().name();
     }
 }

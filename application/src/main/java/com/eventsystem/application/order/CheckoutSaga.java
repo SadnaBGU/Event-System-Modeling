@@ -10,8 +10,13 @@ import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.policy.IDiscountApplicationPort;
+import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
+import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.PolicyValidationResult;
+import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
@@ -38,6 +43,10 @@ public class CheckoutSaga {
     private final ITicketIssuancePort ticketIssuance;
     private final INotificationPort notificationPort;
     private final IZoneRepository zoneRepository;
+
+    private final IPurchasePolicyValidationPort purchasePolicyPort;
+    private final IDiscountApplicationPort discountPort;
+
     
     private final IEventQueryPort eventQueryPort; 
 
@@ -47,6 +56,8 @@ public class CheckoutSaga {
                         ITicketIssuancePort ticketIssuance,
                         INotificationPort notificationPort,
                         IZoneRepository zoneRepository,
+                        IPurchasePolicyValidationPort purchasePolicyPort,
+                        IDiscountApplicationPort discountPort,
                         IEventQueryPort eventQueryPort) {
         this.orderRepository = orderRepository;
         this.purchaseRecordRepository = purchaseRecordRepository;
@@ -54,6 +65,8 @@ public class CheckoutSaga {
         this.ticketIssuance = ticketIssuance;
         this.notificationPort = notificationPort;
         this.zoneRepository = zoneRepository;
+        this.purchasePolicyPort = purchasePolicyPort;
+        this.discountPort = discountPort;
         this.eventQueryPort = eventQueryPort;
     }
 
@@ -84,17 +97,19 @@ public class CheckoutSaga {
         }
 
         // 2. Validating purchase policies before discounts
-        boolean isEligible;
+        PurchaseContext context = purchasePolicyPort.createPurchaseContext( new EventId(order.getEventId()), order.getBuyerRef(), order.getItems());
+        PolicyValidationResult policyValidationResult;
         try {
-            isEligible = eventQueryPort.validatePurchasePolicy(order.getEventId(), order.getBuyerRef(), order.getItems());
+            policyValidationResult = purchasePolicyPort.evaluatePurchasePolicyFor(context);
         } catch (Exception e) {
             logger.error("Error during purchase policy validation: {}", e.getMessage());
             throw new OrderViolatesPolicyException("Error validating purchase policy for order " + orderId + ": " + e.getMessage());
         }
         
-        if (!isEligible) {
+        if (!policyValidationResult.isSuccess()) {
             logger.warn("Checkout failed: Order violates purchase policy for event {}", order.getEventId());
-            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event " + order.getEventId());
+            logger.warn("Reason: {}", policyValidationResult.reason());
+            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event " + order.getEventId() +"Reason:" + policyValidationResult.reason());
         }
 
         // 3. Calculating the total price and applying discounts
@@ -102,7 +117,7 @@ public class CheckoutSaga {
         DiscountSnapshot discount;
         try {
             Money baseTotal = order.calculateBaseTotal();
-            discount = eventQueryPort.applyDiscount(order.getEventId(), discountCode, baseTotal);
+            discount = discountPort.generateDiscountSnapshot(context.withCode(discountCode), baseTotal);
             finalAmount = baseTotal.subtract(discount.discountAmount());
         } catch (Exception e) {
             logger.error("Error during discount application: {}", e.getMessage());

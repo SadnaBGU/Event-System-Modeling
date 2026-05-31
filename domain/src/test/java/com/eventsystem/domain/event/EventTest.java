@@ -2,6 +2,8 @@ package com.eventsystem.domain.event;
 
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.company.CompanyId;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -44,7 +46,7 @@ class EventTest {
 
     private Event createDraftEvent() {
         return Event.createDraft(
-                "company-1",
+                new CompanyId("company-1"),
                 defaultDetails(),
                 VenueMap.empty()
         );
