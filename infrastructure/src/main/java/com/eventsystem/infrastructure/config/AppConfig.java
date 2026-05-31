@@ -35,6 +35,7 @@ import com.eventsystem.application.order.ITicketIssuancePort;
 import com.eventsystem.application.order.IVirtualQueueRepository;
 import com.eventsystem.application.order.IssuanceResult;
 import com.eventsystem.application.event.EventPurchaseSupportService;
+import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.application.event.EventService;
 import com.eventsystem.application.event.IEventPermissionChecker;
 import com.eventsystem.application.event.IEventQueryPort;
@@ -195,6 +196,13 @@ public class AppConfig {
     @Bean
     public EventService eventService(IEventRepository eventRepo, IEventPermissionChecker eventPermissionChecker, IPurchasePolicyRepository purchasePolicyRepository) {
         return new EventService(eventRepo, eventPermissionChecker, purchasePolicyRepository);
+    }
+
+    @Bean
+    public EventCatalogService eventCatalogService(IEventRepository eventRepo,
+                                                   IZoneRepository zoneRepo,
+                                                   IProductionCompanyRepository productionCompanyRepository) {
+        return new EventCatalogService(eventRepo, zoneRepo, productionCompanyRepository);
     }
 
     @Bean
