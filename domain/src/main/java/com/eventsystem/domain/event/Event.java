@@ -1,13 +1,10 @@
 package com.eventsystem.domain.event;
 
-import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
-import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 
 
-import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
