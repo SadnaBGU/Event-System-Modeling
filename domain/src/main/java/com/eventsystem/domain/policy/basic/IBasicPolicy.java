@@ -15,4 +15,5 @@ public interface IBasicPolicy extends IPolicy{
         return true;
     }
     
+    
 }

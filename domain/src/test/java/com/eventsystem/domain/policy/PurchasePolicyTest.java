@@ -17,6 +17,7 @@ import static com.eventsystem.domain.policy.PolicyTestFixtures.contextWithTicket
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * PurchasePolicy aggregate-level tests.
@@ -359,4 +360,16 @@ class PurchasePolicyTest {
         assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
         assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isFalse();
     }
+
+    @Test
+    void assertInvalidPolicyValidationResultThrows() {
+        assertThrows(IllegalArgumentException.class, () -> {new PolicyValidationResult(false, null);});
+        assertThrows(IllegalArgumentException.class, () -> {new PolicyValidationResult(true, "NOT NULL");});
+    }
+
+    @Test
+    void assertInvalidPolicyScopeThrows() {
+        assertThrows(Exception.class, () -> {new PolicyScope(false, Set.of((EventId)null));});
+    }
+
 }

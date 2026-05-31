@@ -53,10 +53,6 @@ public class Event {
         return eventId;
     }
 
-    public String eventIdString() {
-        return eventId.toString();
-    }
-
     public CompanyId companyId() {
         return companyId;
     }
