@@ -59,6 +59,20 @@ public class LotteryService {
         }
     }
 
+    public void register(MemberId memberId, EventId eventId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        Lottery lottery = lotteries.findByEventId(eventId)
+            .orElseThrow(() -> new LotteryNotFoundException(eventId));
+        boolean added = lottery.register(memberId);
+        lotteries.save(lottery);
+        if (added) {
+            log.info("Lottery registration lotteryId={} eventId={} memberId={}",
+                    lottery.getLotteryId().value(), eventId.value(), memberId.value());
+        }
+    }
+
     public void draw(LotteryId lotteryId, int winnerCount) {
         Lottery lottery = load(lotteryId);
         lottery.close();
