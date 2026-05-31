@@ -12,6 +12,7 @@
     </parent>
 
     <artifactId>infrastructure</artifactId>
+    <packaging>jar</packaging>
     <name>Event System :: Infrastructure</name>
 
     <dependencies>

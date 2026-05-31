@@ -51,94 +51,103 @@ class AdminControllerTest {
 
     // ── POST /api/admin/members/{id}/suspend (II.6.7) ────────────────────────
 
+    @SuppressWarnings("null")
     @Test
     void suspendMember_temporaryDuration_returns200() throws Exception {
-        mockMvc.perform(post("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(post("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"durationDays\": 7}"))
+                        .content("{\"durationDays\": 7, \"reason\": \"Violation of rules\"}"))
                 .andExpect(status().isOk());
 
-        verify(adminService).suspendMember(adminId, targetId, Duration.ofDays(7));
+        verify(adminService).suspendMember(adminId, targetId, Duration.ofDays(7), "Violation of rules");
     }
 
+    @SuppressWarnings("null")
     @Test
     void suspendMember_noBody_permanent_returns200() throws Exception {
-        mockMvc.perform(post("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(post("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId))
                 .andExpect(status().isOk());
 
-        verify(adminService).suspendMember(eq(adminId), eq(targetId), isNull());
+        verify(adminService).suspendMember(eq(adminId), eq(targetId), isNull(), isNull());
     }
 
+    @SuppressWarnings("null")
     @Test
     void suspendMember_zeroDays_treatAsPermanent() throws Exception {
-        mockMvc.perform(post("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(post("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"durationDays\": 0}"))
                 .andExpect(status().isOk());
 
-        verify(adminService).suspendMember(eq(adminId), eq(targetId), isNull());
+        verify(adminService).suspendMember(eq(adminId), eq(targetId), isNull(), isNull());
     }
 
+    @SuppressWarnings("null")
     @Test
     void suspendMember_notAdmin_returns403() throws Exception {
         doThrow(new NotAuthorizedException("not-admin"))
-                .when(adminService).suspendMember(any(), any(), any());
+                .when(adminService).suspendMember(any(), any(), any(), any());
 
-        mockMvc.perform(post("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(post("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"durationDays\": 1}"))
                 .andExpect(status().isForbidden());
     }
 
+    @SuppressWarnings("null")
     @Test
     void suspendMember_memberNotFound_returns400() throws Exception {
         doThrow(new IllegalArgumentException("Member not found"))
-                .when(adminService).suspendMember(any(), any(), any());
+                .when(adminService).suspendMember(any(), any(), any(), any());
 
-        mockMvc.perform(post("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(post("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"durationDays\": 1}"))
                 .andExpect(status().isBadRequest());
     }
 
-    // ── DELETE /api/admin/members/{id}/suspend (II.6.8) ─────────────────────
+    // ── DELETE /api/admin/members/{id}/suspensions (II.6.8) ─────────────────────
 
+    @SuppressWarnings("null")
     @Test
     void unsuspendMember_returns200() throws Exception {
-        mockMvc.perform(delete("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(delete("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId))
                 .andExpect(status().isOk());
 
         verify(adminService).unsuspendMember(adminId, targetId);
     }
 
+    @SuppressWarnings("null")
     @Test
     void unsuspendMember_notSuspended_returns400() throws Exception {
         doThrow(new IllegalStateException("Member is not suspended"))
                 .when(adminService).unsuspendMember(any(), any());
 
-        mockMvc.perform(delete("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(delete("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId))
                 .andExpect(status().isBadRequest());
     }
 
+    @SuppressWarnings("null")
     @Test
     void unsuspendMember_notAdmin_returns403() throws Exception {
         doThrow(new NotAuthorizedException("not-admin"))
                 .when(adminService).unsuspendMember(any(), any());
 
-        mockMvc.perform(delete("/api/admin/members/{id}/suspend", targetId.value())
+        mockMvc.perform(delete("/api/admin/members/{id}/suspensions", targetId.value())
                         .requestAttr("authenticatedMemberId", adminId))
                 .andExpect(status().isForbidden());
     }
 
     // ── GET /api/admin/suspensions (II.6.9) ──────────────────────────────────
 
+    @SuppressWarnings("null")
     @Test
     void listSuspensions_returnsSuspensionList() throws Exception {
         Instant now = Instant.parse("2026-05-31T10:00:00Z");
@@ -155,6 +164,7 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$[0].duration").value("PT168H"));
     }
 
+    @SuppressWarnings("null")
     @Test
     void listSuspensions_empty_returnsEmptyArray() throws Exception {
         when(adminService.listSuspensions(adminId)).thenReturn(List.of());
@@ -165,6 +175,7 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$").isEmpty());
     }
 
+    @SuppressWarnings("null")
     @Test
     void listSuspensions_notAdmin_returns403() throws Exception {
         doThrow(new NotAuthorizedException("not-admin"))

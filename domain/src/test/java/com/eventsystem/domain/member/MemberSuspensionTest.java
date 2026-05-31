@@ -23,7 +23,7 @@ class MemberSuspensionTest {
     @Test
     void suspend_temporary_setsStatusAndRecordsSuspension() {
         Instant now = Instant.now();
-        member.suspend(now, Duration.ofDays(7));
+        member.suspend(now, Duration.ofDays(7), "Violation of terms");
 
         assertThat(member.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
         assertThat(member.getSuspension()).isPresent();
@@ -33,7 +33,7 @@ class MemberSuspensionTest {
 
     @Test
     void suspend_permanent_nullDuration_setsStatusPermanent() {
-        member.suspend(Instant.now(), null);
+        member.suspend(Instant.now(), null, "Permanent suspension");
 
         assertThat(member.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
         assertThat(member.getSuspension().get().isPermanent()).isTrue();
@@ -44,13 +44,13 @@ class MemberSuspensionTest {
     void suspend_cancelledMember_throws() {
         member.cancel();
         assertThatIllegalStateException()
-                .isThrownBy(() -> member.suspend(Instant.now(), Duration.ofDays(1)));
+                .isThrownBy(() -> member.suspend(Instant.now(), Duration.ofDays(1), "Violation of terms"));
     }
 
     @Test
     void isSuspendedAt_duringActiveSuspension_returnsTrue() {
         Instant now = Instant.now();
-        member.suspend(now, Duration.ofDays(7));
+        member.suspend(now, Duration.ofDays(7), "Violation of terms");
 
         assertThat(member.isSuspendedAt(now.plusSeconds(60))).isTrue();
     }
@@ -58,7 +58,7 @@ class MemberSuspensionTest {
     @Test
     void isSuspendedAt_afterTemporaryExpiry_returnsFalse() {
         Instant now = Instant.now();
-        member.suspend(now, Duration.ofDays(1));
+        member.suspend(now, Duration.ofDays(1), "Violation of terms");
 
         assertThat(member.isSuspendedAt(now.plus(Duration.ofDays(2)))).isFalse();
     }
@@ -66,14 +66,14 @@ class MemberSuspensionTest {
     @Test
     void isSuspendedAt_permanent_neverExpires() {
         Instant now = Instant.now();
-        member.suspend(now, null);
+        member.suspend(now, null, "Permanent suspension");
 
         assertThat(member.isSuspendedAt(now.plus(Duration.ofDays(3650)))).isTrue();
     }
 
     @Test
     void suspendedMember_cannotUpdateDetails() {
-        member.suspend(Instant.now(), Duration.ofDays(1));
+        member.suspend(Instant.now(), Duration.ofDays(1), "Violation of terms");
         assertThatIllegalStateException()
                 .isThrownBy(() -> member.updateDetails(
                         new PersonalDetails("New", "Name", "new@example.com", LocalDate.of(1990, 1, 1))));
@@ -81,7 +81,7 @@ class MemberSuspensionTest {
 
     @Test
     void suspendedMember_canReceiveNotifications() {
-        member.suspend(Instant.now(), Duration.ofDays(1));
+        member.suspend(Instant.now(), Duration.ofDays(1), "Violation of terms");
         assertThatNoException()
                 .isThrownBy(() -> member.addNotification(
                         Notification.create(NotificationType.ROLE_CHANGED, "Your account has been suspended.")));
@@ -91,7 +91,7 @@ class MemberSuspensionTest {
 
     @Test
     void unsuspend_restoresActiveStatus() {
-        member.suspend(Instant.now(), Duration.ofDays(7));
+        member.suspend(Instant.now(), Duration.ofDays(7), "Violation of terms");
         member.unsuspend();
 
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
@@ -106,7 +106,7 @@ class MemberSuspensionTest {
 
     @Test
     void unsuspend_permanent_works() {
-        member.suspend(Instant.now(), null);
+        member.suspend(Instant.now(), null, "Permanent suspension");
         member.unsuspend();
 
         assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
@@ -117,12 +117,12 @@ class MemberSuspensionTest {
     @Test
     void suspension_zeroDuration_throws() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ZERO));
+                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ZERO, "Invalid duration"));
     }
 
     @Test
     void suspension_negativeDuration_throws() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ofDays(-1)));
+                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ofDays(-1), "Invalid duration"));
     }
 }

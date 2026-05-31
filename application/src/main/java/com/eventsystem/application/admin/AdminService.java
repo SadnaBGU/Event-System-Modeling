@@ -122,15 +122,16 @@ public class AdminService {
     /**
      * Suspends a member for the given duration.
      * @param duration how long to suspend; {@code null} means permanent
+     * @param reason the reason for the suspension (optional, may be null or empty)
      */
-    public void suspendMember(MemberId actor, MemberId target, Duration duration) {
+    public void suspendMember(MemberId actor, MemberId target, Duration duration, String reason) {
         requireAdmin(actor);
         Objects.requireNonNull(target, "target must not be null");
         Member member = loadMember(target);
-        member.suspend(Instant.now(), duration);
+        member.suspend(Instant.now(), duration, reason);
         memberRepo.save(member);
-        log.info("Member {} suspended by admin={}, duration={}", target.value(), actor.value(),
-                duration == null ? "PERMANENT" : duration);
+        log.info("Member {} suspended by admin={}, duration={}, reason={}", target.value(), actor.value(),
+                duration == null ? "PERMANENT" : duration, reason != null ? reason : "N/A");
     }
 
     // ── II.6.8 — Unsuspend member ────────────────────────────────────────────
@@ -152,7 +153,7 @@ public class AdminService {
     public List<SuspensionDto> listSuspensions(MemberId actor) {
         requireAdmin(actor);
         return memberRepo.findAll().stream()
-                .filter(m -> m.getStatus() == MemberStatus.SUSPENDED)
+                .filter(m -> m.isSuspendedAt(Instant.now()))
                 .map(m -> {
                     Suspension s = m.getSuspension().orElseThrow();
                     return new SuspensionDto(

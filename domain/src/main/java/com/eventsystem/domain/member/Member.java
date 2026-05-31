@@ -101,13 +101,14 @@ public class Member {
      * Suspends this member.
      * @param now      current time (injected so domain stays clock-independent)
      * @param duration how long to suspend; {@code null} means permanent
+     * @param reason the reason for the suspension (optional, may be null or empty)
      */
-    public void suspend(Instant now, Duration duration) {
+    public void suspend(Instant now, Duration duration, String reason) {
         Objects.requireNonNull(now, "now must not be null");
         if (status == MemberStatus.CANCELLED) {
             throw new IllegalStateException("Cannot suspend a cancelled member: " + username);
         }
-        this.suspension = new Suspension(now, duration);
+        this.suspension = new Suspension(now, duration, reason);
         this.status = MemberStatus.SUSPENDED;
     }
 
