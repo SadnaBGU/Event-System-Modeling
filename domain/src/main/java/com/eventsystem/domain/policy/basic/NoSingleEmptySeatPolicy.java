@@ -7,7 +7,7 @@ public class NoSingleEmptySeatPolicy implements IBasicPolicy{
 
     @Override
     public boolean validate(PurchaseContext context) {
-        // TODO Auto-generated method stub
+        // Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'validate'");
     }
 

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
-//TODO- ADD anything more that is relevant
+
 public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId> zonesOfEachEventTicket,
                                 LocalDate buyerBirthDate, String discountCode ) {
 
@@ -22,8 +22,40 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
         zonesOfEachEventTicket = List.copyOf(zonesOfEachEventTicket);
     }
 
+    
+    public static PurchaseContext fromPurchaseInfo(EventId eventId,
+                                            CompanyId companyId,
+                                            List<ZoneId> zonesOfEachTicket,
+                                            LocalDate buyerBirthDate) {
+        return fromPurchaseInfo(
+                eventId,
+                companyId,
+                zonesOfEachTicket,
+                buyerBirthDate,
+                null
+        );
+    }
+
+    public static PurchaseContext fromPurchaseInfo(EventId eventId,
+                                            CompanyId companyId,
+                                            List<ZoneId> zonesOfEachTicket,
+                                            LocalDate buyerBirthDate,
+                                            String discountCode) {
+        return new PurchaseContext(
+                eventId,
+                companyId,
+                zonesOfEachTicket,
+                buyerBirthDate,
+                normalizeDiscountCode(discountCode)
+        );
+    }
+
     public int ticketCount() {
         return zonesOfEachEventTicket.size();
+    }
+
+    public PurchaseContext withCode(String code) {
+        return new PurchaseContext(eventId(), companyId(),zonesOfEachEventTicket(),buyerBirthDate(), code);
     }
 
     public int ticketCountForZone(ZoneId zoneTocount) {
@@ -34,6 +66,12 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
             }
         }
         return counter;
+    }
+
+    private static String normalizeDiscountCode(String discountCode) {
+        return discountCode == null || discountCode.isBlank()
+                ? null
+                : discountCode.trim();
     }
 
 }

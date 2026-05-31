@@ -1,16 +1,13 @@
 package com.eventsystem.application.event;
 
-import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.order.OrderItem;
-import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
-import com.eventsystem.domain.shared.Money;
 
-import java.math.BigDecimal;
-import java.util.List;
+import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.company.CompanyId;
+
 
 public interface IEventQueryPort {
-    boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items);
-    DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal);
     EventSnapshot getEventSnapshot(String eventId);
+
+    CompanyId companyOfEvent(EventId eventId);
 }

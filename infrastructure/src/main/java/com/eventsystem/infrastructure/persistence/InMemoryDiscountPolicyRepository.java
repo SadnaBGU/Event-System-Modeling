@@ -35,6 +35,14 @@ public class InMemoryDiscountPolicyRepository implements IDiscountPolicyReposito
     }
 
     @Override
+    public List<DiscountPolicy> findActive() {
+        return policiesById.values()
+                .stream()
+                .filter(DiscountPolicy::isActive)
+                .toList();
+    }
+
+    @Override
     public List<DiscountPolicy> findActiveByCompanyId(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
@@ -42,6 +50,17 @@ public class InMemoryDiscountPolicyRepository implements IDiscountPolicyReposito
                 .stream()
                 .filter(DiscountPolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
+                .toList();
+    }
+
+    @Override
+    public List<DiscountPolicy> findApplicableToEvent(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        return policiesById.values()
+                .stream()
+                .filter(DiscountPolicy::isActive)
+                .filter(policy -> policy.scope().appliesTo(eventId))
                 .toList();
     }
 

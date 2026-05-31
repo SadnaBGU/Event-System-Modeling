@@ -2,8 +2,11 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.policy.PurchasePolicy;
+import com.eventsystem.domain.policy.PurchasePolicyId;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -11,34 +14,78 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryPurchasePolicyRepository implements IPurchasePolicyRepository {
 
-    private final Map<EventId, PurchasePolicy> policiesByEventId = new ConcurrentHashMap<>();
+    private final Map<PurchasePolicyId, PurchasePolicy> policiesById = new ConcurrentHashMap<>();
 
     @Override
-    public Optional<PurchasePolicy> findByEventId(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
+    public Optional<PurchasePolicy> findById(PurchasePolicyId policyId) {
+        Objects.requireNonNull(policyId, "policyId must not be null");
 
-        return Optional.ofNullable(policiesByEventId.get(eventId));
+        return Optional.ofNullable(policiesById.get(policyId));
     }
 
     @Override
-    public void saveForEvent(EventId eventId, PurchasePolicy purchasePolicy) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        Objects.requireNonNull(purchasePolicy, "purchasePolicy must not be null");
+    public List<PurchasePolicy> findByCompanyId(CompanyId companyId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
 
-        policiesByEventId.put(eventId, purchasePolicy);
+        return policiesById.values()
+                .stream()
+                .filter(policy -> policy.companyId().equals(companyId))
+                .toList();
     }
 
     @Override
-    public void deleteByEventId(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
+    public List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
 
-        policiesByEventId.remove(eventId);
+        return policiesById.values()
+                .stream()
+                .filter(PurchasePolicy::isActive)
+                .filter(policy -> policy.companyId().equals(companyId))
+                .toList();
     }
 
     @Override
-    public boolean existsByEventId(EventId eventId) {
+    public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        return policiesByEventId.containsKey(eventId);
+        return policiesById.values()
+                .stream()
+                .filter(PurchasePolicy::isActive)
+                .filter(policy -> policy.scope().appliesTo(eventId))
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
+        Objects.requireNonNull(eventId, "eventId must not be null");
+
+        return policiesById.values()
+                .stream()
+                .filter(PurchasePolicy::isActive)
+                .filter(policy -> policy.companyId().equals(companyId))
+                .filter(policy -> policy.scope().appliesTo(eventId))
+                .toList();
+    }
+
+    @Override
+    public void save(PurchasePolicy purchasePolicy) {
+        Objects.requireNonNull(purchasePolicy, "PurchasePolicy must not be null");
+
+        policiesById.put(purchasePolicy.id(), purchasePolicy);
+    }
+
+    @Override
+    public void deleteById(PurchasePolicyId policyId) {
+        Objects.requireNonNull(policyId, "policyId must not be null");
+
+        policiesById.remove(policyId);
+    }
+
+    @Override
+    public boolean existsById(PurchasePolicyId policyId) {
+        Objects.requireNonNull(policyId, "policyId must not be null");
+
+        return policiesById.containsKey(policyId);
     }
 }
