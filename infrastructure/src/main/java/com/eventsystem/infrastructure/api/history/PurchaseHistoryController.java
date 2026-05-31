@@ -1,5 +1,6 @@
 package com.eventsystem.infrastructure.api.history;
 
+import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.order.PurchaseHistoryService;
 import com.eventsystem.application.purchaserecorddto.PurchaseRecordDTO;
 import com.eventsystem.application.purchaserecorddto.PurchasedItemDTO;
@@ -8,7 +9,6 @@ import com.eventsystem.domain.shared.Money;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,10 +38,11 @@ public class PurchaseHistoryController {
         List<Map<String,Object>> items = all.subList(from, to).stream().map(this::toSummaryMap).collect(Collectors.toList());
 
         int totalPages = size == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        boolean hasNext = size > 0 && (page + 1) < totalPages;
 
         Map<String,Object> payload = Map.of(
-                "page", page,
-                "size", size,
+            "currentPage", page,
+            "hasNext", hasNext,
                 "totalElements", totalElements,
                 "totalPages", totalPages,
                 "items", items
@@ -54,11 +55,11 @@ public class PurchaseHistoryController {
     public ResponseEntity<Map<String,Object>> getReceipt(@RequestAttribute(name = "authenticatedMemberId") MemberId member,
                                                           @PathVariable String recordId) {
         PurchaseRecordDTO dto = historyService.getReceiptDetails(recordId)
-                .orElseThrow(() -> new IllegalArgumentException("receipt not found: " + recordId));
+                .orElseThrow(() -> new OrderNotFoundException("receipt not found: " + recordId));
 
         // ensure the requesting member matches the receipt owner
         if (!dto.buyerId().equals(member.value())) {
-            throw new IllegalArgumentException("access denied");
+            throw new SecurityException("access denied");
         }
 
         Map<String,Object> payload = toDetailMap(dto);

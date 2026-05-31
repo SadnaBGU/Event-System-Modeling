@@ -4,11 +4,8 @@ import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.application.event.EventCatalogService.PriceRange;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.event.EventStatus;
 import com.eventsystem.domain.event.MapElement;
-import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,10 +47,11 @@ public class EventCatalogController {
         int to = Math.min(all.size(), from + size);
         List<Map<String, Object>> items = from >= all.size() ? List.of() : all.subList(from, to);
         int totalPages = size <= 0 ? 0 : (int) Math.ceil((double) all.size() / size);
+        boolean hasNext = size > 0 && (page + 1) < totalPages;
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("page", page);
-        payload.put("size", size);
+        payload.put("currentPage", page);
+        payload.put("hasNext", hasNext);
         payload.put("totalElements", all.size());
         payload.put("totalPages", totalPages);
         payload.put("items", items);

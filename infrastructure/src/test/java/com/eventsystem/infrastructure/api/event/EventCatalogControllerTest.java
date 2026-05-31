@@ -4,7 +4,6 @@ import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.event.MapElement;
 import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.shared.Money;
@@ -12,7 +11,6 @@ import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,8 +40,6 @@ class EventCatalogControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
-
     @org.springframework.boot.test.mock.mockito.MockBean
     private EventCatalogService catalogService;
 
@@ -96,8 +92,8 @@ class EventCatalogControllerTest {
                         .param("size", "20")
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page").value(0))
-                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.currentPage").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false))
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.items[0].eventId").value("EVT-1"))
