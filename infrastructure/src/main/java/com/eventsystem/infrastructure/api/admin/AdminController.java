@@ -15,8 +15,9 @@ import java.util.List;
  * UC II.6.8 — unsuspend member
  * UC II.6.9 — list suspensions
  *
- * Every request must carry the admin's memberId in the {@code X-Member-Id} header
- * (enforced by {@link com.eventsystem.infrastructure.security.AuthenticationInterceptor}).
+ * Every request must carry a valid JWT (enforced by
+ * {@link com.eventsystem.infrastructure.security.AuthenticationInterceptor}),
+ * which resolves to an {@code authenticatedMemberId} request attribute.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -30,11 +31,11 @@ public class AdminController {
 
     /**
      * POST /api/admin/members/{memberId}/suspend
-     * Body (optional): { "durationDays": 7 }   — omit or set to 0 for permanent
+     * Body (optional): { "durationDays": 7 }  — omit or 0 for permanent
      */
     @PostMapping("/members/{memberId}/suspend")
     public ResponseEntity<Void> suspendMember(
-            @RequestAttribute("memberId") String actorId,
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
             @PathVariable String memberId,
             @RequestBody(required = false) SuspendRequest body) {
 
@@ -42,7 +43,7 @@ public class AdminController {
                 ? Duration.ofDays(body.durationDays())
                 : null;
 
-        adminService.suspendMember(new MemberId(actorId), new MemberId(memberId), duration);
+        adminService.suspendMember(actor, new MemberId(memberId), duration);
         return ResponseEntity.ok().build();
     }
 
@@ -51,10 +52,10 @@ public class AdminController {
      */
     @DeleteMapping("/members/{memberId}/suspend")
     public ResponseEntity<Void> unsuspendMember(
-            @RequestAttribute("memberId") String actorId,
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
             @PathVariable String memberId) {
 
-        adminService.unsuspendMember(new MemberId(actorId), new MemberId(memberId));
+        adminService.unsuspendMember(actor, new MemberId(memberId));
         return ResponseEntity.ok().build();
     }
 
@@ -64,10 +65,9 @@ public class AdminController {
      */
     @GetMapping("/suspensions")
     public ResponseEntity<List<SuspensionDto>> listSuspensions(
-            @RequestAttribute("memberId") String actorId) {
+            @RequestAttribute("authenticatedMemberId") MemberId actor) {
 
-        List<SuspensionDto> suspensions = adminService.listSuspensions(new MemberId(actorId));
-        return ResponseEntity.ok(suspensions);
+        return ResponseEntity.ok(adminService.listSuspensions(actor));
     }
 
     record SuspendRequest(Integer durationDays) {}
