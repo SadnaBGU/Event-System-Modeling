@@ -9,9 +9,6 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.BuyerReference;
-
-
-
 import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.DiscountPolicy;
 import com.eventsystem.domain.policy.DiscountPolicyId;
@@ -21,6 +18,10 @@ import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.member.MemberId;
+
+import com.eventsystem.application.policy.policybuilder.DiscountCommand;
+import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +44,19 @@ public class DiscountPolicyService implements IDiscountApplicationPort {
     private final ICompanyPermissionServicePort permissionChecker;
     private final IEventManagementPort eventOwnershipChecker;
     private final IMemberInformationPort memberInfoPort;
+    private final PolicyCommandAssembler policyCommandAssembler;
 
     public DiscountPolicyService(IDiscountPolicyRepository discountPolicyRepository,
                                  ICompanyPermissionServicePort permissionChecker,
                                   IEventManagementPort eventOwnershipChecker, 
-                                    IMemberInformationPort memberInfoPort) {
+                                   IMemberInformationPort memberInfoPort,
+                                    PolicyCommandAssembler policyCommandAssembler) {
         this.discountPolicyRepository = Objects.requireNonNull(discountPolicyRepository, "discountPolicyRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker, "permissionChecker must not be null");
         this.eventOwnershipChecker = Objects.requireNonNull(eventOwnershipChecker, "eventOwnershipChecker must not be null");
         this.memberInfoPort = Objects.requireNonNull(memberInfoPort, "eventOwnershipChecker must not be null");
+        this.policyCommandAssembler = Objects.requireNonNull(policyCommandAssembler, "eventOwnershipChecker must not be null");
+
 
 
     }
@@ -660,6 +665,69 @@ public class DiscountPolicyService implements IDiscountApplicationPort {
         return new PurchaseContext(eventId, companyId, zonesOfEachTicket, buyerBirthday, discountCode);
     }
 
-    
+    public DiscountPolicyId createDiscountPolicy(DiscountPolicyCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+
+        MemberId actorId = new MemberId(command.actorId());
+        CompanyId companyId = new CompanyId(command.companyId());
+
+        requireManageDiscountsPermission(actorId, companyId);
+
+        PolicyScope scope = policyCommandAssembler.toScope(command.scope());
+
+        for (EventId eventId : scope.eventIds()) {
+            requireCompanyOwnsEvent(companyId, eventId);
+        }
+
+        if (command.discounts() == null || command.discounts().isEmpty()) {
+            throw new PolicyException("Discount policy must contain at least one discount");
+        }
+
+        DiscountPolicy policy = new DiscountPolicy(
+                DiscountPolicyId.random(),
+                companyId,
+                scope
+        );
+
+        if (command.stackable()) {
+            policy.allowStacking();
+        } else {
+            policy.disallowStacking();
+        }
+
+        for (DiscountCommand discountCommand : command.discounts()) {
+            Discount discount = policyCommandAssembler.toDiscount(discountCommand);
+            policy.addDiscount(discount);
+        }
+
+        if (command.activate()) {
+            policy.activate();
+        }
+
+        discountPolicyRepository.save(policy);
+
+        logger.info(
+                "Discount policy created from command. policyId={}, policyName={}, companyId={}, active={}, stackable={}, discountCount={}",
+                policy.id(),
+                command.policyName(),
+                policy.companyId(),
+                policy.isActive(),
+                policy.isStackable(),
+                policy.discounts().size()
+        );
+
+        return policy.id();
+    }
+
+    public void addDiscountToPolicy(MemberId actorId,
+                                    CompanyId companyId,
+                                    DiscountPolicyId policyId,
+                                    DiscountCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+
+        Discount discount = policyCommandAssembler.toDiscount(command);
+
+        addDiscountToPolicy(actorId, companyId, policyId, discount);
+    }
 
 }

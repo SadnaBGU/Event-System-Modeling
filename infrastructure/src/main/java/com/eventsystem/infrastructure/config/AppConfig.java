@@ -179,7 +179,7 @@ public class AppConfig {
     }
 
     @Bean
-    public PolicyCommandAssembler policyCommandFactory() {
+    public PolicyCommandAssembler PolicyCommandAssembler() {
         return new PolicyCommandAssembler();
     }
 
@@ -371,12 +371,14 @@ public class AppConfig {
     public DiscountPolicyService discountPolicyService(IDiscountPolicyRepository discountPolicyRepository,
                                                        ICompanyPermissionServicePort companyPermissionServicePort,
                                                        IEventManagementPort eventManagementPort,
-                                                       IMemberInformationPort memberInformationPort) {
+                                                       IMemberInformationPort memberInformationPort,
+                                                       PolicyCommandAssembler policyAssembler) {
         return new DiscountPolicyService(
                 discountPolicyRepository,
                 companyPermissionServicePort,
                 eventManagementPort,
-                memberInformationPort
+                memberInformationPort,
+                policyAssembler
         );
     }
 

@@ -1,13 +1,13 @@
 package com.eventsystem.application.policy.policybuilder;
 
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.IPolicy;
-import com.eventsystem.domain.policy.PolicyBuilder;
 import com.eventsystem.domain.policy.PolicyScope;
+import com.eventsystem.domain.policy.basic.*;
 import com.eventsystem.domain.policy.composite.AndPolicy;
 import com.eventsystem.domain.policy.composite.OrPolicy;
 import com.eventsystem.domain.policy.composite.ZoneSpecificPolicy;
-import com.eventsystem.domain.policy.basic.*;
 import com.eventsystem.domain.zone.ZoneId;
 
 import java.time.LocalDate;
@@ -54,6 +54,20 @@ public class PolicyCommandAssembler {
 
             default -> throw new IllegalArgumentException("Unsupported policy rule type: " + command.type());
         };
+    }
+
+    public Discount toDiscount(DiscountCommand command) {
+        Objects.requireNonNull(command, "discount command must not be null");
+
+        IPolicy rule = command.rule() == null
+                ? AlwaysTruePolicy.INSTANCE
+                : toPolicy(command.rule());
+
+        return new Discount(
+                command.name(),
+                command.percent(),
+                rule
+        );
     }
 
     public PolicyScope toScope(PolicyScopeCommand command) {

@@ -3,6 +3,11 @@ package com.eventsystem.application.policy;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
+import com.eventsystem.application.policy.policybuilder.DiscountCommand;
+import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
+import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
@@ -20,6 +25,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,7 +54,7 @@ class DiscountPolicyServiceTest {
     @Mock
     private IMemberInformationPort memberInfoPort;
 
-
+    private PolicyCommandAssembler policyAssembler;
     private DiscountPolicyService service;
 
     private static final String ACTOR_ID_STR = "actor-1";
@@ -60,13 +66,14 @@ class DiscountPolicyServiceTest {
     private static final CompanyId OTHER_COMPANY_ID = new CompanyId(OTHER_COMPANY_ID_STR);
 
     private static final EventId EVENT_ID = new EventId("event-1");
-    //private static final EventId OTHER_EVENT_ID = new EventId("event-2");
+    private static final EventId OTHER_EVENT_ID = new EventId("event-2");
 
     private static final ZoneId REGULAR_ZONE = new ZoneId("regular-zone");
 
     @BeforeEach
     void setUp() {
-        service = new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, memberInfoPort);
+        policyAssembler = new PolicyCommandAssembler();
+        service = new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, memberInfoPort, policyAssembler);
     }
 
     private DiscountPolicy companyWideWithDiscount() {
@@ -442,16 +449,332 @@ class DiscountPolicyServiceTest {
 
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new DiscountPolicyService(null, permissionChecker, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new DiscountPolicyService(null, permissionChecker, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, null, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, null, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class);
                 
-        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, null, memberInfoPort))
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, null, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, null))
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, null, policyAssembler))
                 .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> new DiscountPolicyService(discountPolicyRepository, permissionChecker, eventServicePort, memberInfoPort, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Command-based discount policy creation for UI/API
+    // ─────────────────────────────────────────────────────────────────────
+
+    // PRD-03 / DP-03 / DP-05 / DP-06 / DP-11 / TST-07 / TST-09:
+    // Owner/manager defines active event-scoped discount policy through application layer.
+    // Discount is conditional on max ticket quantity.
+    @Test
+    void createDiscountPolicy_fromCommand_shouldAssemblePolicyAndSaveIt() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Early bird max 4 tickets",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                List.of(
+                        new DiscountCommand(
+                                "EARLY_BIRD_20",
+                                BigDecimal.valueOf(20),
+                                new PolicyRuleCommand("MAX_TICKETS", 4, null, null, null, null)
+                        )
+                ),
+                false,
+                true
+        );
+
+        DiscountPolicyId policyId = service.createDiscountPolicy(command);
+
+        ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+        verify(discountPolicyRepository).save(captor.capture());
+
+        DiscountPolicy savedPolicy = captor.getValue();
+
+        assertThat(policyId).isEqualTo(savedPolicy.id());
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.scope().isCompanyWide()).isFalse();
+        assertThat(savedPolicy.scope().eventIds()).containsExactly(EVENT_ID);
+        assertThat(savedPolicy.isActive()).isTrue();
+        assertThat(savedPolicy.isStackable()).isFalse();
+        assertThat(savedPolicy.discounts()).hasSize(1);
+        assertThat(savedPolicy.discounts().get(0).getDiscountName()).isEqualTo("EARLY_BIRD_20");
+        assertThat(savedPolicy.discounts().get(0).getDiscountPercent()).isEqualByComparingTo(BigDecimal.valueOf(20));
+    }
+
+    // DP-03 / DP-04 / DP-12 / TST-07:
+    // Owner/manager defines company-wide stackable visible discount.
+    @Test
+    void createDiscountPolicy_companyWideStackableSimpleDiscount_shouldSaveStackableActivePolicy() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Company visible discount",
+                new PolicyScopeCommand(true, Set.of()),
+                List.of(
+                        new DiscountCommand("VISIBLE_10", BigDecimal.TEN, null),
+                        new DiscountCommand("VISIBLE_5", BigDecimal.valueOf(5), null)
+                ),
+                true,
+                true
+        );
+
+        service.createDiscountPolicy(command);
+
+        ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+        verify(discountPolicyRepository).save(captor.capture());
+
+        DiscountPolicy savedPolicy = captor.getValue();
+
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.scope().isCompanyWide()).isTrue();
+        assertThat(savedPolicy.isActive()).isTrue();
+        assertThat(savedPolicy.isStackable()).isTrue();
+        assertThat(savedPolicy.discounts()).hasSize(2);
+
+        verify(eventServicePort, never()).isEventByCompany(any(), any());
+    }
+
+    // DP-07 / DP-08 / TST-08:
+    // Coupon discount is created as hidden/code-based discount.
+    @Test
+    void createDiscountPolicy_couponCommand_shouldCreateCouponBasedDiscount() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Student coupon",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                List.of(
+                        new DiscountCommand(
+                                "STUDENT_15",
+                                BigDecimal.valueOf(15),
+                                new PolicyRuleCommand("CODE", null, "STUDENT15", null, null, null)
+                        )
+                ),
+                false,
+                true
+        );
+
+        service.createDiscountPolicy(command);
+
+        ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+        verify(discountPolicyRepository).save(captor.capture());
+
+        DiscountPolicy savedPolicy = captor.getValue();
+
+        PurchaseContext correctCodeContext = new PurchaseContext(
+                EVENT_ID,
+                COMPANY_ID,
+                List.of(REGULAR_ZONE),
+                LocalDate.now().minusYears(25),
+                "STUDENT15"
+        );
+
+        PurchaseContext wrongCodeContext = new PurchaseContext(
+                EVENT_ID,
+                COMPANY_ID,
+                List.of(REGULAR_ZONE),
+                LocalDate.now().minusYears(25),
+                "WRONG"
+        );
+
+        assertThat(savedPolicy.isPurchaseEligibleForDiscount(correctCodeContext)).isTrue();
+        assertThat(savedPolicy.isPurchaseEligibleForDiscount(wrongCodeContext)).isFalse();
+    }
+
+    // DP-06 / TST-09:
+    // Time-range discount condition is accepted from command.
+    @Test
+    void createDiscountPolicy_timeRangeCommand_shouldCreateTimeBasedDiscount() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Before date discount",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                List.of(
+                        new DiscountCommand(
+                                "EARLY_25",
+                                BigDecimal.valueOf(25),
+                                new PolicyRuleCommand(
+                                        "BEFORE_DATE",
+                                        null,
+                                        null,
+                                        LocalDate.now().plusDays(1).toString(),
+                                        null,
+                                        null
+                                )
+                        )
+                ),
+                false,
+                true
+        );
+
+        service.createDiscountPolicy(command);
+
+        ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+        verify(discountPolicyRepository).save(captor.capture());
+
+        DiscountPolicy savedPolicy = captor.getValue();
+
+        assertThat(savedPolicy.isPurchaseEligibleForDiscount(purchaseContext())).isTrue();
+    }
+
+    // TST-13:
+    // Authorization failure is enforced in the Application layer, not only UI.
+    @Test
+    void createDiscountPolicy_whenUnauthorized_shouldThrowAndNotSave() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Unauthorized discount",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                List.of(new DiscountCommand("VISIBLE_10", BigDecimal.TEN, null)),
+                false,
+                true
+        );
+
+        assertThatThrownBy(() -> service.createDiscountPolicy(command))
+                .isInstanceOf(SecurityException.class);
+
+        verify(discountPolicyRepository, never()).save(any());
+        verify(eventServicePort, never()).isEventByCompany(any(), any());
+    }
+
+    // TST-13 / DP-03:
+    // Application layer rejects event-scoped discount policy when event does not belong to company.
+    @Test
+    void createDiscountPolicy_whenEventDoesNotBelongToCompany_shouldThrowAndNotSave() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(OTHER_EVENT_ID, COMPANY_ID)).thenReturn(false);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Foreign event discount",
+                new PolicyScopeCommand(false, Set.of(OTHER_EVENT_ID.value())),
+                List.of(new DiscountCommand("VISIBLE_10", BigDecimal.TEN, null)),
+                false,
+                true
+        );
+
+        assertThatThrownBy(() -> service.createDiscountPolicy(command))
+                .isInstanceOf(SecurityException.class);
+
+        verify(discountPolicyRepository, never()).save(any());
+    }
+
+    // TST-03 / TST-07:
+    // Discount policy definition must contain at least one discount.
+    @Test
+    void createDiscountPolicy_whenDiscountListIsEmpty_shouldThrowAndNotSave() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Empty discount policy",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                List.of(),
+                false,
+                true
+        );
+
+        assertThatThrownBy(() -> service.createDiscountPolicy(command))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("at least one discount");
+
+        verify(discountPolicyRepository, never()).save(any());
+    }
+
+    // TST-03 / TST-07:
+    // Discount policy definition must contain at least one discount.
+    @Test
+    void createDiscountPolicy_whenDiscountListIsNull_shouldThrowAndNotSave() {
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        DiscountPolicyCommand command = new DiscountPolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Null discount policy",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                null,
+                false,
+                true
+        );
+
+        assertThatThrownBy(() -> service.createDiscountPolicy(command))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("at least one discount");
+
+        verify(discountPolicyRepository, never()).save(any());
+    }
+
+    // TST-03:
+    // Null command should be rejected.
+    @Test
+    void createDiscountPolicy_whenCommandIsNull_shouldThrow() {
+        assertThatThrownBy(() -> service.createDiscountPolicy(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("command");
+    }
+
+    // DP-05 / DP-07 / TST-07 / TST-08:
+    // Add conditional discount through command-based application method.
+    @Test
+    void addDiscountToPolicy_fromCommand_shouldAssembleDiscountAndSavePolicy() {
+        DiscountPolicy policy = companyWidePolicy();
+
+        when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+        DiscountCommand command = new DiscountCommand(
+                "COUPON_20",
+                BigDecimal.valueOf(20),
+                new PolicyRuleCommand("CODE", null, "SAVE20", null, null, null)
+        );
+
+        service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID, policy.id(), command);
+
+        assertThat(policy.discounts()).hasSize(1);
+        assertThat(policy.discounts().get(0).getDiscountName()).isEqualTo("COUPON_20");
+        assertThat(policy.discounts().get(0).getDiscountPercent()).isEqualByComparingTo(BigDecimal.valueOf(20));
+
+        verify(discountPolicyRepository).save(policy);
+    }
+
+    // TST-03:
+    // Null discount command should be rejected.
+    @Test
+    void addDiscountToPolicy_whenCommandIsNull_shouldThrow() {
+        DiscountPolicy policy = companyWidePolicy();
+
+        assertThatThrownBy(() ->
+                service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID, policy.id(), (DiscountCommand) null)
+        )
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("command");
+
+        verify(discountPolicyRepository, never()).save(any());
     }
 }
