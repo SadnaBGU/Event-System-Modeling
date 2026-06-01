@@ -333,6 +333,50 @@ class PurchasePolicyServiceTest {
         verify(purchasePolicyRepository).save(policy);
     }
 
+    @Test
+    void createCompanyWidePolicy_whenAuthorized_savesCompanyWidePolicyAndReturnsIt() {
+        allowManagePurchasePolicies();
+
+        PurchasePolicy created = service.createCompanyWidePolicy(
+                ACTOR_ID,
+                COMPANY_ID,
+                "Company wide policy",
+                new MaxTicketPolicy(4)
+        );
+
+        org.mockito.ArgumentCaptor<PurchasePolicy> policyCaptor = org.mockito.ArgumentCaptor.forClass(PurchasePolicy.class);
+        verify(purchasePolicyRepository).save(policyCaptor.capture());
+
+        PurchasePolicy savedPolicy = policyCaptor.getValue();
+        assertThat(created).isSameAs(savedPolicy);
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.policyName()).isEqualTo("Company wide policy");
+        assertThat(savedPolicy.scope().isCompanyWide()).isTrue();
+    }
+
+    @Test
+    void createEventScopedPolicy_whenAuthorizedAndEventOwned_savesEventScopedPolicyAndReturnsIt() {
+        allowManagePurchasePolicies();
+        when(eventServicePort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+        PurchasePolicy created = service.createEventScopedPolicy(
+                ACTOR_ID,
+                EVENT_ID,
+                "Event scoped policy",
+                new MaxTicketPolicy(3)
+        );
+
+        org.mockito.ArgumentCaptor<PurchasePolicy> policyCaptor = org.mockito.ArgumentCaptor.forClass(PurchasePolicy.class);
+        verify(purchasePolicyRepository).save(policyCaptor.capture());
+
+        PurchasePolicy savedPolicy = policyCaptor.getValue();
+        assertThat(created).isSameAs(savedPolicy);
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.policyName()).isEqualTo("Event scoped policy");
+        assertThat(savedPolicy.isActiveForEvent(EVENT_ID)).isTrue();
+        verify(eventServicePort).companyOfEvent(EVENT_ID);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Scope editing operations
     // ─────────────────────────────────────────────────────────────────────
@@ -652,6 +696,17 @@ class PurchasePolicyServiceTest {
                 .isInstanceOf(OrderViolatesPolicyException.class)
                 .hasMessageContaining("Max 4 tickets")
                 .hasMessageContaining("Cannot Purchase more than 4 tickets");
+    }
+
+    @Test
+    void requirePurchasePolicyFor_whenPolicyPasses_doesNotThrow() {
+        PurchasePolicy policy = maxTicketPolicy(4);
+        policy.activateForEvent(EVENT_ID);
+
+        PurchaseContext context = purchaseContext(4, age(25));
+        when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of(policy));
+
+        assertThatCode(() -> service.requirePurchasePolicyFor(context)).doesNotThrowAnyException();
     }
 
     @Test
