@@ -4,6 +4,10 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
+import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
+import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
@@ -27,6 +31,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -56,6 +61,7 @@ class PurchasePolicyServiceTest {
     @Mock
     private IMemberInformationPort memberInfoPort;
 
+    private PolicyCommandAssembler policyAssembler;
     private PurchasePolicyService service;
 
     private static final MemberId ACTOR_ID = new MemberId("actor-1");
@@ -71,7 +77,8 @@ class PurchasePolicyServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort);
+        policyAssembler = new PolicyCommandAssembler();
+        service = new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort, policyAssembler);
     }
 
     private PurchaseContext purchaseContext(int ticketCount, LocalDate buyerBirthDate) {
@@ -153,19 +160,22 @@ class PurchasePolicyServiceTest {
 
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new PurchasePolicyService(null, permissionChecker, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(null, permissionChecker, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("purchasePolicyRepository");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, null, eventServicePort, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, null, eventServicePort, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("permissionChecker");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, null, memberInfoPort))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, null, memberInfoPort, policyAssembler))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("eventOwnershipChecker");
 
-        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, null))
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, null, policyAssembler))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("memberInfoPort");
+        assertThatThrownBy(() -> new PurchasePolicyService(purchasePolicyRepository, permissionChecker, eventServicePort, memberInfoPort, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("memberInfoPort");
     }
@@ -950,5 +960,161 @@ class PurchasePolicyServiceTest {
 
         assertThatNullPointerException()
                 .isThrownBy(() -> service.createPurchaseContext(EVENT_ID, memberBuyer(), null));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Command-based policy creation for UI/API
+    // ─────────────────────────────────────────────────────────────────────
+
+    // PRD-03 / PP-03 / PP-05 / PP-06 / PP-07 / TST-06:
+    // Owner/manager defines purchase policy through application layer.
+    // Policy has event scope, age restriction, ticket quantity restriction, and AND composition.
+    @Test
+    void createPurchasePolicy_fromCommand_shouldAssemblePolicyAndSaveIt() {
+        when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        PurchasePolicyCommand command = new PurchasePolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Adults max 4 tickets",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                new PolicyRuleCommand(
+                        "AND",
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(
+                                new PolicyRuleCommand("MIN_AGE", 18, null, null, null, null),
+                                new PolicyRuleCommand("MAX_TICKETS", 4, null, null, null, null)
+                        )
+                ),
+                true
+        );
+
+        PurchasePolicyId policyId = service.createPurchasePolicy(command);
+
+        ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+        verify(purchasePolicyRepository).save(captor.capture());
+
+        PurchasePolicy savedPolicy = captor.getValue();
+
+        assertThat(policyId).isEqualTo(savedPolicy.id());
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.policyName()).isEqualTo("Adults max 4 tickets");
+        assertThat(savedPolicy.scope().isCompanyWide()).isFalse();
+        assertThat(savedPolicy.scope().eventIds()).containsExactly(EVENT_ID);
+        assertThat(savedPolicy.isActiveForEvent(EVENT_ID)).isTrue();
+
+        assertThat(savedPolicy.isPurchaseAllowedInContext(purchaseContext(4, age(20)))).isTrue();
+        assertThat(savedPolicy.isPurchaseAllowedInContext(purchaseContext(5, age(20)))).isFalse();
+        assertThat(savedPolicy.isPurchaseAllowedInContext(purchaseContext(4, age(17)))).isFalse();
+    }
+
+    // PRD-03 / PP-03 / PP-07 / TST-06:
+    // Owner/manager defines company-wide purchase policy through application layer.
+    @Test
+    void createPurchasePolicy_companyWideCommand_shouldSaveCompanyWidePolicy() {
+        when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+        PurchasePolicyCommand command = new PurchasePolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Company allow all",
+                new PolicyScopeCommand(true, Set.of()),
+                new PolicyRuleCommand("ALLOW_ALL", null, null, null, null, null),
+                true
+        );
+
+        service.createPurchasePolicy(command);
+
+        ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+        verify(purchasePolicyRepository).save(captor.capture());
+
+        PurchasePolicy savedPolicy = captor.getValue();
+
+        assertThat(savedPolicy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(savedPolicy.scope().isCompanyWide()).isTrue();
+        assertThat(savedPolicy.isActiveForEvent(EVENT_ID)).isTrue();
+        assertThat(savedPolicy.isPurchaseAllowedInContext(purchaseContext(10, age(12)))).isTrue();
+
+        verify(eventServicePort, never()).isEventByCompany(any(), any());
+    }
+
+    // TST-13:
+    // Authorization failure is enforced in the Application layer, not only UI.
+    @Test
+    void createPurchasePolicy_whenUnauthorized_shouldThrowAndNotSave() {
+        when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+        PurchasePolicyCommand command = new PurchasePolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Unauthorized policy",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                new PolicyRuleCommand("MAX_TICKETS", 2, null, null, null, null),
+                true
+        );
+
+        assertThatThrownBy(() -> service.createPurchasePolicy(command))
+                .isInstanceOf(SecurityException.class);
+
+        verify(purchasePolicyRepository, never()).save(any());
+        verify(eventServicePort, never()).isEventByCompany(any(), any());
+    }
+
+    // TST-13 / PP-03:
+    // Application layer rejects event-scoped policy when event does not belong to company.
+    @Test
+    void createPurchasePolicy_whenEventDoesNotBelongToCompany_shouldThrowAndNotSave() {
+        when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(FOREIGN_EVENT_ID, COMPANY_ID)).thenReturn(false);
+
+        PurchasePolicyCommand command = new PurchasePolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Foreign event policy",
+                new PolicyScopeCommand(false, Set.of(FOREIGN_EVENT_ID.value())),
+                new PolicyRuleCommand("MAX_TICKETS", 2, null, null, null, null),
+                true
+        );
+
+        assertThatThrownBy(() -> service.createPurchasePolicy(command))
+                .isInstanceOf(SecurityException.class);
+
+        verify(purchasePolicyRepository, never()).save(any());
+    }
+
+    // PP-09 / TST-03:
+    // Invalid command-based composite policy should be rejected and not saved.
+    @Test
+    void createPurchasePolicy_whenCommandContainsEmptyComposite_shouldThrowAndNotSave() {
+        when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+        when(eventServicePort.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
+
+        PurchasePolicyCommand command = new PurchasePolicyCommand(
+                ACTOR_ID.value(),
+                COMPANY_ID.value(),
+                "Invalid empty AND",
+                new PolicyScopeCommand(false, Set.of(EVENT_ID.value())),
+                new PolicyRuleCommand("AND", null, null, null, null, List.of()),
+                true
+        );
+
+        assertThatThrownBy(() -> service.createPurchasePolicy(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("AND policy requires children");
+
+        verify(purchasePolicyRepository, never()).save(any());
+    }
+
+    // TST-03:
+    // Null command should be rejected.
+    @Test
+    void createPurchasePolicy_whenCommandIsNull_shouldThrow() {
+        assertThatThrownBy(() -> service.createPurchasePolicy(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("command");
     }
 }

@@ -39,6 +39,7 @@ import com.eventsystem.application.policy.IDiscountPolicyRepository;
 import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.application.policy.PurchasePolicyService;
+import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.venue.IVenueRepository;
 import com.eventsystem.application.venue.VenueManagementService;
@@ -177,6 +178,11 @@ public class AppConfig {
         return new OrderFactory();
     }
 
+    @Bean
+    public PolicyCommandAssembler PolicyCommandAssembler() {
+        return new PolicyCommandAssembler();
+    }
+
     /**
      * Adapter from the company aggregate/repository to the permission port used by
      * EventService, DiscountPolicyService, PurchasePolicyService, and EventPurchaseService.
@@ -225,6 +231,7 @@ public class AppConfig {
             }
         };
     }
+
 
     /**
      * Adapter from the member repository to the member-info port used by the policy services
@@ -349,12 +356,14 @@ public class AppConfig {
     public PurchasePolicyService purchasePolicyService(IPurchasePolicyRepository purchasePolicyRepository,
                                                        ICompanyPermissionServicePort companyPermissionServicePort,
                                                        IEventManagementPort eventManagementPort,
-                                                       IMemberInformationPort memberInformationPort) {
+                                                       IMemberInformationPort memberInformationPort,
+                                                        PolicyCommandAssembler policyAssembler) {
         return new PurchasePolicyService(
                 purchasePolicyRepository,
                 companyPermissionServicePort,
                 eventManagementPort,
-                memberInformationPort
+                memberInformationPort,
+                policyAssembler
         );
     }
 
@@ -362,12 +371,14 @@ public class AppConfig {
     public DiscountPolicyService discountPolicyService(IDiscountPolicyRepository discountPolicyRepository,
                                                        ICompanyPermissionServicePort companyPermissionServicePort,
                                                        IEventManagementPort eventManagementPort,
-                                                       IMemberInformationPort memberInformationPort) {
+                                                       IMemberInformationPort memberInformationPort,
+                                                       PolicyCommandAssembler policyAssembler) {
         return new DiscountPolicyService(
                 discountPolicyRepository,
                 companyPermissionServicePort,
                 eventManagementPort,
-                memberInformationPort
+                memberInformationPort,
+                policyAssembler
         );
     }
 

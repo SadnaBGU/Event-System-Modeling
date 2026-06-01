@@ -98,6 +98,74 @@ class InMemoryDiscountPolicyRepositoryTest {
     }
 
     @Test
+    void findActive_returnsOnlyActivePolicies() {
+        DiscountPolicy activeForCompany = activePolicyForEvent(companyId, eventId);
+        DiscountPolicy activeForOtherCompany = activePolicyForEvent(CompanyId.random(), EventId.random());
+        DiscountPolicy inactive = inactivePolicyForEvent(companyId, EventId.random());
+
+        repository.save(activeForCompany);
+        repository.save(activeForOtherCompany);
+        repository.save(inactive);
+
+        List<DiscountPolicy> found = repository.findActive();
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(activeForCompany, activeForOtherCompany)
+                .doesNotContain(inactive);
+    }
+
+    @Test
+    void findActive_returnsEmptyListWhenNoActivePoliciesExist() {
+        DiscountPolicy inactive1 = inactivePolicyForEvent(companyId, eventId);
+        DiscountPolicy inactive2 = inactivePolicyForEvent(CompanyId.random(), EventId.random());
+
+        repository.save(inactive1);
+        repository.save(inactive2);
+
+        List<DiscountPolicy> found = repository.findActive();
+
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void findApplicableToEvent_returnsActiveCompanyWideAndEventScopedPolicies() {
+        DiscountPolicy eventScopedMatch = activePolicyForEvent(companyId, eventId);
+        DiscountPolicy companyWideMatch = activeCompanyWidePolicy(companyId);
+        DiscountPolicy wrongEvent = activePolicyForEvent(companyId, EventId.random());
+        DiscountPolicy inactiveForEvent = inactivePolicyForEvent(companyId, eventId);
+
+        repository.save(eventScopedMatch);
+        repository.save(companyWideMatch);
+        repository.save(wrongEvent);
+        repository.save(inactiveForEvent);
+
+        List<DiscountPolicy> found = repository.findApplicableToEvent(eventId);
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(eventScopedMatch, companyWideMatch)
+                .doesNotContain(wrongEvent, inactiveForEvent);
+    }
+
+    @Test
+    void findApplicableToEvent_returnsEmptyListWhenNoActivePolicyAppliesToEvent() {
+        DiscountPolicy wrongEvent = activePolicyForEvent(companyId, EventId.random());
+        DiscountPolicy inactiveForEvent = inactivePolicyForEvent(companyId, eventId);
+
+        repository.save(wrongEvent);
+        repository.save(inactiveForEvent);
+
+        List<DiscountPolicy> found = repository.findApplicableToEvent(eventId);
+
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void findApplicableToEvent_requiresNonNullEventId() {
+        assertThatThrownBy(() -> repository.findApplicableToEvent(null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void nullArguments_areRejected() {
         assertThatThrownBy(() -> repository.findById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findByCompanyId(null)).isInstanceOf(NullPointerException.class);
@@ -115,6 +183,13 @@ class InMemoryDiscountPolicyRepositoryTest {
 
     private static DiscountPolicy activePolicyForEvent(CompanyId companyId, EventId eventId) {
         DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(companyId, eventId);
+        policy.addDiscount(mock(Discount.class));
+        policy.activate();
+        return policy;
+    }
+
+    private static DiscountPolicy activeCompanyWidePolicy(CompanyId companyId) {
+        DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(companyId);
         policy.addDiscount(mock(Discount.class));
         policy.activate();
         return policy;
