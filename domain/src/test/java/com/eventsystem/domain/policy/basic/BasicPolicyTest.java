@@ -8,6 +8,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static com.eventsystem.domain.policy.PolicyTestFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -237,4 +238,87 @@ class BasicPolicyTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.reason()).contains("Cannot purchase more than 2 tickets");
     }
+
+    @Test
+    void minAgePolicyUsesPurchaseDateFromContext() {
+        LocalDate purchaseDate = LocalDate.of(2026, 6, 1);
+        LocalDate exactly18 = LocalDate.of(2008, 6, 1);
+
+        PurchaseContext context = new PurchaseContext(
+                EVENT_ID,
+                COMPANY_ID,
+                List.of(REGULAR_ZONE),
+                exactly18,
+                purchaseDate,
+                null
+        );
+
+        MinAgePolicy policy = new MinAgePolicy(18);
+
+        assertThat(policy.evaluate(context).isSuccess()).isTrue();
+    }
+
+    @Test
+    void minAgePolicyRejectsBuyerBelowMinimumUsingPurchaseDate() {
+        LocalDate purchaseDate = LocalDate.of(2026, 6, 1);
+        LocalDate notYet18 = LocalDate.of(2008, 6, 2);
+
+        PurchaseContext context = new PurchaseContext(
+                EVENT_ID,
+                COMPANY_ID,
+                List.of(REGULAR_ZONE),
+                notYet18,
+                purchaseDate,
+                null
+        );
+
+        MinAgePolicy policy = new MinAgePolicy(18);
+
+        assertThat(policy.evaluate(context).isSuccess()).isFalse();
+    }
+
+    @Test
+    void untilDatePolicyAllowsPurchaseOnDeadlineDate() {
+        LocalDate deadline = LocalDate.of(2026, 6, 1);
+
+        PurchaseContext context = contextWithTickets(REGULAR_ZONE).withPurchaseDate(deadline);
+
+        UntilDatePolicy policy = new UntilDatePolicy(deadline);
+
+        assertThat(policy.evaluate(context).isSuccess()).isTrue();
+    }
+
+    @Test
+    void untilDatePolicyRejectsPurchaseAfterDeadlineDate() {
+        LocalDate deadline = LocalDate.of(2026, 6, 1);
+
+        PurchaseContext context = contextWithTickets(REGULAR_ZONE).withPurchaseDate(deadline.plusDays(1));
+
+        UntilDatePolicy policy = new UntilDatePolicy(deadline);
+
+        assertThat(policy.evaluate(context).isSuccess()).isFalse();
+    }
+
+    @Test
+    void afterDatePolicyRejectsPurchaseOnDeadlineDate_whenStrictAfter() {
+        LocalDate startDate = LocalDate.of(2026, 6, 1);
+
+        PurchaseContext context = contextWithTickets(REGULAR_ZONE).withPurchaseDate(startDate);
+
+        AfterDatePolicy policy = new AfterDatePolicy(startDate);
+
+        assertThat(policy.evaluate(context).isSuccess()).isFalse();
+    }
+
+    @Test
+    void afterDatePolicyAllowsPurchaseAfterDeadlineDate() {
+        LocalDate startDate = LocalDate.of(2026, 6, 1);
+
+        PurchaseContext context = contextWithTickets(REGULAR_ZONE).withPurchaseDate(startDate.plusDays(1));
+
+        AfterDatePolicy policy = new AfterDatePolicy(startDate);
+
+        assertThat(policy.evaluate(context).isSuccess()).isTrue();
+    }
+
 }

@@ -11,15 +11,34 @@ import java.util.Objects;
 
 
 public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId> zonesOfEachEventTicket,
-                                LocalDate buyerBirthDate, String discountCode ) {
+                                LocalDate buyerBirthDate, LocalDate purchaseDate, String discountCode ) {
 
     public PurchaseContext {
         Objects.requireNonNull(eventId, "eventSnapshot must not be null");
-        Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(zonesOfEachEventTicket, "zonesOfEachEventTicket must not be null");
+        Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
+        Objects.requireNonNull(purchaseDate, "purchaseDate must not be null");
+
         discountCode = normalizeDiscountCode(discountCode);
         zonesOfEachEventTicket = List.copyOf(zonesOfEachEventTicket);
+    }
+
+    public PurchaseContext(
+            EventId eventId,
+            CompanyId companyId,
+            List<ZoneId> zonesOfEachEventTicket,
+            LocalDate buyerBirthDate,
+            String discountCode
+    ) {
+        this(
+                eventId,
+                companyId,
+                zonesOfEachEventTicket,
+                buyerBirthDate,
+                LocalDate.now(),
+                discountCode
+        );
     }
 
     
@@ -35,6 +54,9 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
                 null
         );
     }
+    
+
+    
 
     public static PurchaseContext fromPurchaseInfo(EventId eventId,
                                             CompanyId companyId,
@@ -50,12 +72,39 @@ public record PurchaseContext(EventId eventId, CompanyId companyId, List<ZoneId>
         );
     }
 
+    public static PurchaseContext fromPurchaseInfo(EventId eventId,
+                                            CompanyId companyId,
+                                            List<ZoneId> zonesOfEachTicket,
+                                            LocalDate buyerBirthDate,
+                                            LocalDate purchaseDate,
+                                            String discountCode) {
+        return new PurchaseContext(
+                eventId,
+                companyId,
+                zonesOfEachTicket,
+                buyerBirthDate,
+                purchaseDate,
+                normalizeDiscountCode(discountCode)
+        );
+    }
+
     public int ticketCount() {
         return zonesOfEachEventTicket.size();
     }
 
     public PurchaseContext withCode(String code) {
-        return new PurchaseContext(eventId(), companyId(),zonesOfEachEventTicket(),buyerBirthDate(), code);
+        return new PurchaseContext(eventId(), companyId(),zonesOfEachEventTicket(),buyerBirthDate(),purchaseDate(), code);
+    }
+
+    public PurchaseContext withPurchaseDate(LocalDate newPurchaseDate) {
+        return new PurchaseContext(
+                eventId,
+                companyId,
+                zonesOfEachEventTicket,
+                buyerBirthDate,
+                newPurchaseDate,
+                discountCode
+        );
     }
 
     private static String normalizeDiscountCode(String discountCode) {

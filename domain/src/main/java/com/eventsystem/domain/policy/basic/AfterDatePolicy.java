@@ -20,7 +20,7 @@ public final class AfterDatePolicy implements IBasicPolicy {
 
     @Override
     public PolicyValidationResult evaluate(PurchaseContext context) {
-        if (LocalDate.now().isAfter(deadlineDate)) {
+        if (context.purchaseDate().isAfter(deadlineDate)) {
             return PolicyValidationResult.success();
         }
 

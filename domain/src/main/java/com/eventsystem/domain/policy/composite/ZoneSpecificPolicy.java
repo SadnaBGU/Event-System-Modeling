@@ -79,6 +79,7 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
                 context.companyId(),
                 listOnlyTicketsOfAffectedZones(context),
                 context.buyerBirthDate(),
+                context.purchaseDate(),
                 context.discountCode()
         );
     }

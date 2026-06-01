@@ -1,6 +1,5 @@
 package com.eventsystem.domain.policy.basic;
 
-import java.time.LocalDate;
 import java.time.Period;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
@@ -24,7 +23,7 @@ public final class MinAgePolicy implements IBasicPolicy {
 
     @Override
     public PolicyValidationResult evaluate(PurchaseContext context) {
-        int age = Period.between(context.buyerBirthDate(), LocalDate.now()).getYears();
+        int age = Period.between(context.buyerBirthDate(), context.purchaseDate()).getYears();
 
         if (age >= minAge) {
             return PolicyValidationResult.success();

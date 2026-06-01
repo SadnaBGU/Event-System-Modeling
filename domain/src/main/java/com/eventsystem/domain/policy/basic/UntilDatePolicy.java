@@ -20,7 +20,7 @@ public final class UntilDatePolicy implements IBasicPolicy {
 
     @Override
     public PolicyValidationResult evaluate(PurchaseContext context) {
-        if (LocalDate.now().isBefore(deadlineDate) || LocalDate.now().isEqual(deadlineDate)) {
+        if (!context.purchaseDate().isAfter(deadlineDate)) {
             return PolicyValidationResult.success();
         }
 
