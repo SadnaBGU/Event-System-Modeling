@@ -187,7 +187,7 @@ class CompanyPolicyControllerTest {
 
     @Test
     void setEventPolicy_BlankText_ThrowsException() throws Exception {
-        String jsonBody = "{ \"type\": \"CODE\", \"value\": \"   \" }"; // טקסט ריק
+        String jsonBody = "{ \"type\": \"CODE\", \"value\": \"   \" }"; 
         mockMvc.perform(put("/api/events/event-123/policies")
                 .requestAttr("authenticatedMemberId", new MemberId("actor-123"))
                 .contentType(MediaType.APPLICATION_JSON)
