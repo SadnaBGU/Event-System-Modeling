@@ -372,6 +372,52 @@ class PurchasePolicyTest {
         assertThrows(Exception.class, () -> {new PolicyScope(false, Set.of((EventId)null));});
     }
 
+    @Test
+    void allowAllFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
+        PurchasePolicyId id = PurchasePolicyId.random();
+
+        PurchasePolicy policy = PurchasePolicy.AllowAll(id, COMPANY_ID, "Allow all");
+
+        assertThat(policy.id()).isEqualTo(id);
+        assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(policy.policyName()).isEqualTo("Allow all");
+        assertThat(policy.isActive()).isFalse();
+    }
+
+    @Test
+    void notAllowedFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
+        PurchasePolicyId id = PurchasePolicyId.random();
+
+        PurchasePolicy policy = PurchasePolicy.NotAllowed(id, COMPANY_ID, "Never allow");
+
+        assertThat(policy.id()).isEqualTo(id);
+        assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
+        assertThat(policy.policyName()).isEqualTo("Never allow");
+        assertThat(policy.isActive()).isFalse();
+    }
+
+    @Test
+    void newNeverAllowedPolicyRejectsPurchaseAfterActivation() {
+        PurchasePolicy policy = PurchasePolicy.NewNeverAllowedPolicy(COMPANY_ID, "Closed sale");
+        policy.activateForEvent(EVENT_ID);
+
+        assertThat(policy.evaluate(contextWithTickets(REGULAR_ZONE)).isSuccess()).isFalse();
+
+        assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(com.eventsystem.domain.domainexceptions.PurchasePolicyException.class)
+                .hasMessageContaining("Purchase policy violation");
+    }
+
+    @Test
+    void evaluateWhenContextHasNoTickets_shouldFailBeforeInnerPolicy() {
+        PurchasePolicy policy = PurchasePolicy.NewAllowAllPolicy(COMPANY_ID, "Allow all");
+        policy.activateForEvent(EVENT_ID);
+
+        PolicyValidationResult result = policy.evaluate(contextWithTickets());
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("no tickets");
+    }
 
 
 }

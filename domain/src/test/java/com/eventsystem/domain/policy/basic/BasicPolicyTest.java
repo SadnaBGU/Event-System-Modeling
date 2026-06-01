@@ -321,4 +321,39 @@ class BasicPolicyTest {
         assertThat(policy.evaluate(context).isSuccess()).isTrue();
     }
 
+    @Test
+    void neverAllowPolicy_evaluateValidateAndRequireAlwaysReject() {
+        PolicyValidationResult result = NeverAllowPolicy.INSTANCE.evaluate(contextWithTickets(REGULAR_ZONE));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("Purchase policy restricts current purchase");
+        assertThat(NeverAllowPolicy.INSTANCE.validate(contextWithTickets(REGULAR_ZONE))).isFalse();
+
+        assertThatThrownBy(() -> NeverAllowPolicy.INSTANCE.require(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("Purchase policy restricts current purchase");
+    }
+
+    @Test
+    void noSingleEmptySeatPolicy_typeAndEvaluateAreCovered() {
+        NoSingleEmptySeatPolicy policy = new NoSingleEmptySeatPolicy();
+
+        assertThat(policy.type()).isEqualTo(com.eventsystem.domain.policy.PolicyType.NO_SINGLE_EMPTY_SEAT);
+
+        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("Not supported");
+    }
+
+    @Test
+    void noSingleEmptySeatPolicy_requirePropagatesUnsupportedValidate() {
+        NoSingleEmptySeatPolicy policy = new NoSingleEmptySeatPolicy();
+
+        assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Unimplemented");
+    }
+    
+
 }
