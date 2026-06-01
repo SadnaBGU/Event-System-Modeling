@@ -1,12 +1,18 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public final class MinTicketPolicy implements IBasicPolicy {
 
     private final int minTickets;
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.MIN_TICKETS;
+    }
 
     public MinTicketPolicy(int minAllowed) {
         if (minAllowed < 1) {

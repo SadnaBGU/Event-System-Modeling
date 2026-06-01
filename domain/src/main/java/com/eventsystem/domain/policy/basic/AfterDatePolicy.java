@@ -3,10 +3,16 @@ package com.eventsystem.domain.policy.basic;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public final class AfterDatePolicy implements IBasicPolicy {
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.AFTER_DATE;
+    }
 
     private final LocalDate deadlineDate;
 

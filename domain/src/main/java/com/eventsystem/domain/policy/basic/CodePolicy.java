@@ -1,12 +1,18 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public final class CodePolicy implements IBasicPolicy {
 
     private final String discountCode;
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.CODE;
+    }
 
     public CodePolicy(String code) {
         if (code == null || code.isBlank()) {

@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy.composite;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.zone.ZoneId;
@@ -32,6 +33,13 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
         this.affectedZones = Set.copyOf(affectedZones);
         this.policy = policy;
         this.noAffectedTicketsPass = passWhenNoAffectedTickets;
+    }
+
+        @Override
+    public PolicyType type() {
+        return noAffectedTicketsPass 
+                ? PolicyType.ZONE_SPECIFIC_0_PASS
+                : PolicyType.ZONE_SPECIFIC_0_FAIL;
     }
 
     public ZoneSpecificPolicy(Set<ZoneId> affectedZones, List<IPolicy> policies, boolean noAffectedTicketsPass) {

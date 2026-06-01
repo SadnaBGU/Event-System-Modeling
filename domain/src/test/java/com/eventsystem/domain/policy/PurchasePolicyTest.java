@@ -1,6 +1,7 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
@@ -162,7 +163,7 @@ class PurchasePolicyTest {
                 POLICY_NAME,
                 PolicyScope.clearScope(),
                 (IPolicy) null
-        )).isInstanceOf(PurchasePolicyException.class);
+        )).isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -173,7 +174,7 @@ class PurchasePolicyTest {
                 POLICY_NAME,
                 PolicyScope.clearScope(),
                 (List<IPolicy>) null
-        )).isInstanceOf(PurchasePolicyException.class);
+        )).isInstanceOf(NullPointerException.class);
 
         assertThatThrownBy(() -> new PurchasePolicy(
                 PurchasePolicyId.random(),
@@ -181,7 +182,7 @@ class PurchasePolicyTest {
                 POLICY_NAME,
                 PolicyScope.clearScope(),
                 List.of()
-        )).isInstanceOf(PurchasePolicyException.class);
+        )).isInstanceOf(PolicyException.class);
 
         assertThatThrownBy(() -> new PurchasePolicy(
                 PurchasePolicyId.random(),
@@ -190,8 +191,7 @@ class PurchasePolicyTest {
                 PolicyScope.clearScope(),
                 Arrays.asList(new MaxTicketPolicy(1), null)
         ))
-                .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("null policies");
+                .isInstanceOf(PolicyException.class);
     }
 
     @Test

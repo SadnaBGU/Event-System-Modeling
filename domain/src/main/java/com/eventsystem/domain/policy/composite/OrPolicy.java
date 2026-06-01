@@ -6,12 +6,18 @@ import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public final class OrPolicy implements ICompositePolicy {
 
     private final List<IPolicy> policies;
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.OR;
+    }
 
     public OrPolicy(List<IPolicy> policies) {
         if (policies == null || policies.isEmpty()) {

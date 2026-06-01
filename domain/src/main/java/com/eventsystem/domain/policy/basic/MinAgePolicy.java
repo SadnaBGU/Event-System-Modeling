@@ -3,12 +3,18 @@ package com.eventsystem.domain.policy.basic;
 import java.time.Period;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public final class MinAgePolicy implements IBasicPolicy {
 
     private final int minAge;
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.MIN_AGE;
+    }
 
     public MinAgePolicy(int minAge) {
         if (minAge < 0) {

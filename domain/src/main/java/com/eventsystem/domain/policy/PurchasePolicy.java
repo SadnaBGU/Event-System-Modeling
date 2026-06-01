@@ -31,29 +31,19 @@ public class PurchasePolicy{
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
         this.policyName = Objects.requireNonNull(policyName, "policy name must not be null");
         this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
-        if (policy == null || !policy.isValidPolicy()) {
-            throw new PurchasePolicyException("Invalid policy for purchase policy");
-        }
+        PolicyConflictDetector.requireValidPolicy(policy);
+
         this.policy = policy;
     }
 
     public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope, List<IPolicy> policies) {
-        if (policies == null || policies.isEmpty()) {
-            throw new PurchasePolicyException("Purchahse Policy cannot be empty or null");
-        }
-        if (policies.stream().anyMatch(Objects::isNull)) {
-            throw new PurchasePolicyException("PurchasePolicy cannot contain null policies");
-        }
-        IPolicy actualPolicy = new AndPolicy(policies);
-        if (!actualPolicy.isValidPolicy()) {
-            throw new PurchasePolicyException("Invalid policy for purchase policy");
-        }
+        PolicyConflictDetector.requireValidPolicy(policies);
         this.id = Objects.requireNonNull(policyId, "policy id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
         this.policyName = Objects.requireNonNull(policyName, "policy name must not be null");
         this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
 
-        this.policy = actualPolicy;
+        this.policy = new AndPolicy(policies);
         
     }
 
@@ -173,5 +163,6 @@ public class PurchasePolicy{
     public boolean isActiveForEvent(EventId eventId) {
         return scope.appliesTo(eventId);
     }
+
 
 }

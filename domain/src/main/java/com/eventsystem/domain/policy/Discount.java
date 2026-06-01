@@ -17,6 +17,7 @@ public final class Discount {
 
 
     public Discount(String discountName, BigDecimal discountPercent, IPolicy policy) {
+        PolicyConflictDetector.requireValidPolicy(policy);
         if (!isValidDiscountPercent(discountPercent)) {
             throw new DiscountPolicyException("Discount percent must be between 0 and 100");
         }
@@ -32,8 +33,7 @@ public final class Discount {
     public Discount(String discountName, BigDecimal discountPercent, List<IPolicy> policies) {
         this(discountName, discountPercent, new AndPolicy(policies));
     }
-
-
+    
     public boolean validateDiscount(PurchaseContext context) {
         Objects.requireNonNull(context, "Purchase Context cannot be null");
         return this.discountPolicy.validate(context);
@@ -42,6 +42,10 @@ public final class Discount {
     public BigDecimal getValidDiscountAmount(PurchaseContext context) {
        BigDecimal discount =  validateDiscount(context) ? discountPrecent :  BigDecimal.ZERO;
        return discount;
+    }
+
+    public IPolicy policy() {
+        return discountPolicy;
     }
 
     public BigDecimal getDiscountPercent() {

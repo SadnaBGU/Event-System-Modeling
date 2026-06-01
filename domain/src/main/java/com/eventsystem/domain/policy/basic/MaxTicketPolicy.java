@@ -1,6 +1,7 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
@@ -13,6 +14,11 @@ public final class MaxTicketPolicy implements IBasicPolicy {
             throw new PolicyException("Max allowed tickets must be at least 1");
         }
         this.maxTickets = maxAllowed;
+    }
+
+    @Override
+    public PolicyType type() {
+        return PolicyType.MAX_TICKETS;
     }
 
     public int maxTickets() {

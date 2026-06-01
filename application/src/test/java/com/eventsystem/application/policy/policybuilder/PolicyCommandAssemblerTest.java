@@ -2,6 +2,7 @@ package com.eventsystem.application.policy.policybuilder;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
+import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.IPolicy;
@@ -436,5 +437,58 @@ class PolicyCommandAssemblerTest {
         )
                 .isInstanceOf(DiscountPolicyException.class)
                 .hasMessageContaining("Discount Name");
+    }
+
+        // PP-09 / TST-06:
+    // Assembler should reject internally conflicting purchase-policy command trees.
+    @Test
+    void toPolicy_whenAndHasMinTicketsGreaterThanMaxTickets_shouldThrow() {
+        PolicyRuleCommand command = composite(
+                "AND",
+                ruleWithValue("MIN_TICKETS", 5),
+                ruleWithValue("MAX_TICKETS", 4)
+        );
+
+        assertThatThrownBy(() -> assembler.toPolicy(command))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("Invalid purchase policy")
+                .hasMessageContaining("minimum tickets 5");
+    }
+
+    // DP-06 / PP-09 / TST-09:
+    // Assembler should reject impossible date-window policy commands.
+    @Test
+    void toPolicy_whenAndHasImpossibleDateWindow_shouldThrow() {
+        PolicyRuleCommand command = composite(
+                "AND",
+                ruleWithDate("AFTER_DATE", LocalDate.of(2026, 6, 10)),
+                ruleWithDate("BEFORE_DATE", LocalDate.of(2026, 6, 1))
+        );
+
+        assertThatThrownBy(() -> assembler.toPolicy(command))
+                .isInstanceOf(PolicyException.class)
+                .hasMessageContaining("Invalid purchase policy")
+                .hasMessageContaining("impossible date window");
+    }
+
+    // PP-07 / PP-08 / PP-09:
+    // OR is valid if at least one branch can pass.
+    @Test
+    void toPolicy_whenOrHasOneValidBranch_shouldNotThrow() {
+        PolicyRuleCommand invalidBranch = composite(
+                "AND",
+                ruleWithValue("MIN_TICKETS", 5),
+                ruleWithValue("MAX_TICKETS", 4)
+        );
+
+        PolicyRuleCommand command = composite(
+                "OR",
+                invalidBranch,
+                ruleWithValue("MIN_AGE", 18)
+        );
+
+        IPolicy policy = assembler.toPolicy(command);
+
+        assertThat(policy).isNotNull();
     }
 }

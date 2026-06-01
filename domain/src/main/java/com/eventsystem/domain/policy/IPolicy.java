@@ -4,6 +4,10 @@ import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 
 public interface IPolicy {
 
+    default PolicyType type() {
+        return PolicyType.UNKNOWN;
+    }
+    
     PolicyValidationResult evaluate(PurchaseContext context);
 
     //check without exceptions (for discounts)
