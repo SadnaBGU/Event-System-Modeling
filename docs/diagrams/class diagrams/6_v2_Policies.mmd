@@ -4,17 +4,28 @@ classDiagram
 %% ══════════════════════════════════════════
 %% Policy domain:
 %% Updated Policy Domain design for V2
+%% Minimal domain style - no getters/setters, no application services
 %% ══════════════════════════════════════════
 
     namespace Domain_Policy {
 
         class PurchasePolicy
-        class PolicyValidationResult
         class PurchasePolicyId
+
 
         class DiscountPolicy
         class Discount
+        class PurchaseContext
+
         class DiscountSummary
+
+
+        class PolicyValidationResult
+        class PolicyScope
+
+        class PolicyBuilder
+        class PolicyConflictDetector
+        
         class DiscountPolicyId
 
         class IPolicy
@@ -22,16 +33,39 @@ classDiagram
         class ICompositePolicy
         class ConcreteBasicPolicy
         class ConcreteCompositePolicy
-        class PolicyBuilder
+        class PolicyType
 
-        class PurchaseContext
-        class PolicyScope
 
     }
 
 %% ══════════════════════════════════════════
+%% AGGREGATE PurchasePolicy:
+%% Defines purchase restrictions for company/event scope.
+%% Evaluates purchase context and returns PolicyValidationResult.
+%% ══════════════════════════════════════════
+
+    class PurchasePolicy:::aggregate {
+        <<Aggregate Root>>
+        - PurchasePolicyId id
+        - String policyName
+        - CompanyId companyId
+        - PolicyScope scope
+        - IPolicy policy
+        + evaluate(PurchaseContext) PolicyValidationResult
+        + requirePurchasePolicy(PurchaseContext) void
+        + isPurchaseAllowedInContext(PurchaseContext) boolean
+        + setNameTo(String) void
+        + setScopeTo(PolicyScope) void
+        + setCompanyWide() void
+        + deactivateCompanyWide() void
+        + activateForEvent(EventId) void
+        + deactivateForEvent(EventId) void
+    }
+
+%% ══════════════════════════════════════════
 %% AGGREGATE DiscountPolicy:
-%% Checks IPolicies and if eligible returns discount amount based on Discounts
+%% Defines percentage-based discounts for company/event scope.
+%% Supports MAX mode or SUM/stacking mode.
 %% ══════════════════════════════════════════
 
     class DiscountPolicy:::aggregate {
@@ -45,40 +79,24 @@ classDiagram
         + activate() void
         + deactivate() void
         + changeScope(PolicyScope) void
-        + allowStacking() void
-        + disallowStacking() void
         + setCompanyWide() void
         + deactivateCompanyWide() void
-        + activateForEvent(EventId eventId) void
+        + activateForEvent(EventId) void
         + deactivateForEvent(EventId) void
-        + getFullDiscountSummary(PurchaseContext, Money) DiscountSummary
+        + clearAllEventsFromScope() void
+        + allowStacking() void
+        + disallowStacking() void
+        + addDiscount(Discount) void
+        + appliesTo(PurchaseContext) boolean
         + isPurchaseEligibleForDiscount(PurchaseContext) boolean
+        + getFullDiscountSummary(PurchaseContext, Money) DiscountSummary
+        + getFullDiscountPercent(PurchaseContext) BigDecimal
         + generateDiscountSnapshot(PurchaseContext, Money) DiscountSnapshot
         + generateDiscountSnapshot(DiscountSummary, Money) DiscountSnapshot
     }
 
 %% ══════════════════════════════════════════
-%% AGGREGATE PurchasePolicy:
-%% Checks IPolicies and if not eligible returns false / PolicyValidationResult
-%% ══════════════════════════════════════════
-
-    class PurchasePolicy:::aggregate {
-        <<Aggregate Root>>
-        - PurchasePolicyId id
-        - CompanyId companyId
-        - PolicyScope scope
-        - IPolicy policy
-        + isPurchaseAllowedInContext(PurchaseContext) boolean
-        + requirePurchasePolicy(PurchaseContext) void
-        + evaluate(PurchaseContext) PolicyValidationResult
-        + setCompanyWide() void
-        + deactivateCompanyWide() void
-        + activateForEvent(EventId) void
-        + deactivateForEvent(EventId) void
-    }
-
-%% ══════════════════════════════════════════
-%% VALUE OBJECTS AND ENTITIES
+%% VALUE OBJECTS / ENTITIES
 %% ══════════════════════════════════════════
 
     class PurchasePolicyId:::idValueObject {
@@ -94,6 +112,32 @@ classDiagram
         - boolean companyWide
         - Set~EventId~ eventIds
         + appliesTo(EventId) boolean
+        + isCompanyWide() boolean
+        + isRelatedToEvents() boolean
+        + isScopedToEventsOrCompany() boolean
+    }
+
+    class PurchaseContext:::valueObject {
+        <<Value Object>>
+        - EventId eventId
+        - CompanyId companyId
+        - List~ZoneId~ zonesOfEachEventTicket
+        - LocalDate buyerBirthDate
+        - LocalDate purchaseDate
+        - String discountCode
+        + ticketCount() int
+        + withCode(String) PurchaseContext
+        + withPurchaseDate(LocalDate) PurchaseContext
+        + fromPurchaseInfo(...) PurchaseContext
+    }
+
+    class PolicyValidationResult:::valueObject {
+        <<Value Object>>
+        - boolean valid
+        - String reason
+        + success() PolicyValidationResult
+        + failure(String) PolicyValidationResult
+        + failureReason() Optional~String~
     }
 
     class Discount:::entity {
@@ -103,6 +147,7 @@ classDiagram
         - IPolicy discountPolicy
         + validateDiscount(PurchaseContext) boolean
         + getValidDiscountAmount(PurchaseContext) BigDecimal
+        + GeneralDiscount(String, BigDecimal) Discount
     }
 
     class DiscountSummary:::valueObject {
@@ -111,47 +156,46 @@ classDiagram
         - List~BigDecimal~ appliedDiscountsPercents
         - List~BigDecimal~ actualDiscountAmount
         - BigDecimal totalDiscount
-    }
-        
-    class PolicyValidationResult:::valueObject {
-        <<Value Object>>
-        - boolean valid
-        - String reason
-        + isSuccess() boolean
-        + failureReason() Optional~String~
+        + getSpecificDiscountInfo(int) String
+        + getSpecificDiscountInfo(String) String
+        + isDiscountCappedAt100() boolean
+        + NoDiscountSummary() DiscountSummary
+        + ReplaceActualAmounts(List~BigDecimal~, BigDecimal) DiscountSummary
     }
 
-    class PurchaseContext:::valueObject {
-        <<Value Object>>
-        - EventId eventId
-        - CompanyId companyId
-        - List~ZoneId~ zoneOfEachTicket
-        - LocalDate buyerBirthdate
-        - String code
-        + withCode(String) PurchaseContext
-        + fromPurchaseInfo(...) PurchaseContext
+    class PolicyType:::valueObject {
+        <<Enum>>
+        ALWAYS_TRUE
+        NEVER_ALLOW
+        MIN_TICKETS
+        MAX_TICKETS
+        MIN_AGE
+        AFTER_DATE
+        UNTIL_DATE
+        CODE
+        NO_SINGLE_EMPTY_SEAT
+        AND
+        OR
+        ZONE_SPECIFIC_0_PASS
+        ZONE_SPECIFIC_0_FAIL
+        UNKNOWN
     }
 
 %% ══════════════════════════════════════════
-%% Main Concept: Strategy + Composition
-%% IPolicy validates/requires some condition.
-%% Basic policies are strategy implementations.
-%% Composite policies are composed of other policies.
+%% POLICY STRATEGY + COMPOSITE MODEL
+%% IPolicy is the strategy abstraction.
+%% Basic policies are leaf strategies.
+%% Composite policies combine other policies.
 %% ══════════════════════════════════════════
 
     class IPolicy:::interface {
         <<interface>>
+        + type() PolicyType
+        + evaluate(PurchaseContext) PolicyValidationResult
         + validate(PurchaseContext) boolean
         + require(PurchaseContext) void
-        + isComposite() boolean
         + isValidPolicy() boolean
-    }
-
-    class PolicyBuilder:::factory {
-        <<Factory>>
-        - List~IPolicy~ policies
-        + add(IPolicy) PolicyBuilder
-        + build() IPolicy
+        + isComposite() boolean
     }
 
     class IBasicPolicy:::interface {
@@ -165,6 +209,8 @@ classDiagram
 
     class ConcreteBasicPolicy:::implementation {
         <<Basic Policy Implementations>>
+        AlwaysTruePolicy
+        NeverAllowPolicy
         MinAgePolicy
         MinTicketPolicy
         MaxTicketPolicy
@@ -172,8 +218,6 @@ classDiagram
         UntilDatePolicy
         CodePolicy
         NoSingleEmptySeatPolicy
-        AlwaysTruePolicy
-        NeverAllowPolicy
     }
 
     class ConcreteCompositePolicy:::implementation {
@@ -183,39 +227,78 @@ classDiagram
         ZoneSpecificPolicy
     }
 
+    class PolicyBuilder:::factory {
+        <<Factory>>
+        - List~IPolicy~ policies
+        + start() PolicyBuilder
+        + minAge(int) PolicyBuilder
+        + minTickets(int) PolicyBuilder
+        + maxTickets(int) PolicyBuilder
+        + beforeDate(LocalDate) PolicyBuilder
+        + afterDate(LocalDate) PolicyBuilder
+        + code(String) PolicyBuilder
+        + add(IPolicy) PolicyBuilder
+        + build() IPolicy
+        + and(IPolicy...) IPolicy
+        + or(IPolicy...) IPolicy
+        + PolicyRestrictToZones(Set~ZoneId~, IPolicy) IPolicy
+        + PolicyRequireFromZones(Set~ZoneId~, IPolicy) IPolicy
+    }
+
+    class PolicyConflictDetector:::utility {
+        <<Domain Utility>>
+        + detectInnerConflicts(IPolicy) PolicyValidationResult
+        + detectConflictBetween(IPolicy, IPolicy) PolicyValidationResult
+        + requireValidPolicy(IPolicy) void
+        + requireValidPolicy(List~IPolicy~) void
+    }
+
 %% ══════════════════════════════════════════
 %% CORE DOMAIN RELATIONS
 %% ══════════════════════════════════════════
 
-    PurchasePolicy "1" *-- "1" PolicyScope : defines policy scope
-    PurchasePolicy "1" *-- "1" IPolicy : defines policy conditions
-    PurchasePolicy ..> PolicyValidationResult
+    PurchasePolicy "1" *-- "1" PurchasePolicyId
+    PurchasePolicy "1" *-- "1" PolicyScope
+    PurchasePolicy "1" -->"1" IPolicy : purchase condition (strategy)
     PurchasePolicy ..> PurchaseContext
+    PurchasePolicy ..> PolicyValidationResult
+    PurchasePolicy ..> PolicyConflictDetector
 
-    DiscountPolicy "1" *-- "1" PolicyScope : defines policy scope
+    DiscountPolicy "1" *-- "1" DiscountPolicyId
+    DiscountPolicy "1" *-- "1" PolicyScope
     DiscountPolicy "1" *-- "0..n" Discount
     DiscountPolicy ..> PurchaseContext
     DiscountPolicy ..> DiscountSummary
+    DiscountPolicy ..> DiscountSnapshot
+    DiscountPolicy ..> Money
+    DiscountPolicy ..> PolicyConflictDetector
 
-    PurchasePolicy "1" *-- "1" PurchasePolicyId
-    DiscountPolicy "1" *-- "1" DiscountPolicyId
-
-    Discount "1" *-- "1" IPolicy : defines discount conditions
+    Discount "1" --> "1" IPolicy : discount condition (strategy)
     Discount ..> PurchaseContext
 
-    PolicyBuilder "1" o-- "0..n" IPolicy : collects rules
-    PolicyBuilder ..> IPolicy : builds rule tree
+    PolicyBuilder "1" o-- "0..n" IPolicy
+    PolicyBuilder ..> IPolicy : builds
+
+    PolicyConflictDetector ..> IPolicy
+    PolicyConflictDetector ..> ICompositePolicy
+    PolicyConflictDetector ..> PolicyValidationResult
+    PolicyConflictDetector ..> PolicyType
+
+    IPolicy --> PolicyType
+    IPolicy ..> PurchaseContext
+    IPolicy ..> PolicyValidationResult
 
     IPolicy <|-- IBasicPolicy
     IPolicy <|-- ICompositePolicy
 
     IBasicPolicy <|.. ConcreteBasicPolicy
 
-    ICompositePolicy "1" o-- "1..n" IPolicy : children policies
+    ICompositePolicy "1" o-- "1..n" IPolicy : children(composition)
     ICompositePolicy <|.. ConcreteCompositePolicy
 
 %% ══════════════════════════════════════════
 %% EXTERNAL DOMAIN REFERENCES
+%% Only typed IDs / value objects are referenced across bounded contexts.
 %% ══════════════════════════════════════════
 
     namespace Domain_Company {
@@ -224,6 +307,9 @@ classDiagram
 
     namespace Domain_Event {
         class EventId:::external
+    }
+
+    namespace Domain_Zone {
         class ZoneId:::external
     }
 
@@ -234,35 +320,33 @@ classDiagram
     namespace Domain_PurchaseRecord {
         class DiscountSnapshot:::external
     }
-    
-%% External relations:
-    PurchasePolicy ..> CompanyId : owner company id
-    DiscountPolicy ..> CompanyId : owner company id
-    PolicyScope "1" --> "0..n" EventId
-    PurchaseContext ..> CompanyId : purchased event company id
-    PurchaseContext ..> EventId : purchased event id
-    PurchaseContext ..> ZoneId : purchased ticket zone ids
-    DiscountPolicy ..> Money
-    DiscountPolicy ..> DiscountSnapshot
+
+    PurchasePolicy --> CompanyId : owner company
+    DiscountPolicy --> CompanyId : owner company
+
+    PolicyScope "1" --> "0..n" EventId : events affected by policy
+
+    PurchaseContext --> CompanyId : company of event
+    PurchaseContext --> EventId : event of purchase
+    PurchaseContext --> ZoneId : ticket zones
+
+    PolicyBuilder ..> ZoneId : zone-specific rules
 
 %% ══════════════════════════════════════════
-%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
-%% Included to show how Policy aggregates are stored and loaded.
+%% PERSISTENCE BOUNDARY / REPOSITORIES
 %% ══════════════════════════════════════════
-    
-    namespace Infrastructure_Persistence {
+
+    namespace Persistence_Boundary {
         class PurchasePolicyRepository:::repository
         class DiscountPolicyRepository:::repository
     }
 
     class PurchasePolicyRepository {
         <<Repository>>
-        - ConcurrentMap~PurchasePolicyId, PurchasePolicy~ policies
     }
 
     class DiscountPolicyRepository {
         <<Repository>>
-        - ConcurrentMap~DiscountPolicyId, DiscountPolicy~ policies
     }
 
     PurchasePolicyRepository ..> PurchasePolicy : manages persistence
@@ -278,7 +362,7 @@ classDiagram
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef interface fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
     classDef factory fill:#fff3bf,stroke:#f08c00,stroke-width:1px,color:#000
+    classDef utility fill:#f8f0fc,stroke:#ae3ec9,stroke-width:1px,color:#000
     classDef implementation fill:#f8f9fa,stroke:#868e96,stroke-width:1px,color:#000
     classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
     classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
-    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000
