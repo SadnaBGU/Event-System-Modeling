@@ -42,14 +42,14 @@ class CompanyControllerTest {
 
     @BeforeEach
     void setUp() {
-        // מאתחל את הקונטרולר נטו, בלי להעלות את שרת Spring! מונע קריסות
+        
         mockMvc = MockMvcBuilders.standaloneSetup(companyController).build();
         
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         
         mockMvc = MockMvcBuilders.standaloneSetup(companyController)
-                // השורה החדשה שמחברת את הטיפול בשגיאות:
+                
                 .setControllerAdvice(new com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler())
                 .build();
         
