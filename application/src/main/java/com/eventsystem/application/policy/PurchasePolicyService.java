@@ -11,6 +11,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PolicyScope;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PurchasePolicyService implements IPurchasePolicyValidationPort,IPurchasePolicyManagementPort {
@@ -318,6 +320,42 @@ public class PurchasePolicyService implements IPurchasePolicyValidationPort,IPur
         purchasePolicyRepository.save(policy);
 
         logger.info("Purchase policy scope set to NOT COMPANY WIDE. policyId={}", policyId);
+    }
+
+    public PurchasePolicy createCompanyWidePolicy(MemberId actorId, CompanyId companyId, String policyName, IPolicy policy) {
+        Objects.requireNonNull(policyName, "policyName must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                policyName,
+                PolicyScope.companyWideScope(),
+                policy
+        );
+        purchasePolicyRepository.save(purchasePolicy);
+        return purchasePolicy;
+    }
+
+    public PurchasePolicy createEventScopedPolicy(MemberId actorId, EventId eventId, String policyName, IPolicy policy) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(policyName, "policyName must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
+        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                policyName,
+                PolicyScope.forSingleEvent(eventId),
+                policy
+        );
+        purchasePolicyRepository.save(purchasePolicy);
+        return purchasePolicy;
     }
 
     public void addEventToPolicy(MemberId actorId,
