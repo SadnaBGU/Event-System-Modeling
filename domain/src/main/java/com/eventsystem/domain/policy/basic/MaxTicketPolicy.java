@@ -1,10 +1,10 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class MaxTicketPolicy implements IBasicPolicy{
+public final class MaxTicketPolicy implements IBasicPolicy {
 
     private final int maxTickets;
 
@@ -15,20 +15,20 @@ public final class MaxTicketPolicy implements IBasicPolicy{
         this.maxTickets = maxAllowed;
     }
 
-    @Override
-    public boolean validate(PurchaseContext context) {
-        return context.ticketCount() <= maxTickets;
+    public int maxTickets() {
+        return maxTickets;
     }
 
     @Override
-    public void require(PurchaseContext context) {
-        if (!validate(context)) {
-            throw new PurchasePolicyException(String.format(
-                "Cannot Purchase more than %d tickets to Event %s",
-                 maxTickets, context.eventId().toString()
-            ));
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        if (context.ticketCount() <= maxTickets) {
+            return PolicyValidationResult.success();
         }
 
+        return PolicyValidationResult.failure(String.format(
+                "Cannot purchase more than %d tickets to event %s",
+                maxTickets,
+                context.eventId()
+        ));
     }
-    
 }

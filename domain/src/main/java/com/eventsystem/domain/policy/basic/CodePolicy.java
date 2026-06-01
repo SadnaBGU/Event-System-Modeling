@@ -1,31 +1,30 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class CodePolicy implements IBasicPolicy{
+public final class CodePolicy implements IBasicPolicy {
 
     private final String discountCode;
 
     public CodePolicy(String code) {
-        if (code == null || code.isEmpty() || code.isBlank()) {
+        if (code == null || code.isBlank()) {
             throw new PolicyException("Chosen code cannot be null, empty or blank");
         }
         this.discountCode = code;
     }
 
-    @Override
-    public boolean validate(PurchaseContext context) {
-        return discountCode.equals(context.discountCode());
+    public String requiredCode() {
+        return discountCode;
     }
 
     @Override
-    public void require(PurchaseContext context) {
-        if (!validate(context)) {
-            throw new PurchasePolicyException(String.format(
-                "Wrong code for Event %s", context.eventId().toString()));
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        if (discountCode.equals(context.discountCode())) {
+            return PolicyValidationResult.success();
         }
+
+        return PolicyValidationResult.failure("Invalid coupon code");
     }
-    
 }

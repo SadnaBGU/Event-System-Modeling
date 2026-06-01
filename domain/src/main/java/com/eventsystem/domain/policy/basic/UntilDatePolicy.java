@@ -3,10 +3,10 @@ package com.eventsystem.domain.policy.basic;
 import java.time.LocalDate;
 import java.util.Objects;
 
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class UntilDatePolicy implements IBasicPolicy{
+public final class UntilDatePolicy implements IBasicPolicy {
 
     private final LocalDate deadlineDate;
 
@@ -14,18 +14,20 @@ public final class UntilDatePolicy implements IBasicPolicy{
         this.deadlineDate = Objects.requireNonNull(deadlineDate, "Chosen date cannot be null");
     }
 
-    @Override
-    public boolean validate(PurchaseContext context) {
-        return !LocalDate.now().isAfter(deadlineDate);
+    public LocalDate deadlineDate() {
+        return deadlineDate;
     }
 
     @Override
-    public void require(PurchaseContext context) {
-        if (!validate(context)) {
-            throw new PurchasePolicyException(String.format(
-                "Cannot Purchase tickets to Event %s after Date %s", context.eventId().toString(), deadlineDate.toString()
-            ));
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        if (LocalDate.now().isBefore(deadlineDate) || LocalDate.now().isEqual(deadlineDate)) {
+            return PolicyValidationResult.success();
         }
-    }
 
+        return PolicyValidationResult.failure(String.format(
+                "Cannot purchase tickets to event %s after date %s",
+                context.eventId(),
+                deadlineDate
+        ));
+    }
 }

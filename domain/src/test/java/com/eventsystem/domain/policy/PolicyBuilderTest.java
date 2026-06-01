@@ -150,6 +150,13 @@ class PolicyBuilderTest {
 
         IPolicy customPolicy = new IBasicPolicy() {
             @Override
+            public PolicyValidationResult evaluate(PurchaseContext context) {
+                return validate(context)
+                    ? PolicyValidationResult.success()
+                    : PolicyValidationResult.failure("expected exactly two tickets");
+            }
+
+            @Override
             public boolean validate(PurchaseContext context) {
                 validateCalls.incrementAndGet();
                 return context.ticketCount() == 2;
@@ -192,7 +199,7 @@ class PolicyBuilderTest {
         assertDoesNotThrow(() -> alreadyAfterDate.require(contextWithTickets(REGULAR_ZONE)));
         assertThatThrownBy(() -> notAfterFutureDate.require(contextWithTickets(REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("before Date");
+                .hasMessageContaining("before date");
     }
 
     @Test
@@ -245,7 +252,7 @@ class PolicyBuilderTest {
         assertThatThrownBy(() -> atMostOneVipTicket.require(contextWithTickets(VIP_ZONE, VIP_ZONE, REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
                 .hasMessageContaining("Purchase policy violation for zones")
-                .hasMessageContaining("Cannot Purchase more than 1 tickets");
+                .hasMessageContaining("Cannot purchase more than 1 tickets");
     }
 
     @Test

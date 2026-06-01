@@ -1,10 +1,10 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-public final class MinTicketPolicy implements IBasicPolicy{
+public final class MinTicketPolicy implements IBasicPolicy {
 
     private final int minTickets;
 
@@ -15,20 +15,20 @@ public final class MinTicketPolicy implements IBasicPolicy{
         this.minTickets = minAllowed;
     }
 
-    @Override
-    public boolean validate(PurchaseContext context) {
-        return context.ticketCount() >= minTickets;
+    public int minTickets() {
+        return minTickets;
     }
 
     @Override
-    public void require(PurchaseContext context) {
-        if (!validate(context)) {
-            throw new PurchasePolicyException(String.format(
-                "Cannot Purchase less than %d tickets to Event %s",
-                 minTickets, context.eventId().toString()
-            ));
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        if (context.ticketCount() >= minTickets) {
+            return PolicyValidationResult.success();
         }
 
+        return PolicyValidationResult.failure(String.format(
+                "Cannot purchase less than %d tickets to event %s",
+                minTickets,
+                context.eventId()
+        ));
     }
-    
 }

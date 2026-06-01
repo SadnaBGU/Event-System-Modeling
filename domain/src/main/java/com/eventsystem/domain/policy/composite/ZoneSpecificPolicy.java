@@ -1,20 +1,17 @@
 package com.eventsystem.domain.policy.composite;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
-import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.zone.ZoneId;
-
 
 import java.util.List;
 import java.util.Set;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-
 public final class ZoneSpecificPolicy implements ICompositePolicy {
-
 
     private final IPolicy policy;
     private final Set<ZoneId> affectedZones;
@@ -42,14 +39,31 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
     }
 
     @Override
-    public boolean validate(PurchaseContext context) {
-        PurchaseContext specificZonesContext = generateContextForAffectedZones(context);
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        PurchaseContext relevantContext = generateContextForAffectedZones(context);
 
-        if (specificZonesContext.zonesOfEachEventTicket().isEmpty()) {
-            return noAffectedTicketsPass;
+        if (relevantContext.zonesOfEachEventTicket().isEmpty()) {
+            if (noAffectedTicketsPass) {
+                return PolicyValidationResult.success();
+            }
+
+            return PolicyValidationResult.failure(String.format(
+                    "No tickets purchased for zones %s",
+                    affectedZones
+            ));
         }
 
-        return policy.validate(specificZonesContext);
+        PolicyValidationResult result = policy.evaluate(relevantContext);
+
+        if (result.isSuccess()) {
+            return PolicyValidationResult.success();
+        }
+
+        return PolicyValidationResult.failure(String.format(
+                "Purchase policy violation for zones %s: %s",
+                affectedZones,
+                result.reason()
+        ));
     }
 
     private List<ZoneId> listOnlyTicketsOfAffectedZones(PurchaseContext context) {
@@ -60,33 +74,13 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
     }
 
     private PurchaseContext generateContextForAffectedZones(PurchaseContext context) {
-        return new PurchaseContext(context.eventId(), context.companyId(), listOnlyTicketsOfAffectedZones(context),
-                                     context.buyerBirthDate(), context.discountCode());
-    }
-
-    @Override
-    public void require(PurchaseContext context) {
-        PurchaseContext relevantContext = generateContextForAffectedZones(context);
-
-        if (relevantContext.zonesOfEachEventTicket().isEmpty()) {
-            if (noAffectedTicketsPass) {
-                return;
-            }
-            throw new PurchasePolicyException(String.format(
-                    "No tickets purchased for zones %s",
-                    affectedZones.toString()
-            ));
-        }
-
-        try {
-            policy.require(relevantContext);
-        } catch (Exception e) {
-            throw new PurchasePolicyException(String.format(
-                    "Purchase policy violation for zones %s: %s",
-                    affectedZones.toString(),
-                    e.getMessage()
-            ));
-        }
+        return new PurchaseContext(
+                context.eventId(),
+                context.companyId(),
+                listOnlyTicketsOfAffectedZones(context),
+                context.buyerBirthDate(),
+                context.discountCode()
+        );
     }
 
     @Override

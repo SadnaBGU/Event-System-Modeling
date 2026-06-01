@@ -1,9 +1,17 @@
 package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
 public class NoSingleEmptySeatPolicy implements IBasicPolicy{
+
+    @Override
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        return PolicyValidationResult.failure(
+                "NoSingleEmptySeatPolicy- Not supported"
+        );
+    }
 
     @Override
     public boolean validate(PurchaseContext context) {

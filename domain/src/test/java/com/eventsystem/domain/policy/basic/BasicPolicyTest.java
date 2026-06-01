@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class BasicPolicyTest {
         assertThat(policy.validate(context)).isFalse();
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Cannot Purchase more than 2 tickets")
+                .hasMessageContaining("Cannot purchase more than 2 tickets")
                 .hasMessageContaining(EVENT_ID.toString());
     }
 
@@ -68,7 +69,7 @@ class BasicPolicyTest {
         assertThat(policy.validate(context)).isFalse();
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Cannot Purchase less than 2 tickets")
+                .hasMessageContaining("Cannot purchase less than 2 tickets")
                 .hasMessageContaining(EVENT_ID.toString());
     }
 
@@ -96,8 +97,7 @@ class BasicPolicyTest {
         assertThat(policy.validate(contextWithCode(null, REGULAR_ZONE))).isFalse();
         assertThatThrownBy(() -> policy.require(contextWithCode("WRONG", REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Wrong code")
-                .hasMessageContaining(EVENT_ID.toString());
+                .hasMessageContaining("Invalid coupon code");
     }
 
     @Test
@@ -151,7 +151,7 @@ class BasicPolicyTest {
         assertThat(policy.validate(context)).isFalse();
         assertThatThrownBy(() -> policy.require(context))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("after Date");
+                .hasMessageContaining("after date");
     }
 
     @Test
@@ -226,5 +226,15 @@ class BasicPolicyTest {
 
         assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class);
+    }
+
+    @Test
+    void maxTicketPolicyEvaluateReturnsFailureReason_whenTooManyTickets() {
+        MaxTicketPolicy policy = new MaxTicketPolicy(2);
+
+        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, REGULAR_ZONE, REGULAR_ZONE));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.reason()).contains("Cannot purchase more than 2 tickets");
     }
 }

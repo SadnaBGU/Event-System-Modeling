@@ -51,7 +51,7 @@ class PurchasePolicyTest {
 
         assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Purchase Policy");
+                .hasMessageContaining("Purchase policy");
     }
 
     @Test
@@ -90,8 +90,8 @@ class PurchasePolicyTest {
 
         assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Purchase Policy")
-                .hasMessageContaining("Cannot Purchase more than 1 tickets");
+                .hasMessageContaining("Purchase policy")
+                .hasMessageContaining("Cannot purchase more than 1 tickets");
     }
 
     @Test
@@ -371,5 +371,7 @@ class PurchasePolicyTest {
     void assertInvalidPolicyScopeThrows() {
         assertThrows(Exception.class, () -> {new PolicyScope(false, Set.of((EventId)null));});
     }
+
+
 
 }

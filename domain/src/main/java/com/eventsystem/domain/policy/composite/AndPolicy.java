@@ -5,16 +5,15 @@ import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-
 public final class AndPolicy implements ICompositePolicy {
-    
+
     private final List<IPolicy> policies;
 
     public AndPolicy(List<IPolicy> policies) {
-        if (policies == null || policies.isEmpty())
-        {
+        if (policies == null || policies.isEmpty()) {
             throw new PolicyException("Policies cannot be null or empty");
         }
 
@@ -26,17 +25,15 @@ public final class AndPolicy implements ICompositePolicy {
     }
 
     @Override
-    public boolean validate(PurchaseContext context) {
-        return policies.stream().allMatch(policy -> policy.validate(context));
-    }
-
-    @Override
-    public void require(PurchaseContext context) {
-        if (policies == null || policies.isEmpty())
-            return;
+    public PolicyValidationResult evaluate(PurchaseContext context) {
         for (IPolicy policy : policies) {
-            policy.require(context);
+            PolicyValidationResult result = policy.evaluate(context);
+            if (!result.isSuccess()) {
+                return result;
+            }
         }
+
+        return PolicyValidationResult.success();
     }
 
     @Override

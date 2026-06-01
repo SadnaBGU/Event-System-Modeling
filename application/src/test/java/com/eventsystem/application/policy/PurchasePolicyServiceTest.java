@@ -636,7 +636,7 @@ class PurchasePolicyServiceTest {
         assertThat(result.failureReason())
                 .hasValueSatisfying(reason -> assertThat(reason)
                         .contains("Max 4 tickets")
-                        .contains("Cannot Purchase more than 4 tickets"));
+                        .contains("Cannot purchase more than 4 tickets"));
     }
 
     // UAT-27: checkout must halt by throwing an application exception when policy validation fails.
@@ -651,7 +651,7 @@ class PurchasePolicyServiceTest {
         assertThatThrownBy(() -> service.requirePurchasePolicyFor(context))
                 .isInstanceOf(OrderViolatesPolicyException.class)
                 .hasMessageContaining("Max 4 tickets")
-                .hasMessageContaining("Cannot Purchase more than 4 tickets");
+                .hasMessageContaining("Cannot purchase more than 4 tickets");
     }
 
     @Test
@@ -715,7 +715,7 @@ class PurchasePolicyServiceTest {
         assertThat(result.failureReason())
                 .hasValueSatisfying(reason -> assertThat(reason)
                         .contains("Min 2 tickets")
-                        .contains("Cannot Purchase less than 2 tickets"));
+                        .contains("Cannot purchase less than 2 tickets"));
     }
 
     // Requirement 4.3II / UC16: purchase policies support AND composition.

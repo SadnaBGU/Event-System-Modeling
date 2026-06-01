@@ -39,7 +39,7 @@ public class PurchasePolicy{
 
     public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope, List<IPolicy> policies) {
         if (policies == null || policies.isEmpty()) {
-            throw new PurchasePolicyException("Purcahse Policy cannot be empty or null");
+            throw new PurchasePolicyException("Purchahse Policy cannot be empty or null");
         }
         if (policies.stream().anyMatch(Objects::isNull)) {
             throw new PurchasePolicyException("PurchasePolicy cannot contain null policies");
@@ -141,26 +141,29 @@ public class PurchasePolicy{
     public static PurchasePolicy NewMaxTicketPolicy(CompanyId companyId, String policyName, int maxAllowedTickets) {
         return PurchasePolicy.NewPurchasePolicy(companyId, policyName,new MaxTicketPolicy(maxAllowedTickets));
     }
-
+    
     public boolean isPurchaseAllowedInContext(PurchaseContext context) {
-        return policy.validate(context);
+        return evaluate(context).isSuccess();
     }
 
     public void requirePurchasePolicy(PurchaseContext context) {
-        try {
-            policy.require(context);
-        } catch (Exception e) {
-            throw new PurchasePolicyException(String.format("Purchase Policy Vioalation: %s",e.getMessage()));
+        PolicyValidationResult result = evaluate(context);
+
+        if (!result.isSuccess()) {
+            throw new PurchasePolicyException(
+                    "Purchase policy violation: " + result.reason()
+            );
         }
     }
 
     public PolicyValidationResult evaluate(PurchaseContext context) {
-        try {
-            policy.require(context);
-            return PolicyValidationResult.success();
-        } catch (Exception e) {
-            return PolicyValidationResult.failure(e.getMessage());
+        Objects.requireNonNull(context, "context must not be null");
+
+        if (context.ticketCount() <= 0) {
+            return PolicyValidationResult.failure("Purchase context contains no tickets");
         }
+
+        return policy.evaluate(context);
     }
 
     public boolean isActive() {

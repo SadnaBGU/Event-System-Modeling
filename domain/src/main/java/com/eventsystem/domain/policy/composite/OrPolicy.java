@@ -1,21 +1,23 @@
 package com.eventsystem.domain.policy.composite;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 
-
 public final class OrPolicy implements ICompositePolicy {
+
     private final List<IPolicy> policies;
 
     public OrPolicy(List<IPolicy> policies) {
-        if (policies == null || policies.isEmpty())
-        {
+        if (policies == null || policies.isEmpty()) {
             throw new PolicyException("Policies cannot be null or empty");
         }
+
         if (policies.stream().anyMatch(Objects::isNull)) {
             throw new PolicyException("OrPolicy cannot contain null policies");
         }
@@ -24,25 +26,27 @@ public final class OrPolicy implements ICompositePolicy {
     }
 
     @Override
-    public boolean validate(PurchaseContext context) {
-        return policies.stream().anyMatch(policy -> policy.validate(context));
-    }
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        List<String> failureReasons = new ArrayList<>();
 
-    @Override
-    public void require(PurchaseContext context) {
-        if (policies == null || policies.isEmpty())
-        {
-            return;
-        }
-        if (!validate(context))
         for (IPolicy policy : policies) {
-            policy.require(context);
+            PolicyValidationResult result = policy.evaluate(context);
+
+            if (result.isSuccess()) {
+                return PolicyValidationResult.success();
+            }
+
+            failureReasons.add(result.reason());
         }
+
+        return PolicyValidationResult.failure(
+                "At least one purchase condition must be satisfied. Failed reasons: "
+                        + String.join("; ", failureReasons)
+        );
     }
 
     @Override
     public List<IPolicy> children() {
         return policies;
     }
-    
 }
