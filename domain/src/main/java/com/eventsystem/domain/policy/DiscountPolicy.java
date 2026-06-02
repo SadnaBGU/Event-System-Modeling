@@ -196,7 +196,7 @@ public final class DiscountPolicy {
     }
 
     public boolean doesHaveVisibleDiscounts() {
-        return visibleDiscounts().size() > 0;
+        return !visibleDiscounts().isEmpty();
     }
 
     public List<Discount> visibleDiscounts(PurchaseContext context) {

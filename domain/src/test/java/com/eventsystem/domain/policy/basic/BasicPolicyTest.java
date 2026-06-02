@@ -4,7 +4,6 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
-import com.eventsystem.domain.zone.ZoneId;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

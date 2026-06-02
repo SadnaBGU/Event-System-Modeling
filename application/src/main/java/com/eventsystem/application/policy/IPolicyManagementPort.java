@@ -1,5 +1,7 @@
 package com.eventsystem.application.policy;
 
+import java.util.List;
+
 import com.eventsystem.application.policy.policybuilder.DiscountCommand;
 import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
 import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
@@ -54,6 +56,8 @@ public interface IPolicyManagementPort {
     // ---------------------------------------------------------------------
     // Discount policy management
     // ---------------------------------------------------------------------
+
+    List<EventId> getEventIdsWithActiveVisibleDiscounts();
 
     DiscountPolicyId createDiscountPolicy(DiscountPolicyCommand command);
 

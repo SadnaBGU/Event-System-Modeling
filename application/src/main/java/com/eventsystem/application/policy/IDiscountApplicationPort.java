@@ -33,19 +33,10 @@ public interface IDiscountApplicationPort {
 
     DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseTotal);
 
+    List<EventId> getEventIdsWithActiveVisibleDiscounts();
+
     PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items, String discountCode);
 
-
-    /**
-     * Temporary compatibility method for the existing event/query purchase flow.
-     *
-     * <p>New code should use {@link #generateDiscountSnapshot(PurchaseContext, Money)}
-     * instead, because discount calculation may depend on the full purchase context,
-     * not only event id and discount code.</p>
-     *
-     * @deprecated use {@link #generateDiscountSnapshot(PurchaseContext, Money)} instead.
-     */
     @Deprecated
     DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal);
-
 }

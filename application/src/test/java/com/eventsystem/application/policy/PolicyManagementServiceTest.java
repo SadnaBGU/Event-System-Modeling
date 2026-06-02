@@ -18,6 +18,7 @@ import com.eventsystem.domain.policy.DiscountPolicyId;
 import com.eventsystem.domain.policy.PolicyScope;
 import com.eventsystem.domain.policy.PurchasePolicy;
 import com.eventsystem.domain.policy.PurchasePolicyId;
+import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
 import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
 import com.eventsystem.domain.policy.basic.MinTicketPolicy;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -1035,6 +1037,151 @@ class PolicyManagementServiceTest {
                                 .hasMessageContaining("Policy conflict");
 
                 verify(discountPolicyRepository, never()).save(any());
+        }
+
+        // UC16 / UAT-45 / DP-08 / DP-14:
+        // Owner creates discount policy through command; service should persist
+        // visibility and endDate.
+        @Test
+        void createDiscountPolicy_whenCommandHasVisibilityAndEndDate_shouldSaveDiscountWithThoseFields_UAT45_DP08_DP14() {
+                LocalDate endDate = LocalDate.now().plusDays(7);
+
+                DiscountCommand discountCommand = new DiscountCommand(
+                                "Hidden early bird",
+                                BigDecimal.valueOf(20),
+                                valueRule("MIN_TICKETS", 2),
+                                "HIDDEN",
+                                endDate.toString());
+
+                DiscountPolicyCommand command = new DiscountPolicyCommand(
+                                ACTOR_ID.value(),
+                                COMPANY_ID.value(),
+                                "Hidden timed discount policy",
+                                eventScope(EVENT_ID),
+                                List.of(discountCommand),
+                                false,
+                                true);
+
+                DiscountPolicyId id = service.createDiscountPolicy(command);
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.discounts()).hasSize(1);
+
+                Discount savedDiscount = saved.discounts().get(0);
+
+                assertThat(savedDiscount.getDiscountName()).isEqualTo("Hidden early bird");
+                assertThat(savedDiscount.isVisible()).isFalse();
+                assertThat(savedDiscount.getEndDate()).isEqualTo(endDate);
+                assertThat(savedDiscount.canExpire()).isTrue();
+        }
+
+        // UC16 / UAT-45 / DP-08 / DP-14:
+        // Adding a discount through service command should preserve visibility and
+        // endDate.
+        @Test
+        void addDiscountToPolicy_whenCommandHasVisibilityAndEndDate_shouldSaveAddedDiscount_UAT45_DP08_DP14() {
+                DiscountPolicy policy = activeDiscountPolicy(
+                                EVENT_ID,
+                                new Discount("Existing", BigDecimal.TEN, new MinTicketPolicy(1)));
+
+                when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                LocalDate endDate = LocalDate.now().plusDays(10);
+
+                DiscountCommand command = new DiscountCommand(
+                                "Hidden added discount",
+                                BigDecimal.valueOf(15),
+                                valueRule("MIN_TICKETS", 2),
+                                "HIDDEN",
+                                endDate.toString());
+
+                service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID, policy.id(), command);
+
+                assertThat(policy.discounts())
+                                .anySatisfy(discount -> {
+                                        assertThat(discount.getDiscountName()).isEqualTo("Hidden added discount");
+                                        assertThat(discount.isVisible()).isFalse();
+                                        assertThat(discount.getEndDate()).isEqualTo(endDate);
+                                });
+
+                verify(discountPolicyRepository).save(policy);
+        }
+
+        // UC16 / DP-03 / DP-08 / DP-14:
+        // Event-scoped helper should create a policy with hidden/visible setting and
+        // endDate.
+        @Test
+        void createEventScopedDiscountPolicy_shouldSavePolicyWithHiddenDiscountAndEndDate_DP03_DP08_DP14() {
+                LocalDate endDate = LocalDate.now().plusDays(5);
+
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                DiscountPolicyId id = service.createEventScopedDiscountPolicy(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                "Event hidden",
+                                BigDecimal.valueOf(25),
+                                AlwaysTruePolicy.INSTANCE,
+                                false,
+                                endDate,
+                                true);
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+                assertThat(saved.isStackable()).isTrue();
+
+                Discount discount = saved.discounts().get(0);
+                assertThat(discount.getDiscountName()).isEqualTo("Event hidden");
+                assertThat(discount.isVisible()).isFalse();
+                assertThat(discount.getEndDate()).isEqualTo(endDate);
+        }
+
+        // DP-14 / UAT-45:
+        // Management service should expose only event ids related to active visible
+        // discounts.
+        @Test
+        void getEventIdsWithActiveVisibleDiscounts_shouldReturnScopedAndCompanyWideVisibleDiscountEvents_UAT45_DP14() {
+                DiscountPolicy eventPolicy = activeDiscountPolicy(
+                                EVENT_ID,
+                                new Discount(
+                                                "Event visible",
+                                                BigDecimal.TEN,
+                                                AlwaysTruePolicy.INSTANCE,
+                                                true,
+                                                LocalDate.now().plusDays(1)));
+
+                DiscountPolicy companyPolicy = new DiscountPolicy(
+                                DiscountPolicyId.random(),
+                                COMPANY_ID,
+                                PolicyScope.companyWideScope());
+
+                companyPolicy.addDiscount(new Discount(
+                                "Company visible",
+                                BigDecimal.TEN,
+                                AlwaysTruePolicy.INSTANCE,
+                                true,
+                                LocalDate.now().plusDays(1)));
+                companyPolicy.activate();
+
+                when(discountPolicyRepository.findActiveWithVisibleDiscounts())
+                                .thenReturn(List.of(eventPolicy, companyPolicy));
+                when(eventOwnershipChecker.allEventsOfCompany(COMPANY_ID))
+                                .thenReturn(List.of(EVENT_ID, OTHER_EVENT_ID));
+
+                List<EventId> result = service.getEventIdsWithActiveVisibleDiscounts();
+
+                assertThat(result).containsExactlyInAnyOrder(EVENT_ID, OTHER_EVENT_ID);
         }
 
 }

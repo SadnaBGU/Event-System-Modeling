@@ -136,6 +136,27 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
         return Set.copyOf(eventIds);
     }
 
+   @Override
+   public List<EventId> getEventIdsWithActiveVisibleDiscounts() {
+        logger.debug("Finding EventIds with active visible discounts");
+
+        List<EventId> eventIds = discountPolicyRepository.findActiveWithVisibleDiscounts()
+                .stream()
+                .flatMap(policy -> {
+                        if (policy.scope().isCompanyWide()) {
+                        return eventOwnershipChecker.allEventsOfCompany(policy.companyId()).stream();
+                        }
+
+                        return policy.scope().eventIds().stream();
+                })
+                .distinct()
+                .toList();
+
+        logger.debug("Found {} EventIds with active visible discounts", eventIds.size());
+
+        return eventIds;
+   }
+
     public boolean existsById(DiscountPolicyId policyId) {
         Objects.requireNonNull(policyId, "policyId must not be null");
 
