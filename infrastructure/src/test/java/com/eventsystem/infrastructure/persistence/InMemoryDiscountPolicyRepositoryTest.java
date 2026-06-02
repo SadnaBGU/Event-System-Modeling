@@ -5,9 +5,13 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.Discount;
 import com.eventsystem.domain.policy.DiscountPolicy;
 import com.eventsystem.domain.policy.DiscountPolicyId;
+import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -163,6 +167,56 @@ class InMemoryDiscountPolicyRepositoryTest {
     void findApplicableToEvent_requiresNonNullEventId() {
         assertThatThrownBy(() -> repository.findApplicableToEvent(null))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void findActiveWithVisibleDiscounts_shouldReturnOnlyActivePoliciesWithVisibleNonExpiredDiscounts() {
+        DiscountPolicy activeVisible = DiscountPolicy.inactiveCompanyWide(companyId);
+        activeVisible.addDiscount(new Discount(
+                "Visible",
+                BigDecimal.TEN,
+                AlwaysTruePolicy.INSTANCE,
+                true,
+                LocalDate.now().plusDays(1)
+        ));
+        activeVisible.activate();
+
+        DiscountPolicy inactiveVisible = DiscountPolicy.inactiveCompanyWide(companyId);
+        inactiveVisible.addDiscount(new Discount(
+                "Inactive visible",
+                BigDecimal.TEN,
+                AlwaysTruePolicy.INSTANCE,
+                true,
+                LocalDate.now().plusDays(1)
+        ));
+
+        DiscountPolicy activeHidden = DiscountPolicy.inactiveCompanyWide(companyId);
+        activeHidden.addDiscount(new Discount(
+                "Hidden",
+                BigDecimal.TEN,
+                AlwaysTruePolicy.INSTANCE,
+                false,
+                LocalDate.now().plusDays(1)
+        ));
+        activeHidden.activate();
+
+        DiscountPolicy activeExpiredVisible = DiscountPolicy.inactiveCompanyWide(companyId);
+        activeExpiredVisible.addDiscount(new Discount(
+                "Expired visible",
+                BigDecimal.TEN,
+                AlwaysTruePolicy.INSTANCE,
+                true,
+                LocalDate.now().minusDays(1)
+        ));
+        activeExpiredVisible.activate();
+
+        repository.save(activeVisible);
+        repository.save(inactiveVisible);
+        repository.save(activeHidden);
+        repository.save(activeExpiredVisible);
+
+        assertThat(repository.findActiveWithVisibleDiscounts())
+                .containsExactly(activeVisible);
     }
 
     @Test

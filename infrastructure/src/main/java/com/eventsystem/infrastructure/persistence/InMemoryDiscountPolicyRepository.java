@@ -43,6 +43,16 @@ public class InMemoryDiscountPolicyRepository implements IDiscountPolicyReposito
     }
 
     @Override
+    public List<DiscountPolicy> findActiveWithVisibleDiscounts() {
+            return policiesById.values()
+                .stream()
+                .filter(DiscountPolicy::isActive)
+                .filter(DiscountPolicy::doesHaveVisibleDiscounts)
+                .toList();
+    }
+
+
+    @Override
     public List<DiscountPolicy> findActiveByCompanyId(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 

@@ -375,12 +375,12 @@ class DiscountApplicationServiceTest {
 
         DiscountPolicy tenPercent = activePolicyForEvent(
                 EVENT_ID,
-                Discount.GeneralDiscount("Ten", BigDecimal.TEN)
+                Discount.GeneralDiscount("Ten", BigDecimal.TEN, null)
         );
 
         DiscountPolicy twentyPercent = activePolicyForEvent(
                 EVENT_ID,
-                Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20))
+                Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20), null)
         );
 
         when(discountPolicyRepository.findApplicableToEvent(EVENT_ID))
@@ -418,12 +418,12 @@ class DiscountApplicationServiceTest {
 
         DiscountPolicy tenPercent = activePolicyForEvent(
                 EVENT_ID,
-                Discount.GeneralDiscount("Ten", BigDecimal.TEN)
+                Discount.GeneralDiscount("Ten", BigDecimal.TEN, null)
         );
 
         DiscountPolicy twentyPercent = activePolicyForEvent(
                 EVENT_ID,
-                Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20))
+                Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20), null)
         );
 
         when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))

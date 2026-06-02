@@ -19,6 +19,7 @@ import com.eventsystem.domain.policy.composite.ZoneSpecificPolicy;
 import com.eventsystem.domain.zone.ZoneId;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -41,10 +42,15 @@ public class PolicyCommandAssembler {
                 ? AlwaysTruePolicy.INSTANCE
                 : toPolicy(command.rule());
 
+        boolean isVisible = parseVisibility(command.visibility());
+        LocalDate endDate = parseEndDate(command.endDate());
+
         return new Discount(
                 command.name(),
                 command.percent(),
-                rule
+                rule,
+                isVisible,
+                endDate
         );
     }
 
@@ -156,5 +162,33 @@ public class PolicyCommandAssembler {
         }
 
         return command.code();
+    }
+
+    private boolean parseVisibility(String visibility) {
+        if (visibility == null || visibility.isBlank()) {
+            return true;
+        }
+
+        return switch (visibility.trim().toUpperCase()) {
+            case "VISIBLE" -> true;
+            case "HIDDEN" -> false;
+            default -> throw new IllegalArgumentException(
+                "Discount visibility must be either VISIBLE or HIDDEN"
+            );
+        };
+    }
+
+    private LocalDate parseEndDate(String endDate) {
+        if (endDate == null || endDate.isBlank()) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(endDate.trim());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    "Discount endDate must be in ISO format: yyyy-MM-dd"
+            );
+        }
     }
 }

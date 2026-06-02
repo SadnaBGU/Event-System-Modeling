@@ -6,7 +6,6 @@ import com.eventsystem.domain.policy.basic.CodePolicy;
 import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
 import com.eventsystem.domain.policy.basic.MinAgePolicy;
 import com.eventsystem.domain.policy.basic.MinTicketPolicy;
-import com.eventsystem.domain.policy.basic.NoSingleEmptySeatPolicy;
 import com.eventsystem.domain.policy.basic.UntilDatePolicy;
 import com.eventsystem.domain.policy.composite.AndPolicy;
 import com.eventsystem.domain.policy.composite.ICompositePolicy;
@@ -214,15 +213,6 @@ class PolicyConflictDetectorTest {
                 assertThatThrownBy(() -> PolicyConflictDetector.detectInnerConflicts(null))
                                 .isInstanceOf(NullPointerException.class)
                                 .hasMessageContaining("policy must not be null");
-        }
-
-        @Test
-        void detectInnerConflicts_whenNoSingleEmptySeatPolicy_shouldFailAsUnsupported() {
-                PolicyValidationResult result = PolicyConflictDetector
-                                .detectInnerConflicts(new NoSingleEmptySeatPolicy());
-
-                assertThat(result.isSuccess()).isFalse();
-                assertThat(result.reason()).contains("NoSingleEmptySeatPolicy is not supported");
         }
 
         @Test

@@ -25,7 +25,7 @@ public final class DiscountPolicy {
     private boolean stackable;
     private boolean active;
 
-    private static final BigDecimal HUNDREAD = BigDecimal.valueOf(100);
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
         public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope) {
         this.id = Objects.requireNonNull(id, "id must not be null");
@@ -163,6 +163,56 @@ public final class DiscountPolicy {
         return List.copyOf(discounts);
     }
 
+    public List<Discount> visibleDiscounts() {
+        return discounts.stream()
+                .filter(Discount::isVisible)
+                .filter(discount -> !discount.isExpired())
+                .toList();
+    }
+
+    public List<Discount> expiredDiscounts() {
+        return discounts.stream()
+                .filter(Discount::isExpired)
+                .toList();
+    }
+
+    public List<Discount> nonExpiredDiscounts() {
+        return discounts.stream()
+                .filter(discount -> !discount.isExpired())
+                .toList();
+    }
+
+    public List<Discount> applicableDiscounts(PurchaseContext context) {
+        Objects.requireNonNull(context, "context must not be null");
+
+        if (!appliesTo(context)) {
+            return List.of();
+        }
+
+        return discounts.stream()
+                .filter(discount -> !discount.isExpired())
+                .filter(discount -> discount.validateDiscount(context))
+                .toList();
+    }
+
+    public boolean doesHaveVisibleDiscounts() {
+        return visibleDiscounts().size() > 0;
+    }
+
+    public List<Discount> visibleDiscounts(PurchaseContext context) {
+        Objects.requireNonNull(context, "context must not be null");
+
+        if (!appliesTo(context)) {
+            return List.of();
+        }
+
+        return discounts.stream()
+                .filter(Discount::isVisible)
+                .filter(discount -> !discount.isExpired())
+                .filter(discount -> discount.validateDiscount(context))
+                .toList();
+    }
+
     public Set<String> discountedEventIds() {
         return Set.of(scope.eventIds().toString());
     }
@@ -181,7 +231,6 @@ public final class DiscountPolicy {
     }
 
     
-
     public boolean isPurchaseEligibleForSpecificDiscount(PurchaseContext context, String discountName) {
         if (!appliesTo(context)) {
             return false;
@@ -197,23 +246,28 @@ public final class DiscountPolicy {
             return false;
         }
 
-        return foundDiscount.validateDiscount(context);
+        return !foundDiscount.isExpired() && foundDiscount.validateDiscount(context);
     }
 
     private BigDecimal capAt100(BigDecimal percent) {
-        return percent.min(HUNDREAD);
+        return percent.min(HUNDRED);
     }
 
     public boolean isPurchaseEligibleForDiscount(PurchaseContext context) {
+        return evaluateIfDiscountApplyForPurchase(context).isSuccess();
+    }
+
+    public PolicyValidationResult evaluateIfDiscountApplyForPurchase(PurchaseContext context) {
         if (!appliesTo(context)) {
-            return false;
+            return PolicyValidationResult.failure("No discount apply to the current purchase context");
         }
         for (Discount discount : discounts) {
-            if (discount.validateDiscount(context) && discount.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
-                return true;
+            PolicyValidationResult validationResult = discount.evaluateDiscount(context);
+            if (validationResult.isSuccess() && discount.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+                return PolicyValidationResult.success();
             }
         }
-        return false;
+        return PolicyValidationResult.failure("No discount apply to the current purchase context");
     }
 
     private DiscountSummary getBestDiscountSummary(PurchaseContext context) {
@@ -224,7 +278,7 @@ public final class DiscountPolicy {
 
 
         for (Discount discount : discounts) {
-            BigDecimal current = discount.getValidDiscountAmount(context);
+            BigDecimal current = discount.getDiscountPercentForContext(context);
 
             if (current.compareTo(best) > 0) {
                 best = current;
@@ -238,7 +292,7 @@ public final class DiscountPolicy {
                     bestDiscountPrecent.set(0, current);
                 }
 
-                if (best.compareTo(HUNDREAD) > 0) {
+                if (best.compareTo(HUNDRED) > 0) {
                     break;
                 }
             }
@@ -248,7 +302,8 @@ public final class DiscountPolicy {
         DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
                                                              bestDiscountPrecent,
                                                              actualAmountPlaceholder,
-                                                             BigDecimal.ZERO);
+                                                             BigDecimal.ZERO,
+                                                             DiscountSummary.shouldCapDiscountAt100(bestDiscountPrecent));
         return noActualAmounts;
     }
 
@@ -259,7 +314,7 @@ public final class DiscountPolicy {
         ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
 
         for (Discount discount : discounts) {
-            BigDecimal current = discount.getValidDiscountAmount(context);
+            BigDecimal current = discount.getDiscountPercentForContext(context);
 
             if (current.compareTo(BigDecimal.ZERO) > 0) {
                 totalPercents = totalPercents.add(current);
@@ -267,7 +322,7 @@ public final class DiscountPolicy {
                 bestDiscountPrecent.add(current);
                 actualAmountPlaceholder.add(BigDecimal.ZERO);
 
-                if (totalPercents.compareTo(HUNDREAD) > 0) {
+                if (totalPercents.compareTo(HUNDRED) > 0) {
                     break;
                 }
             }
@@ -276,11 +331,13 @@ public final class DiscountPolicy {
         DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
                                                              bestDiscountPrecent,
                                                              actualAmountPlaceholder,
-                                                             BigDecimal.ZERO);
+                                                             BigDecimal.ZERO, DiscountSummary.shouldCapDiscountAt100(bestDiscountPrecent)
+                                                             );
         return noActualAmounts;
     }
 
     public DiscountSummary getFullDiscountSummary(PurchaseContext context, Money baseCost) {
+        Objects.requireNonNull(context, "context must not be null");
         Objects.requireNonNull(baseCost, "baseCost must not be null");
 
         if (!appliesTo(context)) {
@@ -299,11 +356,11 @@ public final class DiscountPolicy {
         for (int i = 0; i < noActualAmounts.appliedDiscountsNames().size(); i++) {
             BigDecimal currPercent = noActualAmounts.appliedDiscountPercents().get(i);
             totalPercent = capAt100(totalPercent.add(currPercent));
-            BigDecimal mult = currPercent.divide(HUNDREAD);
+            BigDecimal mult = currPercent.divide(HUNDRED);
             newActualAmounts.add(mult.multiply(baseCost.amount()));
         }
 
-        BigDecimal temp =  totalPercent.divide(HUNDREAD);
+        BigDecimal temp =  totalPercent.divide(HUNDRED);
 
         return noActualAmounts.ReplaceActualAmounts(newActualAmounts, temp.multiply(baseCost.amount()));
     }
@@ -319,7 +376,7 @@ public final class DiscountPolicy {
         return summary.appliedDiscountPercents()
                 .stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .min(HUNDREAD);
+                .min(HUNDRED);
     }
 
     public DiscountSnapshot generateDiscountSnapshot(DiscountSummary summary, Money baseCost) {

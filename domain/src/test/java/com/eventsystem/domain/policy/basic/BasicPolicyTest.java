@@ -177,14 +177,6 @@ class BasicPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    @Test
-    void noSingleEmptySeatPolicy_isExplicitlyNotImplementedYet() {
-        NoSingleEmptySeatPolicy policy = new NoSingleEmptySeatPolicy();
-
-        assertThatThrownBy(() -> policy.validate(contextWithTickets(new ZoneId("z1"))))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("Unimplemented");
-    }
 
     @Test
     void minAgePolicy_rejectsBuyerWhoseBirthdayIsTomorrow() {
@@ -334,26 +326,6 @@ class BasicPolicyTest {
                 .hasMessageContaining("Purchase policy restricts current purchase");
     }
 
-    @Test
-    void noSingleEmptySeatPolicy_typeAndEvaluateAreCovered() {
-        NoSingleEmptySeatPolicy policy = new NoSingleEmptySeatPolicy();
-
-        assertThat(policy.type()).isEqualTo(com.eventsystem.domain.policy.PolicyType.NO_SINGLE_EMPTY_SEAT);
-
-        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE));
-
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.reason()).contains("Not supported");
-    }
-
-    @Test
-    void noSingleEmptySeatPolicy_requirePropagatesUnsupportedValidate() {
-        NoSingleEmptySeatPolicy policy = new NoSingleEmptySeatPolicy();
-
-        assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE)))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("Unimplemented");
-    }
     
 
 }

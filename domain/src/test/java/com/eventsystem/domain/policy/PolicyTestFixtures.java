@@ -5,6 +5,7 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.zone.ZoneId;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -58,5 +59,9 @@ public final class PolicyTestFixtures {
             List<ZoneId> zones
     ) {
         return new PurchaseContext( eventId, companyId, zones, buyerBirthDate, discountCode);
+    }
+    
+    public static Discount GeneralNoExpiryDiscount(String name, BigDecimal discountPercent) {
+        return Discount.GeneralDiscount(name, discountPercent, null);
     }
 }

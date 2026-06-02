@@ -19,7 +19,8 @@ class DiscountSummaryTest {
                 List.of("Early bird", "Student"),
                 List.of(BigDecimal.TEN, BigDecimal.valueOf(15)),
                 List.of(BigDecimal.valueOf(20), BigDecimal.valueOf(30)),
-                BigDecimal.valueOf(50)
+                BigDecimal.valueOf(50), 
+                false
         );
 
         assertThat(summary.getSpecificDiscountInfo(0)).isEqualTo("Early bird : 10 : 20");
@@ -41,7 +42,8 @@ class DiscountSummaryTest {
                 List.of("Early bird"),
                 List.of(BigDecimal.TEN),
                 List.of(BigDecimal.valueOf(20)),
-                BigDecimal.valueOf(20)
+                BigDecimal.valueOf(20),
+                false
         );
 
         assertThatThrownBy(() -> summary.getSpecificDiscountInfo("Coupon"))
@@ -55,7 +57,7 @@ class DiscountSummaryTest {
         List<BigDecimal> percents = new ArrayList<>(List.of(BigDecimal.TEN));
         List<BigDecimal> amounts = new ArrayList<>(List.of(BigDecimal.valueOf(20)));
 
-        DiscountSummary summary = new DiscountSummary(names, percents, amounts, BigDecimal.valueOf(20));
+        DiscountSummary summary = new DiscountSummary(names, percents, amounts, BigDecimal.valueOf(20), false);
 
         names.add("Late mutation");
         percents.add(BigDecimal.valueOf(99));
@@ -74,7 +76,8 @@ class DiscountSummaryTest {
                 List.of("A"),
                 List.of(BigDecimal.TEN, BigDecimal.ONE),
                 List.of(BigDecimal.ONE),
-                BigDecimal.ONE
+                BigDecimal.ONE,
+                false
         )).isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("same size");
     }
@@ -85,7 +88,8 @@ class DiscountSummaryTest {
                 List.of("A", "B"),
                 List.of(BigDecimal.valueOf(60), BigDecimal.valueOf(40)),
                 List.of(BigDecimal.ZERO, BigDecimal.ZERO),
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                false
         );
 
         assertThat(capped.isDiscountCappedAt100()).isTrue();
@@ -97,7 +101,8 @@ class DiscountSummaryTest {
                 List.of("A", "B"),
                 List.of(BigDecimal.valueOf(20), BigDecimal.valueOf(30)),
                 List.of(BigDecimal.ZERO, BigDecimal.ZERO),
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                false
         );
 
         assertThat(notCapped.isDiscountCappedAt100()).isFalse();
@@ -109,7 +114,8 @@ class DiscountSummaryTest {
                 List.of("Visible"),
                 List.of(BigDecimal.TEN),
                 List.of(BigDecimal.ZERO),
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                false
         );
 
         DiscountSummary replaced = original.ReplaceActualAmounts(

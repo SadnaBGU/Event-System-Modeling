@@ -11,9 +11,10 @@ import java.math.BigDecimal;
 public record DiscountSummary(List<String> appliedDiscountsNames,
                              List<BigDecimal> appliedDiscountPercents,
                               List<BigDecimal> actualDiscountAmount,
-                               BigDecimal totalDiscount) {
+                               BigDecimal totalDiscount,
+                                boolean cappedAt100Percent) {
 
-    private static BigDecimal HUNDREAD = BigDecimal.valueOf(100);
+    private static BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     public DiscountSummary {
         Objects.requireNonNull(appliedDiscountsNames, "appliedDiscountsNames must not be null");
@@ -29,6 +30,7 @@ public record DiscountSummary(List<String> appliedDiscountsNames,
         appliedDiscountsNames = List.copyOf(appliedDiscountsNames);
         appliedDiscountPercents = List.copyOf(appliedDiscountPercents);
         actualDiscountAmount = List.copyOf(actualDiscountAmount);
+        cappedAt100Percent = shouldCapDiscountAt100(appliedDiscountPercents);
     }
 
     public String getSpecificDiscountInfo(int i) {
@@ -57,21 +59,30 @@ public record DiscountSummary(List<String> appliedDiscountsNames,
         for (BigDecimal bigDecimal : appliedDiscountPercents) {
             totalDiscountPrecent = totalDiscountPrecent.add(bigDecimal);
         }
-        return totalDiscountPrecent.compareTo(HUNDREAD) >= 0;
+        return totalDiscountPrecent.compareTo(HUNDRED) >= 0;
+    }
+
+    public static boolean shouldCapDiscountAt100(List<BigDecimal> percents) {
+        BigDecimal totalDiscountPrecent = BigDecimal.ZERO;
+        for (BigDecimal bigDecimal : percents) {
+            totalDiscountPrecent = totalDiscountPrecent.add(bigDecimal);
+        }
+        return totalDiscountPrecent.compareTo(HUNDRED) >= 0;
     }
 
     public static DiscountSummary NoDiscountSummary() {
         return new DiscountSummary(new ArrayList<String>(), 
                                     new ArrayList<BigDecimal>(),
                                      new ArrayList<BigDecimal>(),
-                                      BigDecimal.ZERO);
+                                      BigDecimal.ZERO,false);
     }
 
     public DiscountSummary ReplaceActualAmounts(List<BigDecimal> actualAmounts, BigDecimal totalActualDiscount) {
         return new DiscountSummary(this.appliedDiscountsNames, 
                                     this.appliedDiscountPercents,
                                      actualAmounts,
-                                      totalActualDiscount);
+                                      totalActualDiscount, isDiscountCappedAt100());
     }
+
 
 }

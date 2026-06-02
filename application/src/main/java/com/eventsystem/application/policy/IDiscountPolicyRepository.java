@@ -16,6 +16,8 @@ public interface IDiscountPolicyRepository {
 
     List<DiscountPolicy> findActive();
 
+    List<DiscountPolicy> findActiveWithVisibleDiscounts();
+
     List<DiscountPolicy> findActiveByCompanyId(CompanyId companyId);
 
     List<DiscountPolicy> findApplicableToEvent(EventId eventId);
