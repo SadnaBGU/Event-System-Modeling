@@ -963,4 +963,40 @@ public class PolicyManagementService implements IPolicyManagementPort {
             );
         }
     }
+
+     public PurchasePolicy createCompanyWidePolicy(MemberId actorId, CompanyId companyId, String policyName, IPolicy policy) {
+        Objects.requireNonNull(policyName, "policyName must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                policyName,
+                PolicyScope.companyWideScope(),
+                policy
+        );
+        purchasePolicyRepository.save(purchasePolicy);
+        return purchasePolicy;
+    }
+
+    public PurchasePolicy createEventScopedPolicy(MemberId actorId, EventId eventId, String policyName, IPolicy policy) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(policyName, "policyName must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
+        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                policyName,
+                PolicyScope.forSingleEvent(eventId),
+                policy
+        );
+        purchasePolicyRepository.save(purchasePolicy);
+        return purchasePolicy;
+    }
 }

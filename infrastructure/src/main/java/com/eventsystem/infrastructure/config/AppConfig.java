@@ -369,14 +369,13 @@ public class AppConfig {
     }
 
     @Bean
-    public IPolicyManagementPort policyManagementPort(IPurchasePolicyRepository purchasePolicyRepository,
+    public PolicyManagementService policyManagementService(IPurchasePolicyRepository purchasePolicyRepository,
                                                         IDiscountPolicyRepository discountPolicyRepository,
                                                         ICompanyPermissionServicePort companyPermissionServicePort,
                                                         IEventManagementPort eventManagementPort,
-                                                        PolicyCommandAssembler policyAssembler
-    ) {
-        return new PolicyManagementService(purchasePolicyRepository,discountPolicyRepository,
-                                            companyPermissionServicePort,eventManagementPort,policyAssembler);
+                                                        PolicyCommandAssembler policyAssembler) {
+        return new PolicyManagementService(purchasePolicyRepository, discountPolicyRepository,
+                                            companyPermissionServicePort, eventManagementPort, policyAssembler);
     }
 
     @Bean
