@@ -127,11 +127,33 @@ public class Member {
      */
     public boolean isSuspendedAt(Instant now) {
         Objects.requireNonNull(now, "now must not be null");
-        return status == MemberStatus.SUSPENDED && !suspension.isExpiredAt(now);
+        refreshSuspensionStatusAt(now);
+        return suspension != null && status == MemberStatus.SUSPENDED && !suspension.isExpiredAt(now);
     }
 
     public Optional<Suspension> getSuspension() {
         return Optional.ofNullable(suspension);
+    }
+
+    /**
+     * 
+     * @param now  current time (injected so domain stays clock-independent)
+     * @return true if suspension status changed
+     */
+    public boolean refreshSuspensionStatusAt(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+
+        if (status != MemberStatus.SUSPENDED || suspension == null) {
+            return false;
+        }
+
+        if (suspension.isExpiredAt(now)) {
+            this.suspension = null;
+            this.status = MemberStatus.ACTIVE;
+            return true;
+        }
+
+        return false;
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -193,4 +215,10 @@ public class Member {
             throw new IllegalStateException("Member " + username + " is cancelled and cannot be modified");
         }
     }
+
+    private void requireActive(Instant now) {
+            refreshSuspensionStatusAt(now);
+            requireActive();
+    }
+
 }
