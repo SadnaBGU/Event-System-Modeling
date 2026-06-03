@@ -2,12 +2,11 @@ package com.eventsystem.application.policy;
 
 import java.util.List;
 
-import com.eventsystem.domain.policy.PolicyValidationResult;
-import com.eventsystem.domain.policy.PurchaseContext;
-
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 
 /**
  * Handles purchase-policy validation and evaluation for a given purchase context.

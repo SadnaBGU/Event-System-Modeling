@@ -1,9 +1,13 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
-import com.eventsystem.domain.policy.basic.IBasicPolicy;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.IBasicPolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

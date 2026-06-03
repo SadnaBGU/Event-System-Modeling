@@ -1,6 +1,8 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
+
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

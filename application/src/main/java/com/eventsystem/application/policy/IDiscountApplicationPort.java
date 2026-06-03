@@ -5,8 +5,8 @@ import java.util.List;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.policy.DiscountSummary;
-import com.eventsystem.domain.policy.PurchaseContext;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
 

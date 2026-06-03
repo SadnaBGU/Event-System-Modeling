@@ -1,12 +1,14 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
-import com.eventsystem.domain.policy.basic.AfterDatePolicy;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
-import com.eventsystem.domain.policy.basic.UntilDatePolicy;
-import com.eventsystem.domain.policy.composite.AndPolicy;
-import com.eventsystem.domain.policy.composite.ICompositePolicy;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
+import com.eventsystem.domain.policy.rule.composite.AndPolicy;
+import com.eventsystem.domain.policy.rule.composite.ICompositePolicy;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 
 import java.time.LocalDate;
 import java.util.List;

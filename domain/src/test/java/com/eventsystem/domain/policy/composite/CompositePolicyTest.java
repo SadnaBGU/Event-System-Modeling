@@ -2,13 +2,17 @@ package com.eventsystem.domain.policy.composite;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
-import com.eventsystem.domain.policy.IPolicy;
-import com.eventsystem.domain.policy.PolicyType;
-import com.eventsystem.domain.policy.PolicyValidationResult;
-import com.eventsystem.domain.policy.PurchaseContext;
-import com.eventsystem.domain.policy.basic.IBasicPolicy;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinAgePolicy;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.PolicyType;
+import com.eventsystem.domain.policy.rule.basic.IBasicPolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinAgePolicy;
+import com.eventsystem.domain.policy.rule.composite.AndPolicy;
+import com.eventsystem.domain.policy.rule.composite.ICompositePolicy;
+import com.eventsystem.domain.policy.rule.composite.OrPolicy;
+import com.eventsystem.domain.policy.rule.composite.ZoneSpecificPolicy;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 
 import org.junit.jupiter.api.Test;
 

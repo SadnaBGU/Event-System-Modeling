@@ -1,9 +1,13 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
-import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
-import com.eventsystem.domain.policy.basic.CodePolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.discount.Discount;
+import com.eventsystem.domain.policy.discount.DiscountInfo;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
+import com.eventsystem.domain.policy.rule.basic.CodePolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 
 import org.junit.jupiter.api.Test;
 

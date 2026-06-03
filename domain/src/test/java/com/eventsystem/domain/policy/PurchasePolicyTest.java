@@ -4,8 +4,14 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

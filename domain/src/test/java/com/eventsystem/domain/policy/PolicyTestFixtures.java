@@ -2,6 +2,8 @@ package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.discount.Discount;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.zone.ZoneId;
 

@@ -1,9 +1,9 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.zone.ZoneId;
-import com.eventsystem.domain.policy.basic.*;
-import com.eventsystem.domain.policy.composite.*;
-
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.*;
+import com.eventsystem.domain.policy.rule.composite.*;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

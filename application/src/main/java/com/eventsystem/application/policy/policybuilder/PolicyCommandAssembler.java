@@ -1,21 +1,21 @@
 package com.eventsystem.application.policy.policybuilder;
 
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.Discount;
-import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PolicyConflictDetector;
-import com.eventsystem.domain.policy.PolicyScope;
-import com.eventsystem.domain.policy.basic.AfterDatePolicy;
-import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
-import com.eventsystem.domain.policy.basic.CodePolicy;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinAgePolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
-import com.eventsystem.domain.policy.basic.NeverAllowPolicy;
-import com.eventsystem.domain.policy.basic.UntilDatePolicy;
-import com.eventsystem.domain.policy.composite.AndPolicy;
-import com.eventsystem.domain.policy.composite.OrPolicy;
-import com.eventsystem.domain.policy.composite.ZoneSpecificPolicy;
+import com.eventsystem.domain.policy.discount.Discount;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
+import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
+import com.eventsystem.domain.policy.rule.basic.CodePolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinAgePolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.NeverAllowPolicy;
+import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
+import com.eventsystem.domain.policy.rule.composite.AndPolicy;
+import com.eventsystem.domain.policy.rule.composite.OrPolicy;
+import com.eventsystem.domain.policy.rule.composite.ZoneSpecificPolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.zone.ZoneId;
 
 import java.time.LocalDate;

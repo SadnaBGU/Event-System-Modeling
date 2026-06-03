@@ -2,9 +2,9 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.policy.PurchasePolicy;
-import com.eventsystem.domain.policy.PurchasePolicyId;
 
 import java.util.List;
 import java.util.Map;

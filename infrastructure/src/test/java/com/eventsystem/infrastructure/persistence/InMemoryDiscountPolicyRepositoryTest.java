@@ -2,10 +2,10 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.Discount;
-import com.eventsystem.domain.policy.DiscountPolicy;
-import com.eventsystem.domain.policy.DiscountPolicyId;
-import com.eventsystem.domain.policy.basic.AlwaysTruePolicy;
+import com.eventsystem.domain.policy.discount.Discount;
+import com.eventsystem.domain.policy.discount.DiscountPolicy;
+import com.eventsystem.domain.policy.discount.DiscountPolicyId;
+import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
