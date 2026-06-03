@@ -216,9 +216,5 @@ public class Member {
         }
     }
 
-    private void requireActive(Instant now) {
-            refreshSuspensionStatusAt(now);
-            requireActive();
-    }
 
 }

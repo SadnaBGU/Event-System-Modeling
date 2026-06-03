@@ -2,126 +2,137 @@ classDiagram
     direction TB
 
 %% ══════════════════════════════════════════
-%% Virtual Queue domain:
-%% Updated VirtualQueue design for current code
+%% Zone domain:
+%% Updated Zone design for current code
 %% ══════════════════════════════════════════
 
-    namespace Domain_Queue {
+    namespace Domain_Zone {
 
-        class VirtualQueue
-        class QueueId
-        class QueueEntry
-        class AdmissionToken
-        class QueueStatus
+        class Zone
+        class ZoneId
+        class Row
+        class Seat
+        class SeatId
+        class ZoneType
+        class SeatStatus
 
     }
 
 %% ══════════════════════════════════════════
-%% AGGREGATE VirtualQueue:
-%% One queue per event when activated.
-%% Controls event-specific admission under load.
-%% Status flow: INACTIVE -> ACTIVE -> INACTIVE / DRAINING
+%% AGGREGATE Zone:
+%% Separate inventory aggregate for seated or standing ticket availability.
+%% Handles reservation, release, and sale state transitions.
 %% ══════════════════════════════════════════
 
-    class VirtualQueue:::aggregate {
+    class Zone:::aggregate {
         <<Aggregate Root>>
-        - QueueId queueId
+        - ZoneId zoneId
         - EventId eventId
-        - QueueStatus status
-        - int loadThreshold
-        - int maxConcurrentAdmissions
+        - String zoneName
+        - ZoneType zoneType
+        - Money pricePerTicket
         - long version
-        - LinkedList~QueueEntry~ waitingEntries
-        - List~AdmissionToken~ admittedSet
-        - int nextPositionCounter
-        + activate() void
-        + enqueue(BuyerReference) void
-        + admitNext(int) List~BuyerReference~
-        + revokeAdmission(BuyerReference) void
-        + isAdmitted(BuyerReference) boolean
-        + expireTokens() void
-        + getOpenSlots() int
-        + positionOf(BuyerReference) int
-        + consumeTokenFor(BuyerReference) void
-        + clearQueue() List~BuyerReference~
+        - List~Row~ rows
+        - int totalCapacity
+        - int availableCount
+        + createSeated(ZoneId, EventId, String, Money, List~Row~) Zone
+        + createStanding(ZoneId, EventId, String, Money, int) Zone
+        + updateName(String) void
+        + updatePrice(Money) void
+        + reserveSeat(SeatId) void
+        + releaseSeat(SeatId) void
+        + markSold(SeatId) void
+        + reserveStanding(int) void
+        + releaseStanding(int) void
+        + markSoldStanding(int) void
     }
 
 %% ══════════════════════════════════════════
-%% ENTITIES AND ENUMS
+%% ENTITIES, VALUE OBJECTS AND ENUMS
 %% ══════════════════════════════════════════
 
-    class QueueId:::idValueObject {
+    class ZoneId:::idValueObject {
         <<ID - Value Object>>
     }
 
-    class QueueEntry:::entity {
+    class Row:::entity {
         <<Entity>>
-        - BuyerReference visitorRef
-        - Instant joinedAt
-        - int position
-        + getVisitorRef() BuyerReference
-        + getPosition() int
+        - String rowLabel
+        - List~Seat~ seats
     }
 
-    class AdmissionToken:::entity {
+    class Seat:::entity {
         <<Entity>>
-        - BuyerReference buyerRef
-        - Instant expiresAt
-        - boolean consumed
-        + isExpired() boolean
-        + markConsumed() void
-        + isConsumed() boolean
-        + getBuyerRef() BuyerReference
+        - SeatId seatId
+        - String rowLabel
+        - int seatNumber
+        - SeatStatus status
+        + reserve() void
+        + release() void
+        + markSold() void
     }
 
-    class QueueStatus:::enum {
+    class SeatId:::idValueObject {
+        <<ID - Value Object>>
+    }
+
+    class ZoneType:::enum {
         <<enumeration>>
-        INACTIVE
-        ACTIVE
-        DRAINING
+        SEATED
+        STANDING
+    }
+
+    class SeatStatus:::enum {
+        <<enumeration>>
+        AVAILABLE
+        RESERVED
+        SOLD
     }
 
 %% ══════════════════════════════════════════
 %% CORE DOMAIN RELATIONS
 %% ══════════════════════════════════════════
 
-    VirtualQueue "1" *-- "1" QueueId
-    VirtualQueue "1" *-- "0..n" QueueEntry : waiting entries
-    VirtualQueue "1" *-- "0..n" AdmissionToken : admitted tokens
-    VirtualQueue --> QueueStatus
+    Zone "1" *-- "1" ZoneId
+    Zone "1" *-- "0..n" Row
+    Zone --> ZoneType
 
-    QueueEntry ..> BuyerReference : waiting buyer
-    AdmissionToken ..> BuyerReference : admitted buyer
-    VirtualQueue ..> BuyerReference : queue actions
+    Row "1" *-- "1..n" Seat
+    Seat "1" *-- "1" SeatId
+    Seat --> SeatStatus
 
 %% ══════════════════════════════════════════
 %% EXTERNAL DOMAIN REFERENCES
 %% ══════════════════════════════════════════
 
-    namespace Domain_Order {
-        class BuyerReference:::external
-    }
-
     namespace Domain_Event {
         class EventId:::external
     }
 
+    namespace Domain_Shared {
+        class Money:::external
+    }
+
+%% External relations:
+    Zone --> EventId : parent event id
+    Zone --> Money : ticket price
+
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
-%% Included to show how VirtualQueue aggregates are stored and loaded.
+%% Included to show how Zone aggregates are stored and loaded.
 %% ══════════════════════════════════════════
 
     namespace Infrastructure_Persistence {
-        class VirtualQueueRepository:::repository
+        class ZoneRepository:::repository
     }
 
-    class VirtualQueueRepository {
+    class ZoneRepository {
         <<Repository>>
-        - ConcurrentMap~String, VirtualQueue~ store
+        - Map~String, Zone~ store
+        - ConcurrentHashMap~String, ReentrantLock~ zoneLocks
     }
 
-    VirtualQueueRepository ..> VirtualQueue : manages persistance
-    VirtualQueue ..> EventId : Queue for Event tickets
+    ZoneRepository ..> Zone : manages persisence
 
 %% ══════════════════════════════════════════
 %% STYLING

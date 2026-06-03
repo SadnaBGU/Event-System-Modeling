@@ -43,6 +43,7 @@ classDiagram
         + cancel() void
         + suspend(Instant, Duration, String) void
         + unsuspend() void
+        + refreshSuspensionStatusAt(Instant) boolean
         + isSuspendedAt(Instant) boolean
     }
 
@@ -142,7 +143,7 @@ classDiagram
         - ConcurrentMap~String, MemberId~ idByUsername
     }
 
-    MemberRepository ..> Member : manages persistance
+    MemberRepository ..> Member : manages persistence
 
 %% ══════════════════════════════════════════
 %% STYLING

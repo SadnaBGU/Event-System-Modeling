@@ -2,7 +2,7 @@ classDiagram
     direction TB
 
 %% ══════════════════════════════════════════
-%% Purchase Record domain:
+%% Purchase Record model:
 %% Updated PurchaseRecord design for current code
 %% ══════════════════════════════════════════
 
@@ -23,8 +23,8 @@ classDiagram
 %% No mutating domain methods: all data is snapshotted at creation.
 %% ══════════════════════════════════════════
 
-    class PurchaseRecord:::aggregate {
-        <<Aggregate Root>>
+    class PurchaseRecord:::record {
+        <<Record>>
         - PurchaseRecordId recordId
         - MemberId buyerId
         - BuyerSnapshot buyerSnapshot
@@ -33,9 +33,9 @@ classDiagram
         - Money totalPaid
         - List~DiscountSnapshot~ discountsApplied
         - Instant purchaseTimestamp
-        - PaymentConfirmationId paymentConfirmationId
-        - TicketIssuanceConfirmationId ticketIssuanceConfirmationId
-        + create(MemberId, BuyerSnapshot, EventSnapshot, List~PurchasedItem~, Money, List~DiscountSnapshot~, PaymentConfirmationId, TicketIssuanceConfirmationId) PurchaseRecord
+        - String paymentConfirmationId
+        - String ticketIssuanceConfirmationId
+        + create(MemberId, BuyerSnapshot, EventSnapshot, List~PurchasedItem~, Money, List~DiscountSnapshot~, String, String) PurchaseRecord
     }
 
 %% ══════════════════════════════════════════
@@ -101,26 +101,16 @@ classDiagram
         class Money:::external
     }
 
-    namespace Domain_Payment {
-        class PaymentConfirmationId:::external
-    }
-
-    namespace Domain_TicketSupply {
-        class TicketIssuanceConfirmationId:::external
-    }
-
 %% External relations:
-    PurchaseRecord ..> MemberId : buyer id
-    PurchaseRecord ..> Money : total paid
-    PurchaseRecord ..> PaymentConfirmationId : payment confirmation
-    PurchaseRecord ..> TicketIssuanceConfirmationId : ticket issuance confirmation
+    PurchaseRecord --> MemberId : buyer id
+    PurchaseRecord --> Money : total paid
 
-    PurchasedItem ..> SeatId : seat id
-    PurchasedItem ..> Money : price at purchase
+    PurchasedItem --> SeatId : seat id
+    PurchasedItem --> Money : price at purchase
 
-    EventSnapshot ..> EventId : event id
+    EventSnapshot --> EventId : event id
 
-    DiscountSnapshot ..> Money : discount amount
+    DiscountSnapshot --> Money : discount amount
 
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
@@ -142,7 +132,7 @@ classDiagram
 %% STYLING
 %% ══════════════════════════════════════════
 
-    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef record fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
     classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000

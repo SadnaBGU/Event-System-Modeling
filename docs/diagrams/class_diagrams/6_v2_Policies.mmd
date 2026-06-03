@@ -4,29 +4,25 @@ classDiagram
 %% ══════════════════════════════════════════
 %% Policy domain:
 %% Updated Policy Domain design for V2
-%% Minimal domain style - no getters/setters, no application services
+%% Minimal domain style - no basic getters/setters, no application services
+%% Package organization is documented in package-info.java files.
+%% This diagram keeps one conceptual namespace for the Policy bounded context.
 %% ══════════════════════════════════════════
 
     namespace Domain_Policy {
 
         class PurchasePolicy
-        class PurchasePolicyId
-
 
         class DiscountPolicy
-        class Discount
-        class PurchaseContext
-
-        class DiscountSummary
-
-
-        class PolicyValidationResult
-        class PolicyScope
-
-        class PolicyBuilder
-        class PolicyConflictDetector
-        
         class DiscountPolicyId
+        class Discount
+        class DiscountInfo
+        class DiscountSummary
+        class DiscountVisibility
+        class PolicyValidationResult
+
+        class PolicyScope
+        class PurchaseContext
 
         class IPolicy
         class IBasicPolicy
@@ -35,6 +31,9 @@ classDiagram
         class ConcreteCompositePolicy
         class PolicyType
 
+        class PolicyBuilder
+        class PolicyConflictDetector
+        class PurchasePolicyId
 
     }
 
@@ -54,7 +53,8 @@ classDiagram
         + evaluate(PurchaseContext) PolicyValidationResult
         + requirePurchasePolicy(PurchaseContext) void
         + isPurchaseAllowedInContext(PurchaseContext) boolean
-        + setNameTo(String) void
+        + isActive() boolean
+        + isActiveForEvent(EventId) boolean
         + setScopeTo(PolicyScope) void
         + setCompanyWide() void
         + deactivateCompanyWide() void
@@ -65,7 +65,8 @@ classDiagram
 %% ══════════════════════════════════════════
 %% AGGREGATE DiscountPolicy:
 %% Defines percentage-based discounts for company/event scope.
-%% Supports MAX mode or SUM/stacking mode.
+%% Supports visible/hidden discounts, expiration dates, coupon discounts,
+%% and MAX mode or SUM/stacking mode.
 %% ══════════════════════════════════════════
 
     class DiscountPolicy:::aggregate {
@@ -83,12 +84,16 @@ classDiagram
         + deactivateCompanyWide() void
         + activateForEvent(EventId) void
         + deactivateForEvent(EventId) void
-        + clearAllEventsFromScope() void
         + allowStacking() void
         + disallowStacking() void
         + addDiscount(Discount) void
         + appliesTo(PurchaseContext) boolean
+        + applicableDiscounts(PurchaseContext) List~Discount~
+        + visibleDiscounts(LocalDate) List~Discount~
+        + expiredDiscounts() List~Discount~
+        + getDiscountInfos() List~DiscountInfo~
         + isPurchaseEligibleForDiscount(PurchaseContext) boolean
+        + evaluateIfDiscountApplyForPurchase(PurchaseContext) PolicyValidationResult
         + getFullDiscountSummary(PurchaseContext, Money) DiscountSummary
         + getFullDiscountPercent(PurchaseContext) BigDecimal
         + generateDiscountSnapshot(PurchaseContext, Money) DiscountSnapshot
@@ -96,7 +101,7 @@ classDiagram
     }
 
 %% ══════════════════════════════════════════
-%% VALUE OBJECTS / ENTITIES
+%% VALUE OBJECTS
 %% ══════════════════════════════════════════
 
     class PurchasePolicyId:::idValueObject {
@@ -112,8 +117,6 @@ classDiagram
         - boolean companyWide
         - Set~EventId~ eventIds
         + appliesTo(EventId) boolean
-        + isCompanyWide() boolean
-        + isRelatedToEvents() boolean
         + isScopedToEventsOrCompany() boolean
     }
 
@@ -126,28 +129,37 @@ classDiagram
         - LocalDate purchaseDate
         - String discountCode
         + ticketCount() int
-        + withCode(String) PurchaseContext
-        + withPurchaseDate(LocalDate) PurchaseContext
-        + fromPurchaseInfo(...) PurchaseContext
     }
 
     class PolicyValidationResult:::valueObject {
         <<Value Object>>
         - boolean valid
         - String reason
-        + success() PolicyValidationResult
-        + failure(String) PolicyValidationResult
+        + isSuccess() boolean
         + failureReason() Optional~String~
     }
 
-    class Discount:::entity {
-        <<Entity>>
+    class Discount:::valueObject {
+        <<Value Object>>
         - String discountName
         - BigDecimal discountPercent
         - IPolicy discountPolicy
+        - DiscountVisibility visibility
+        - LocalDate endDate
         + validateDiscount(PurchaseContext) boolean
-        + getValidDiscountAmount(PurchaseContext) BigDecimal
-        + GeneralDiscount(String, BigDecimal) Discount
+        + evaluateDiscount(PurchaseContext) PolicyValidationResult
+        + getDiscountPercentForContext(PurchaseContext) BigDecimal
+        + isVisible() boolean
+        + isExpired(LocalDate) boolean
+        + info() DiscountInfo
+    }
+
+    class DiscountInfo:::valueObject {
+        <<Value Object>>
+        - String discountName
+        - BigDecimal discountPercent
+        - LocalDate endDate
+        + amountOffWithDiscount(BigDecimal) BigDecimal
     }
 
     class DiscountSummary:::valueObject {
@@ -156,14 +168,17 @@ classDiagram
         - List~BigDecimal~ appliedDiscountsPercents
         - List~BigDecimal~ actualDiscountAmount
         - BigDecimal totalDiscount
-        + getSpecificDiscountInfo(int) String
-        + getSpecificDiscountInfo(String) String
+        - boolean cappedAt100Percent
         + isDiscountCappedAt100() boolean
-        + NoDiscountSummary() DiscountSummary
-        + ReplaceActualAmounts(List~BigDecimal~, BigDecimal) DiscountSummary
     }
 
-    class PolicyType:::valueObject {
+    class DiscountVisibility:::enum {
+        <<Enum>>
+        VISIBLE
+        HIDDEN
+    }
+
+    class PolicyType:::enum {
         <<Enum>>
         ALWAYS_TRUE
         NEVER_ALLOW
@@ -173,12 +188,15 @@ classDiagram
         AFTER_DATE
         UNTIL_DATE
         CODE
-        NO_SINGLE_EMPTY_SEAT
         AND
         OR
         ZONE_SPECIFIC_0_PASS
         ZONE_SPECIFIC_0_FAIL
         UNKNOWN
+        + isTicketQuantityRule() boolean
+        + isCompositeRule() boolean
+        + isCouponRule() boolean
+        + isDateRule() boolean
     }
 
 %% ══════════════════════════════════════════
@@ -217,7 +235,6 @@ classDiagram
         AfterDatePolicy
         UntilDatePolicy
         CodePolicy
-        NoSingleEmptySeatPolicy
     }
 
     class ConcreteCompositePolicy:::implementation {
@@ -226,6 +243,10 @@ classDiagram
         OrPolicy
         ZoneSpecificPolicy
     }
+
+%% ══════════════════════════════════════════
+%% ROOT POLICY HELPERS
+%% ══════════════════════════════════════════
 
     class PolicyBuilder:::factory {
         <<Factory>>
@@ -243,10 +264,12 @@ classDiagram
         + or(IPolicy...) IPolicy
         + PolicyRestrictToZones(Set~ZoneId~, IPolicy) IPolicy
         + PolicyRequireFromZones(Set~ZoneId~, IPolicy) IPolicy
+        + PolicyRestrictToZones(Set~ZoneId~, List~IPolicy~) IPolicy
+        + PolicyRequireFromZones(Set~ZoneId~, List~IPolicy~) IPolicy
     }
 
-    class PolicyConflictDetector:::utility {
-        <<Domain Utility>>
+    class PolicyConflictDetector:::domainService {
+        <<Domain Service>>
         + detectInnerConflicts(IPolicy) PolicyValidationResult
         + detectConflictBetween(IPolicy, IPolicy) PolicyValidationResult
         + requireValidPolicy(IPolicy) void
@@ -259,25 +282,31 @@ classDiagram
 
     PurchasePolicy "1" *-- "1" PurchasePolicyId
     PurchasePolicy "1" *-- "1" PolicyScope
-    PurchasePolicy "1" -->"1" IPolicy : purchase condition (strategy)
-    PurchasePolicy ..> PurchaseContext
-    PurchasePolicy ..> PolicyValidationResult
-    PurchasePolicy ..> PolicyConflictDetector
+    PurchasePolicy "1" --> "1" IPolicy : purchase condition
+    PurchasePolicy ..> PurchaseContext : evaluates
+    PurchasePolicy ..> PolicyValidationResult : returns
+    PurchasePolicy ..> PolicyConflictDetector : validates rule tree
 
     DiscountPolicy "1" *-- "1" DiscountPolicyId
     DiscountPolicy "1" *-- "1" PolicyScope
     DiscountPolicy "1" *-- "0..n" Discount
-    DiscountPolicy ..> PurchaseContext
-    DiscountPolicy ..> DiscountSummary
-    DiscountPolicy ..> DiscountSnapshot
-    DiscountPolicy ..> Money
-    DiscountPolicy ..> PolicyConflictDetector
+    DiscountPolicy ..> PurchaseContext : evaluates
+    DiscountPolicy ..> PolicyValidationResult : returns
+    DiscountPolicy ..> DiscountSummary : calculates
+    DiscountPolicy ..> DiscountInfo : exposes info
+    DiscountPolicy ..> DiscountSnapshot : creates for receipt
+    DiscountPolicy --> Money : calculates amount
 
-    Discount "1" --> "1" IPolicy : discount condition (strategy)
-    Discount ..> PurchaseContext
+    Discount "1" --> "1" IPolicy : discount condition
+    Discount "1" --> "1" DiscountVisibility : visibility
+    Discount ..> PurchaseContext : evaluates
+    Discount ..> PolicyValidationResult : returns
+    Discount ..> DiscountInfo : exposes info
+    Discount ..> PolicyConflictDetector : validates rule tree
 
     PolicyBuilder "1" o-- "0..n" IPolicy
     PolicyBuilder ..> IPolicy : builds
+    PolicyBuilder --> ZoneId : zone-specific rules
 
     PolicyConflictDetector ..> IPolicy
     PolicyConflictDetector ..> ICompositePolicy
@@ -293,7 +322,7 @@ classDiagram
 
     IBasicPolicy <|.. ConcreteBasicPolicy
 
-    ICompositePolicy "1" o-- "1..n" IPolicy : children(composition)
+    ICompositePolicy "1" o-- "1..n" IPolicy : children
     ICompositePolicy <|.. ConcreteCompositePolicy
 
 %% ══════════════════════════════════════════
@@ -330,10 +359,9 @@ classDiagram
     PurchaseContext --> EventId : event of purchase
     PurchaseContext --> ZoneId : ticket zones
 
-    PolicyBuilder ..> ZoneId : zone-specific rules
-
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORIES
+%% Repositories are shown only as persistence boundary, not as domain logic.
 %% ══════════════════════════════════════════
 
     namespace Persistence_Boundary {
@@ -357,12 +385,12 @@ classDiagram
 %% ══════════════════════════════════════════
 
     classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
-    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
     classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef interface fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
     classDef factory fill:#fff3bf,stroke:#f08c00,stroke-width:1px,color:#000
-    classDef utility fill:#f8f0fc,stroke:#ae3ec9,stroke-width:1px,color:#000
+    classDef domainService fill:#f8f0fc,stroke:#ae3ec9,stroke-width:1px,color:#000
     classDef implementation fill:#f8f9fa,stroke:#868e96,stroke-width:1px,color:#000
     classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
     classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000

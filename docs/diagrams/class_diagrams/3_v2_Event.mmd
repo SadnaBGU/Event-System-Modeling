@@ -2,66 +2,115 @@ classDiagram
     direction TB
 
 %% ══════════════════════════════════════════
-%% Venue domain:
-%% Updated Venue design for current code
+%% Event domain:
+%% Updated Event design for current code
 %% ══════════════════════════════════════════
 
-    namespace Domain_Venue {
+    namespace Domain_Event {
 
-        class Venue
-        class VenueId
-        class VenueZone
+        class Event
+        class EventId
+        class EventDetails
+        class VenueMap
+        class MapElement
+        class EventStatus
+        class SalesMethod
 
     }
 
 %% ══════════════════════════════════════════
-%% AGGREGATE Venue:
-%% Company-owned reusable venue definition.
-%% Contains venue zones and exposes aggregate-level capacity information.
+%% AGGREGATE Event:
+%% Event lifecycle, details, venue map, sales method, and ZoneId membership.
+%% Zone inventory is managed by the separate Zone aggregate/domain.
 %% ══════════════════════════════════════════
 
-    class Venue:::aggregate {
+    class Event:::aggregate {
         <<Aggregate Root>>
-        - VenueId venueId
+        - EventId eventId
         - CompanyId companyId
-        - String venueName
-        - List~VenueZone~ zones
-        + addZone(VenueZone) void
+        - EventDetails details
+        - VenueMap venueMap
+        - EventStatus status
+        - Set~ZoneId~ zones
+        - SalesMethod salesMethod
+        + createDraft(CompanyId, EventDetails, VenueMap) Event
+        + updateDetails(EventDetails) void
+        + updateVenueMap(VenueMap) void
+        + addZone(ZoneId) void
         + removeZone(ZoneId) void
-        + getZone(ZoneId) VenueZone
-        + getTotalCapacity() int
-        + getTotalAvailableSeats() int
-        + getTotalReservedSeats() int
-        + getTotalSoldSeats() int
+        + requireZoneBelongsToEvent(ZoneId) void
+        + requirePurchasable() void
+        + publish() void
+        + cancel() void
+        + over() void
+        + markSoldOut() void
+        + setSalesMethod(SalesMethod) void
+        + isPurchasable() boolean
     }
 
 %% ══════════════════════════════════════════
-%% VALUE OBJECTS AND ENTITIES
+%% VALUE OBJECTS AND ENUMS
 %% ══════════════════════════════════════════
 
-    class VenueId:::idValueObject {
+    class EventId:::idValueObject {
         <<ID - Value Object>>
     }
 
-    class VenueZone:::entity {
-        <<Entity>>
-        - ZoneId zoneId
-        - String zoneName
-        - ZoneType zoneType
-        - Money pricePerTicket
-        - List~Seat~ seats
-        - int totalCapacity
-        + reserveSeat(SeatId) void
-        + releaseSeat(SeatId) void
-        + markSeatSold(SeatId) void
+    class EventDetails:::valueObject {
+        <<Value Object>>
+        - String name
+        - List~LocalDateTime~ dates
+        - String category
+        - String location
+        - String description
+    }
+
+    class VenueMap:::valueObject {
+        <<Value Object>>
+        - List~MapElement~ mapElements
+        + empty() VenueMap
+        + addElement(MapElement) VenueMap
+        + removeElement(MapElement) VenueMap
+    }
+
+    class MapElement:::valueObject {
+        <<Value Object>>
+        - String elementType
+        - String label
+        - int positionX
+        - int positionY
+        - ZoneId linkedZoneId
+    }
+
+    class EventStatus:::enum {
+        <<enumeration>>
+        DRAFT
+        PUBLISHED
+        SOLD_OUT
+        CANCELLED
+        OVER
+    }
+
+    class SalesMethod:::enum {
+        <<enumeration>>
+        REGULAR
+        VIRTUAL_QUEUE
+        LOTTERY
     }
 
 %% ══════════════════════════════════════════
 %% CORE DOMAIN RELATIONS
 %% ══════════════════════════════════════════
 
-    Venue "1" *-- "1" VenueId
-    Venue "1" *-- "0..n" VenueZone
+    Event "1" *-- "1" EventId
+    Event "1" *-- "1" EventDetails
+    Event "1" *-- "1" VenueMap
+    Event "1"-->"0..n" ZoneId : zones in Event
+    Event --> EventStatus
+    Event --> SalesMethod
+
+    VenueMap "1" *-- "0..n" MapElement
+    MapElement ..> ZoneId : linked zone
 
 %% ══════════════════════════════════════════
 %% EXTERNAL DOMAIN REFERENCES
@@ -73,50 +122,33 @@ classDiagram
 
     namespace Domain_Zone {
         class ZoneId:::external
-        class Seat:::external
-        class SeatId:::external
-        class ZoneType:::enum
-        class SeatStatus:::enum
-    }
-
-    namespace Domain_Shared {
-        class Money:::external
     }
 
 %% External relations:
-    Venue ..> CompanyId : owner company id
+    Event --> CompanyId : owner company id
 
-    VenueZone ..> ZoneId : zone id
-    VenueZone ..> ZoneType : zone type
-    VenueZone ..> Seat : seats
-    VenueZone ..> SeatId : seat id
-    VenueZone ..> Money : ticket price
-
-    Seat ..> SeatStatus : seat lifecycle
 
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
-%% Included to show how Venue aggregates are stored and loaded.
+%% Included to show how Event aggregates are stored and loaded.
 %% ══════════════════════════════════════════
 
     namespace Infrastructure_Persistence {
-        class VenueRepository:::repository
+        class EventRepository:::repository
     }
 
-    class VenueRepository {
+    class EventRepository {
         <<Repository>>
-        - ConcurrentHashMap~VenueId, Venue~ venues
-        - ConcurrentHashMap~CompanyId, List~VenueId~~ companyVenues
+        - ConcurrentMap~EventId, Event~ events
     }
 
-    VenueRepository ..> Venue : manages persistence
+    EventRepository ..> Event : manages persistence
 
 %% ══════════════════════════════════════════
 %% STYLING
 %% ══════════════════════════════════════════
 
     classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
-    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
     classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000

@@ -2,102 +2,105 @@ classDiagram
     direction TB
 
 %% ══════════════════════════════════════════
-%% Zone domain:
-%% Updated Zone design for current code
+%% Active Order domain:
+%% Updated ActiveOrder design for current code
 %% ══════════════════════════════════════════
 
-    namespace Domain_Zone {
+    namespace Domain_Order {
 
-        class Zone
-        class ZoneId
-        class Row
-        class Seat
-        class SeatId
-        class ZoneType
-        class SeatStatus
+        class ActiveOrder
+        class OrderId
+        class OrderItem
+        class BuyerReference
+        class OrderStatus
+        class BuyerType
+        class OrderFactory
 
     }
 
 %% ══════════════════════════════════════════
-%% AGGREGATE Zone:
-%% Separate inventory aggregate for seated or standing ticket availability.
-%% Handles reservation, release, and sale state transitions.
+%% AGGREGATE ActiveOrder:
+%% Temporary buyer-owned reservation for a single event.
+%% Checkout converts it to a completed purchase; expiration/cancel releases items.
 %% ══════════════════════════════════════════
 
-    class Zone:::aggregate {
+    class ActiveOrder:::aggregate {
         <<Aggregate Root>>
-        - ZoneId zoneId
+        - OrderId orderId
+        - BuyerReference buyerRef
         - EventId eventId
-        - String zoneName
-        - ZoneType zoneType
-        - Money pricePerTicket
+        - List~OrderItem~ items
+        - Instant reservationExpiry
+        - OrderStatus status
         - long version
-        - List~Row~ rows
-        - int totalCapacity
-        - int availableCount
-        + createSeated(ZoneId, EventId, String, Money, List~Row~) Zone
-        + createStanding(ZoneId, EventId, String, Money, int) Zone
-        + reserveSeat(SeatId) void
-        + releaseSeat(SeatId) void
-        + markSold(SeatId) void
-        + reserveStanding(int) void
-        + releaseStanding(int) void
-        + markSoldStanding(int) void
+        + addItem(OrderItem) void
+        + removeItem(ZoneId, SeatId) void
+        + checkout() void
+        + expire() List~OrderItem~
+        + cancel() List~OrderItem~
+        + isExpired() boolean
+        + calculateBaseTotal() Money
     }
 
 %% ══════════════════════════════════════════
 %% ENTITIES, VALUE OBJECTS AND ENUMS
 %% ══════════════════════════════════════════
 
-    class ZoneId:::idValueObject {
+    class OrderId:::idValueObject {
         <<ID - Value Object>>
     }
 
-    class Row:::entity {
+    class OrderItem:::entity {
         <<Entity>>
-        - String rowLabel
-        - List~Seat~ seats
-    }
-
-    class Seat:::entity {
-        <<Entity>>
+        - ZoneId zoneId
         - SeatId seatId
-        - String rowLabel
-        - int seatNumber
-        - SeatStatus status
-        + reserve() void
-        + release() void
-        + markSold() void
+        - int quantity
+        - Money unitPrice
+        + getZoneId() ZoneId
+        + getSeatId() SeatId
+        + getQuantity() int
+        + getUnitPrice() Money
     }
 
-    class SeatId:::idValueObject {
-        <<ID - Value Object>>
+    class BuyerReference:::valueObject {
+        <<Value Object>>
+        - BuyerType type
+        - SessionId sessionId
+        - MemberId memberId
     }
 
-    class ZoneType:::enum {
+    class OrderStatus:::enum {
         <<enumeration>>
-        SEATED
-        STANDING
+        ACTIVE
+        CHECKED_OUT
+        EXPIRED
+        CANCELLED
     }
 
-    class SeatStatus:::enum {
+    class BuyerType:::enum {
         <<enumeration>>
-        AVAILABLE
-        RESERVED
-        SOLD
+        GUEST
+        MEMBER
+    }
+
+    class OrderFactory:::factory {
+        <<Factory>>
+        + createOrder(BuyerReference, EventId, Instant) ActiveOrder
     }
 
 %% ══════════════════════════════════════════
 %% CORE DOMAIN RELATIONS
 %% ══════════════════════════════════════════
 
-    Zone "1" *-- "1" ZoneId
-    Zone "1" *-- "0..n" Row
-    Zone --> ZoneType
+    ActiveOrder "1" *-- "1" OrderId
+    ActiveOrder "1" *-- "1" BuyerReference
+    ActiveOrder "1" *-- "0..n" OrderItem
+    ActiveOrder --> OrderStatus
 
-    Row "1" *-- "1..n" Seat
-    Seat "1" *-- "1" SeatId
-    Seat --> SeatStatus
+    BuyerReference --> BuyerType
+
+    OrderFactory ..> ActiveOrder : creates
+    OrderFactory ..> BuyerReference
 
 %% ══════════════════════════════════════════
 %% EXTERNAL DOMAIN REFERENCES
@@ -107,30 +110,47 @@ classDiagram
         class EventId:::external
     }
 
+    namespace Domain_Event {
+        class ZoneId:::external
+        class SeatId:::external
+    }
+
+    namespace Domain_Member {
+        class MemberId:::external
+    }
+
+    namespace Domain_Session {
+        class SessionId:::external
+    }
+
     namespace Domain_Shared {
         class Money:::external
     }
 
 %% External relations:
-    Zone ..> EventId : parent event id
-    Zone ..> Money : ticket price
+    ActiveOrder --> EventId : reserved event
+    OrderItem --> ZoneId : zone id
+    OrderItem --> SeatId : seat id
+    OrderItem --> Money : unit price
+    BuyerReference --> SessionId : guest session
+    BuyerReference --> MemberId : member id
+    ActiveOrder --> Money : base total
 
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
-%% Included to show how Zone aggregates are stored and loaded.
+%% Included to show how active orders are stored and loaded.
 %% ══════════════════════════════════════════
 
     namespace Infrastructure_Persistence {
-        class ZoneRepository:::repository
+        class ActiveOrderRepository:::repository
     }
 
-    class ZoneRepository {
+    class ActiveOrderRepository {
         <<Repository>>
-        - Map~String, Zone~ store
-        - ConcurrentHashMap~String, ReentrantLock~ zoneLocks
+        - Map~OrderId, ActiveOrder~ store
     }
 
-    ZoneRepository ..> Zone : manages persistance
+    ActiveOrderRepository ..> ActiveOrder : manages persistence
 
 %% ══════════════════════════════════════════
 %% STYLING
@@ -141,6 +161,7 @@ classDiagram
     classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef factory fill:#fff3bf,stroke:#f08c00,stroke-width:1px,color:#000
     classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
     classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
     classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000

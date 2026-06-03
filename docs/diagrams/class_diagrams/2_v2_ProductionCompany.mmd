@@ -153,10 +153,10 @@ classDiagram
     }
 
 %% External relations:
-    ProductionCompany ..> MemberId : founder id
-    AppointmentTree ..> MemberId : member identities
-    OwnerNode ..> MemberId : owner identity
-    ManagerNode ..> MemberId : manager identity
+    ProductionCompany --> MemberId : founder id
+    AppointmentTree --> MemberId : member identities
+    OwnerNode --> MemberId : owner identity
+    ManagerNode --> MemberId : manager identity
 
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS

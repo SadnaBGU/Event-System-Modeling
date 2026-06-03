@@ -2,125 +2,81 @@ classDiagram
     direction TB
 
 %% ══════════════════════════════════════════
-%% Active Order domain:
-%% Updated ActiveOrder design for current code
+%% Venue domain:
+%% Updated Venue design for current code
 %% ══════════════════════════════════════════
 
-    namespace Domain_Order {
+    namespace Domain_Venue {
 
-        class ActiveOrder
-        class OrderId
-        class OrderItem
-        class BuyerReference
-        class OrderStatus
-        class BuyerType
-        class OrderFactory
+        class Venue
+        class VenueId
+        class VenueZone
 
     }
 
 %% ══════════════════════════════════════════
-%% AGGREGATE ActiveOrder:
-%% Temporary buyer-owned reservation for a single event.
-%% Checkout converts it to a completed purchase; expiration/cancel releases items.
+%% AGGREGATE Venue:
+%% Company-owned reusable venue definition.
+%% Contains venue and exposes aggregate-level capacity information.
 %% ══════════════════════════════════════════
 
-    class ActiveOrder:::aggregate {
+    class Venue:::aggregate {
         <<Aggregate Root>>
-        - OrderId orderId
-        - BuyerReference buyerRef
-        - EventId eventId
-        - List~OrderItem~ items
-        - Instant reservationExpiry
-        - OrderStatus status
-        - long version
-        + addItem(OrderItem) void
-        + removeItem(ZoneId, SeatId) void
-        + checkout() void
-        + expire() List~OrderItem~
-        + cancel() List~OrderItem~
-        + isExpired() boolean
-        + calculateBaseTotal() Money
+        - VenueId venueId
+        - CompanyId companyId
+        - String venueName
+        - List~VenueZone~ zones
+        + addZone(VenueZone) void
+        + removeZone(ZoneId) void
+        + getZone(ZoneId) VenueZone
+        + getTotalCapacity() int
+        + getTotalAvailableSeats() int
+        + getTotalReservedSeats() int
+        + getTotalSoldSeats() int
     }
 
 %% ══════════════════════════════════════════
-%% ENTITIES, VALUE OBJECTS AND ENUMS
+%% VALUE OBJECTS AND ENTITIES
 %% ══════════════════════════════════════════
 
-    class OrderId:::idValueObject {
+    class VenueId:::idValueObject {
         <<ID - Value Object>>
     }
 
-    class OrderItem:::entity {
+    class VenueZone:::entity {
         <<Entity>>
         - ZoneId zoneId
-        - SeatId seatId
-        - int quantity
-        - Money unitPrice
-        + getZoneId() ZoneId
-        + getSeatId() SeatId
-        + getQuantity() int
-        + getUnitPrice() Money
-    }
-
-    class BuyerReference:::valueObject {
-        <<Value Object>>
-        - BuyerType type
-        - SessionId sessionId
-        - MemberId memberId
-    }
-
-    class OrderStatus:::enum {
-        <<enumeration>>
-        ACTIVE
-        CHECKED_OUT
-        EXPIRED
-        CANCELLED
-    }
-
-    class BuyerType:::enum {
-        <<enumeration>>
-        GUEST
-        MEMBER
-    }
-
-    class OrderFactory:::factory {
-        <<Factory>>
-        + createOrder(BuyerReference, EventId, Instant) ActiveOrder
+        - String zoneName
+        - ZoneType zoneType
+        - Money pricePerTicket
+        - List~Seat~ seats
+        - int totalCapacity
+        + reserveSeat(SeatId) void
+        + releaseSeat(SeatId) void
+        + markSeatSold(SeatId) void
     }
 
 %% ══════════════════════════════════════════
 %% CORE DOMAIN RELATIONS
 %% ══════════════════════════════════════════
 
-    ActiveOrder "1" *-- "1" OrderId
-    ActiveOrder "1" *-- "1" BuyerReference
-    ActiveOrder "1" *-- "0..n" OrderItem
-    ActiveOrder --> OrderStatus
-
-    BuyerReference --> BuyerType
-
-    OrderFactory ..> ActiveOrder : creates
-    OrderFactory ..> BuyerReference
+    Venue "1" *-- "1" VenueId
+    Venue "1" *-- "0..n" VenueZone
 
 %% ══════════════════════════════════════════
 %% EXTERNAL DOMAIN REFERENCES
 %% ══════════════════════════════════════════
 
-    namespace Domain_Event {
-        class EventId:::external
+    namespace Domain_Company {
+        class CompanyId:::external
     }
 
-    namespace Domain_Event {
+    namespace Domain_Zone {
         class ZoneId:::external
+        class Seat:::external
         class SeatId:::external
-    }
-
-    namespace Domain_Member {
-        class MemberId:::external
-    }
-
-    namespace Domain_Session {
-        class SessionId:::external
+        class ZoneType:::enum
+        class SeatStatus:::enum
     }
 
     namespace Domain_Shared {
@@ -128,29 +84,30 @@ classDiagram
     }
 
 %% External relations:
-    ActiveOrder ..> EventId : reserved event
-    OrderItem ..> ZoneId : zone id
-    OrderItem ..> SeatId : seat id
-    OrderItem ..> Money : unit price
-    BuyerReference ..> SessionId : guest session
-    BuyerReference ..> MemberId : member id
-    ActiveOrder ..> Money : base total
+    Venue --> CompanyId : owner company id
+
+    VenueZone --> ZoneId : zone id
+    VenueZone --> ZoneType : zone type
+    VenueZone --> Seat : seats
+    VenueZone --> SeatId : seat id
+    VenueZone --> Money : ticket price
 
 %% ══════════════════════════════════════════
 %% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
-%% Included to show how active orders are stored and loaded.
+%% Included to show how Venue aggregates are stored and loaded.
 %% ══════════════════════════════════════════
 
     namespace Infrastructure_Persistence {
-        class ActiveOrderRepository:::repository
+        class VenueRepository:::repository
     }
 
-    class ActiveOrderRepository {
+    class VenueRepository {
         <<Repository>>
-        - Map~OrderId, ActiveOrder~ store
+        - ConcurrentHashMap~VenueId, Venue~ venues
+        - ConcurrentHashMap~CompanyId, List~VenueId~~ companyVenues
     }
 
-    ActiveOrderRepository ..> ActiveOrder : manages persistence
+    VenueRepository ..> Venue : manages persistence
 
 %% ══════════════════════════════════════════
 %% STYLING
@@ -161,7 +118,6 @@ classDiagram
     classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
     classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
     classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
-    classDef factory fill:#fff3bf,stroke:#f08c00,stroke-width:1px,color:#000
     classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
     classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
     classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000
