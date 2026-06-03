@@ -3,8 +3,8 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.application.policy.IDiscountPolicyRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.DiscountPolicy;
-import com.eventsystem.domain.policy.DiscountPolicyId;
+import com.eventsystem.domain.policy.discount.DiscountPolicy;
+import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +41,16 @@ public class InMemoryDiscountPolicyRepository implements IDiscountPolicyReposito
                 .filter(DiscountPolicy::isActive)
                 .toList();
     }
+
+    @Override
+    public List<DiscountPolicy> findActiveWithVisibleDiscounts() {
+            return policiesById.values()
+                .stream()
+                .filter(DiscountPolicy::isActive)
+                .filter(DiscountPolicy::doesHaveVisibleDiscounts)
+                .toList();
+    }
+
 
     @Override
     public List<DiscountPolicy> findActiveByCompanyId(CompanyId companyId) {

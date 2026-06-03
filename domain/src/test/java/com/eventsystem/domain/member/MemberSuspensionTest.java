@@ -125,4 +125,19 @@ class MemberSuspensionTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new Suspension(Instant.now(), Duration.ofDays(-1), "Invalid duration"));
     }
+
+
+    // ensure status changes when after suspension time expires
+    @Test
+    void isSuspendedAt_afterTemporarySuspensionExpired_memberStatusRefreshesToActive() {
+        Instant startedAt = Instant.parse("2020-10-10T10:00:00Z");
+        Instant afterExpiry = startedAt.plus(Duration.ofHours(2));
+
+        member.suspend(startedAt, Duration.ofHours(1), "Temporary suspension");
+
+        boolean suspended = member.isSuspendedAt(afterExpiry);
+
+        assertThat(suspended).isFalse();
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+    }
 }

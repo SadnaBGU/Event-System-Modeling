@@ -1,18 +1,18 @@
 package com.eventsystem.infrastructure.api.policy;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.eventsystem.application.policy.PurchasePolicyService;
+import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.policy.IPolicy;
 import com.eventsystem.domain.policy.PolicyBuilder;
-import com.eventsystem.domain.policy.basic.CodePolicy;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinAgePolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
-import com.eventsystem.domain.policy.basic.AfterDatePolicy;
-import com.eventsystem.domain.policy.basic.UntilDatePolicy;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
+import com.eventsystem.domain.policy.rule.basic.CodePolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinAgePolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,10 +30,10 @@ import java.util.Objects;
 @RequestMapping("/api")
 public class CompanyPolicyController {
 
-    private final PurchasePolicyService purchasePolicyService;
+    private final PolicyManagementService policyManagementService;
 
-    public CompanyPolicyController(PurchasePolicyService purchasePolicyService) {
-        this.purchasePolicyService = purchasePolicyService;
+    public CompanyPolicyController(PolicyManagementService policyManagementService) {
+        this.policyManagementService = policyManagementService;
     }
 
     @PutMapping("/companies/{companyId}/policies")
@@ -41,7 +41,7 @@ public class CompanyPolicyController {
                                                  @PathVariable String companyId,
                                                  @RequestBody JsonNode requestBody) {
         IPolicy policy = parsePolicyTree(requestBody);
-        purchasePolicyService.createCompanyWidePolicy(actor, new CompanyId(companyId), "API policy", policy);
+        policyManagementService.createCompanyWidePurchasePolicy(actor, new CompanyId(companyId), "API policy", policy);
         return ResponseEntity.ok().build();
     }
 
@@ -50,7 +50,7 @@ public class CompanyPolicyController {
                                                @PathVariable String eventId,
                                                @RequestBody JsonNode requestBody) {
         IPolicy policy = parsePolicyTree(requestBody);
-        purchasePolicyService.createEventScopedPolicy(actor, new EventId(eventId), "API policy", policy);
+        policyManagementService.createEventScopedPurchasePolicy(actor, new EventId(eventId), "API policy", policy);
         return ResponseEntity.ok().build();
     }
 

@@ -2,9 +2,12 @@ package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.discount.Discount;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.zone.ZoneId;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,36 +20,37 @@ public final class PolicyTestFixtures {
     public static final ZoneId VIP_ZONE = new ZoneId("vip-zone");
     public static final ZoneId REGULAR_ZONE = new ZoneId("regular-zone");
     public static final ZoneId BALCONY_ZONE = new ZoneId("balcony-zone");
-
+    public static final LocalDate PURCHASE_DATE = LocalDate.now();
+    
     private PolicyTestFixtures() {
     }
 
     public static PurchaseContext contextWithTickets(ZoneId... zones) {
-        return context(
-                COMPANY_ID,
-                EVENT_ID,
-                LocalDate.now().minusYears(25),
-                null,
-                List.of(zones)
-        );
+        return PurchaseContext.fromPurchaseInfo(EVENT_ID, COMPANY_ID, List.of(zones), 
+                                LocalDate.now().minusYears(25));
     }
 
     public static PurchaseContext contextWithCode(String code, ZoneId... zones) {
-        return context(
-                COMPANY_ID,
-                EVENT_ID,
-                LocalDate.now().minusYears(25),
-                code,
-                List.of(zones)
-        );
+        return PurchaseContext.fromPurchaseInfo(EVENT_ID, COMPANY_ID, List.of(zones), 
+                                LocalDate.now().minusYears(25), code);
     }
 
     public static PurchaseContext contextWithBirthDate(LocalDate birthDate, ZoneId... zones) {
-        return context(COMPANY_ID, EVENT_ID, birthDate, null, List.of(zones));
+        return PurchaseContext.fromPurchaseInfo(EVENT_ID, COMPANY_ID, List.of(zones),  birthDate, null);
     }
 
     public static PurchaseContext contextForCompanyAndEvent(CompanyId companyId, EventId eventId, String code, ZoneId... zones) {
-        return context(companyId, eventId, LocalDate.now().minusYears(25), code, List.of(zones));
+        return PurchaseContext.fromPurchaseInfo(eventId, companyId,List.of(zones) ,LocalDate.now().minusYears(25), code);
+    }
+
+    public static EventSnapshot snapshot(EventId eventId) {
+        return new EventSnapshot(
+                eventId.toString(),
+                "Test Event",
+                "Test Company",
+                LocalDate.now().plusDays(30),
+                "Tel Aviv"
+        );
     }
 
     public static PurchaseContext context(
@@ -58,14 +62,8 @@ public final class PolicyTestFixtures {
     ) {
         return new PurchaseContext( eventId, companyId, zones, buyerBirthDate, discountCode);
     }
-
-    public static EventSnapshot snapshot(EventId eventId) {
-        return new EventSnapshot(
-                eventId.toString(),
-                "Test Event",
-                "Test Company",
-                LocalDate.now().plusDays(30),
-                "Tel Aviv"
-        );
+    
+    public static Discount GeneralNoExpiryDiscount(String name, BigDecimal discountPercent) {
+        return Discount.GeneralDiscount(name, discountPercent, null);
     }
 }

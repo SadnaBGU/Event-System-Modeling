@@ -51,8 +51,8 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             if(!"GET".equalsIgnoreCase(method)) {
                 Member member = memberRepository.findById(memberId)
                         .orElseThrow(() -> new MemberNotFoundException(memberId));
-
-                if (member.isSuspendedAt(Instant.now())) {
+                //added verifySuspensionAndSave(member)- check if suspension status should change, if true, save the change
+                if (verifySuspensionAndSave(member)) {
                     throw new SecurityException("Account is suspended. Access denied.");
                 }
             }
@@ -67,5 +67,14 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             // If token verification fails, throw an AuthenticationException that will be handled globally
             throw new AuthenticationException("Invalid or expired token: " + e.getMessage());
         }
+    }
+
+    private boolean verifySuspensionAndSave(Member member) {
+        Instant now = Instant.now();
+        boolean suspensionStatusChanged = member.refreshSuspensionStatusAt(now);
+        if (suspensionStatusChanged) {
+            memberRepository.save(member);
+        }
+        return member.isSuspendedAt(now);
     }
 }

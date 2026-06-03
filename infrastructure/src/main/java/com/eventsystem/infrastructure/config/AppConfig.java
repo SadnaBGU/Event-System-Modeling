@@ -33,12 +33,14 @@ import com.eventsystem.application.order.PurchaseHistoryService;
 import com.eventsystem.application.order.QueueService;
 import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.application.order.ReportService;
-import com.eventsystem.application.policy.DiscountPolicyService;
+import com.eventsystem.application.policy.DiscountApplicationService;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IDiscountPolicyRepository;
+import com.eventsystem.application.policy.IPolicyManagementPort;
 import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
-import com.eventsystem.application.policy.PurchasePolicyService;
+import com.eventsystem.application.policy.PolicyManagementService;
+import com.eventsystem.application.policy.PurchasePolicyValidationService;
 import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.venue.IVenueRepository;
@@ -179,7 +181,7 @@ public class AppConfig {
     }
 
     @Bean
-    public PolicyCommandAssembler PolicyCommandAssembler() {
+    public PolicyCommandAssembler policyCommandAssembler() {
         return new PolicyCommandAssembler();
     }
 
@@ -353,33 +355,27 @@ public class AppConfig {
     }
 
     @Bean
-    public PurchasePolicyService purchasePolicyService(IPurchasePolicyRepository purchasePolicyRepository,
-                                                       ICompanyPermissionServicePort companyPermissionServicePort,
-                                                       IEventManagementPort eventManagementPort,
-                                                       IMemberInformationPort memberInformationPort,
-                                                        PolicyCommandAssembler policyAssembler) {
-        return new PurchasePolicyService(
-                purchasePolicyRepository,
-                companyPermissionServicePort,
-                eventManagementPort,
-                memberInformationPort,
-                policyAssembler
-        );
+    public IPurchasePolicyValidationPort purchasePolicyValidationPort(IPurchasePolicyRepository purchasePolicyRepository,
+                                                                      IEventManagementPort eventManagementPort,
+                                                                      IMemberInformationPort memberInformationPort) {
+        return new PurchasePolicyValidationService(purchasePolicyRepository, eventManagementPort, memberInformationPort);
     }
 
     @Bean
-    public DiscountPolicyService discountPolicyService(IDiscountPolicyRepository discountPolicyRepository,
-                                                       ICompanyPermissionServicePort companyPermissionServicePort,
-                                                       IEventManagementPort eventManagementPort,
-                                                       IMemberInformationPort memberInformationPort,
-                                                       PolicyCommandAssembler policyAssembler) {
-        return new DiscountPolicyService(
-                discountPolicyRepository,
-                companyPermissionServicePort,
-                eventManagementPort,
-                memberInformationPort,
-                policyAssembler
-        );
+    public IDiscountApplicationPort discountApplicationPort(IDiscountPolicyRepository discountPolicyRepository,
+                                                            IEventManagementPort eventManagementPort,
+                                                            IMemberInformationPort memberInformationPort) {
+        return new DiscountApplicationService(discountPolicyRepository,eventManagementPort,memberInformationPort);
+    }
+
+    @Bean
+    public PolicyManagementService policyManagementService(IPurchasePolicyRepository purchasePolicyRepository,
+                                                        IDiscountPolicyRepository discountPolicyRepository,
+                                                        ICompanyPermissionServicePort companyPermissionServicePort,
+                                                        IEventManagementPort eventManagementPort,
+                                                        PolicyCommandAssembler policyAssembler) {
+        return new PolicyManagementService(purchasePolicyRepository, discountPolicyRepository,
+                                            companyPermissionServicePort, eventManagementPort, policyAssembler);
     }
 
     @Bean

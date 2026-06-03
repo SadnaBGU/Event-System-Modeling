@@ -29,6 +29,6 @@ public record Suspension(Instant suspendedAt, Duration duration, String reason) 
 
     public boolean isExpiredAt(Instant now) {
         Objects.requireNonNull(now, "now must not be null");
-        return !isPermanent() && now.isAfter(endsAt());
+        return !isPermanent() && ! now.isBefore(endsAt());
     }
 }
