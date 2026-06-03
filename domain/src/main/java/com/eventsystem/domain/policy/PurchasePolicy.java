@@ -47,6 +47,10 @@ public class PurchasePolicy{
         
     }
 
+    public PurchasePolicy(CompanyId companyId, String policyName, PolicyScope scope, IPolicy policy) {
+        this(PurchasePolicyId.random(), companyId, policyName, scope, policy);
+    }
+
     public PurchasePolicyId id() {
         return id;
     }
@@ -103,33 +107,33 @@ public class PurchasePolicy{
         return policy;
     }
 
-    public static PurchasePolicy NewPurchasePolicy(CompanyId companyId, String policyName, IPolicy policy) {
+    public static PurchasePolicy emptyScope(CompanyId companyId, String policyName, IPolicy policy) {
         return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName, PolicyScope.clearScope(), policy);
     }
 
-    public static PurchasePolicy NewPurchasePolicy(CompanyId companyId, String policyName, List<IPolicy> policies) {
+    public static PurchasePolicy emptyScope(CompanyId companyId, String policyName, List<IPolicy> policies) {
         return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName, PolicyScope.clearScope(), policies);
     }
 
 
-    public static PurchasePolicy AllowAll(PurchasePolicyId id, CompanyId companyId, String policyName) {
+    public static PurchasePolicy allowAll(PurchasePolicyId id, CompanyId companyId, String policyName) {
         return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(),AlwaysTruePolicy.INSTANCE);
     }
 
-    public static PurchasePolicy NewAllowAllPolicy(CompanyId companyId, String policyName) {
-        return PurchasePolicy.NewPurchasePolicy(companyId, policyName,AlwaysTruePolicy.INSTANCE);
+    public static PurchasePolicy newAllowAllPolicy(CompanyId companyId, String policyName) {
+        return PurchasePolicy.emptyScope(companyId, policyName,AlwaysTruePolicy.INSTANCE);
     }
 
-    public static PurchasePolicy NotAllowed(PurchasePolicyId id, CompanyId companyId, String policyName) {
+    public static PurchasePolicy notAllowed(PurchasePolicyId id, CompanyId companyId, String policyName) {
         return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(),NeverAllowPolicy.INSTANCE);
     }
 
-    public static PurchasePolicy NewNeverAllowedPolicy(CompanyId companyId, String policyName) {
-        return PurchasePolicy.NewPurchasePolicy(companyId, policyName,NeverAllowPolicy.INSTANCE);
+    public static PurchasePolicy newNeverAllowedPolicy(CompanyId companyId, String policyName) {
+        return PurchasePolicy.emptyScope(companyId, policyName,NeverAllowPolicy.INSTANCE);
     }
 
-    public static PurchasePolicy NewMaxTicketPolicy(CompanyId companyId, String policyName, int maxAllowedTickets) {
-        return PurchasePolicy.NewPurchasePolicy(companyId, policyName,new MaxTicketPolicy(maxAllowedTickets));
+    public static PurchasePolicy newMaxTicketPolicy(CompanyId companyId, String policyName, int maxAllowedTickets) {
+        return PurchasePolicy.emptyScope(companyId, policyName,new MaxTicketPolicy(maxAllowedTickets));
     }
     
     public boolean isPurchaseAllowedInContext(PurchaseContext context) {

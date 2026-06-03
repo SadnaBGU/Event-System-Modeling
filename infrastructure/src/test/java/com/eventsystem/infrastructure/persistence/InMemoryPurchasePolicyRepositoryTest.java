@@ -135,7 +135,7 @@ class InMemoryPurchasePolicyRepositoryTest {
     }
 
     private static PurchasePolicy inactivePolicy(CompanyId companyId) {
-        return PurchasePolicy.NewAllowAllPolicy(companyId, "Allow all");
+        return PurchasePolicy.newAllowAllPolicy(companyId, "Allow all");
     }
 
     private static PurchasePolicy eventScopedPolicy(CompanyId companyId, EventId eventId) {

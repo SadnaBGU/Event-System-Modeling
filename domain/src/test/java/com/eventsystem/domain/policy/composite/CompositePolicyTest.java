@@ -3,6 +3,7 @@ package com.eventsystem.domain.policy.composite;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.policy.IPolicy;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import com.eventsystem.domain.policy.basic.IBasicPolicy;
@@ -25,10 +26,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Unit tests for composite policies.
  *
  * UAT mapping:
- * - UAT-44 / UC16: composed purchase policy can combine multiple commercial restrictions.
+ * - UAT-44 / UC16: composed purchase policy can combine multiple commercial
+ * restrictions.
  * - UAT-45 / UC16: composed visible discount conditions can be combined.
- * - UAT-48 / UC16: contradictory policies can be detected by evaluating a context against both sides.
- * - UAT-27 / UC9: checkout rejects orders that violate composed purchase policy restrictions.
+ * - UAT-48 / UC16: contradictory policies can be detected by evaluating a
+ * context against both sides.
+ * - UAT-27 / UC9: checkout rejects orders that violate composed purchase policy
+ * restrictions.
  */
 class CompositePolicyTest {
 
@@ -38,8 +42,8 @@ class CompositePolicyTest {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 return validate(context)
-                    ? PolicyValidationResult.success()
-                    : PolicyValidationResult.failure("Fail");
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("Fail");
             }
 
             @Override
@@ -60,8 +64,8 @@ class CompositePolicyTest {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 return validate(context)
-                    ? PolicyValidationResult.success()
-                    : PolicyValidationResult.failure("Fail");
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("Fail");
             }
 
             @Override
@@ -137,8 +141,7 @@ class CompositePolicyTest {
         IPolicy policy = new ZoneSpecificPolicy(
                 Set.of(VIP_ZONE),
                 failingPolicy("should not be evaluated when no VIP tickets are selected"),
-                true
-        );
+                true);
 
         assertThat(policy.validate(contextWithTickets(REGULAR_ZONE, BALCONY_ZONE))).isTrue();
         assertThatCode(() -> policy.require(contextWithTickets(REGULAR_ZONE, BALCONY_ZONE)))
@@ -150,8 +153,7 @@ class CompositePolicyTest {
         IPolicy policy = new ZoneSpecificPolicy(
                 Set.of(VIP_ZONE),
                 passingPolicy(),
-                false
-        );
+                false);
 
         assertThat(policy.validate(contextWithTickets(REGULAR_ZONE, BALCONY_ZONE))).isFalse();
         assertThatThrownBy(() -> policy.require(contextWithTickets(REGULAR_ZONE, BALCONY_ZONE)))
@@ -164,8 +166,7 @@ class CompositePolicyTest {
         IPolicy atLeastTwoVipTickets = new ZoneSpecificPolicy(
                 Set.of(VIP_ZONE),
                 countedTicketsMustEqual(2),
-                false
-        );
+                false);
 
         assertThat(atLeastTwoVipTickets.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE))).isTrue();
         assertThat(atLeastTwoVipTickets.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, BALCONY_ZONE))).isFalse();
@@ -176,8 +177,7 @@ class CompositePolicyTest {
         IPolicy policy = new ZoneSpecificPolicy(
                 Set.of(VIP_ZONE),
                 failingPolicy("inner zone rule failed"),
-                true
-        );
+                true);
 
         assertThatThrownBy(() -> policy.require(contextWithTickets(VIP_ZONE)))
                 .isInstanceOf(PurchasePolicyException.class)
@@ -205,18 +205,18 @@ class CompositePolicyTest {
         assertThat(discountRequiresFive.validate(fiveTickets)).isTrue();
     }
 
-
     @Test
     void andPolicyRequireStopsAtFirstFailure() {
-        java.util.concurrent.atomic.AtomicBoolean secondEvaluated = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicBoolean secondEvaluated = new java.util.concurrent.atomic.AtomicBoolean(
+                false);
 
         IPolicy first = failingPolicy("first failed");
         IPolicy second = new IBasicPolicy() {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 return validate(context)
-                    ? PolicyValidationResult.success()
-                    : PolicyValidationResult.failure("Fail");
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("Fail");
             }
 
             @Override
@@ -242,7 +242,7 @@ class CompositePolicyTest {
     @Test
     void zoneSpecificPolicy_passModeDoesNotEvaluateInnerPolicyWhenNoAffectedTickets() {
         IPolicy explodingPolicy = new IBasicPolicy() {
-            
+
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 throw new AssertionError("inner policy should not be evaluated");
@@ -279,13 +279,13 @@ class CompositePolicyTest {
 
     private static IPolicy countedTicketsMustEqual(int expected) {
         return new IBasicPolicy() {
-                        
+
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 // not relevant
                 return validate(context)
-                 ? PolicyValidationResult.success()
-                 : PolicyValidationResult.failure("expected exactly " + expected + " tickets"); 
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("expected exactly " + expected + " tickets");
             }
 
             @Override
@@ -305,13 +305,12 @@ class CompositePolicyTest {
     private static IPolicy countedTicketsAtMost(int max) {
         return new IBasicPolicy() {
 
-                        
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 // not relevant
                 return validate(context)
-                 ? PolicyValidationResult.success()
-                 : PolicyValidationResult.failure("too many tickets"); 
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("too many tickets");
             }
 
             @Override
@@ -335,8 +334,8 @@ class CompositePolicyTest {
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 // not relevant
                 return validate(context)
-                 ? PolicyValidationResult.success()
-                 : PolicyValidationResult.failure("too few tickets"); 
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("too few tickets");
             }
 
             @Override
@@ -352,7 +351,6 @@ class CompositePolicyTest {
             }
         };
     }
-
 
     @Test
     void compositePoliciesExposeImmutableChildrenAndCompositeMarker_UAT44() {
@@ -389,6 +387,7 @@ class CompositePolicyTest {
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 return PolicyValidationResult.success();
             }
+
             @Override
             public boolean validate(PurchaseContext context) {
                 return true;
@@ -451,7 +450,7 @@ class CompositePolicyTest {
         assertThat(evalCalls).hasValue(2);
     }
 
-  @Test
+    @Test
     void orPolicyRequireReturnsCombinedFailureWhenAllValidateFalse_UAT27() {
         AtomicInteger evalCalls = new AtomicInteger(0);
         IPolicy first = trackingPolicy(false, evalCalls, "first failed");
@@ -476,8 +475,8 @@ class CompositePolicyTest {
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 // not relevant
                 return validate(context)
-                 ? PolicyValidationResult.success()
-                 : PolicyValidationResult.failure("expected exactly two affected-zone tickets"); 
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("expected exactly two affected-zone tickets");
             }
 
             @Override
@@ -496,8 +495,7 @@ class CompositePolicyTest {
         IPolicy onlyVip = new ZoneSpecificPolicy(
                 java.util.Set.of(VIP_ZONE),
                 List.of(exactlyTwoTickets),
-                false
-        );
+                false);
 
         assertThat(onlyVip.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE))).isTrue();
         assertThat(onlyVip.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE))).isFalse();
@@ -523,8 +521,7 @@ class CompositePolicyTest {
         ZoneSpecificPolicy policy = new ZoneSpecificPolicy(
                 java.util.Set.of(VIP_ZONE),
                 inner,
-                false
-        );
+                false);
 
         assertThatCode(() -> policy.require(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE)))
                 .doesNotThrowAnyException();
@@ -536,8 +533,7 @@ class CompositePolicyTest {
     void deeplyNestedCompositePolicyEvaluatesThroughAndOrZoneLayers_UAT44_UAT45() {
         IPolicy nested = new AndPolicy(List.of(
                 new OrPolicy(List.of(failingPolicy("irrelevant failure"), passingPolicy())),
-                new ZoneSpecificPolicy(java.util.Set.of(VIP_ZONE), ticketCountMustBe(2), false)
-        ));
+                new ZoneSpecificPolicy(java.util.Set.of(VIP_ZONE), ticketCountMustBe(2), false)));
 
         assertThat(nested.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE, VIP_ZONE))).isTrue();
         assertThat(nested.validate(contextWithTickets(VIP_ZONE, REGULAR_ZONE))).isFalse();
@@ -554,10 +550,9 @@ class CompositePolicyTest {
     void orPolicyEvaluateReturnsCombinedReason_whenAllChildrenFail() {
         OrPolicy policy = new OrPolicy(List.of(
                 new MaxTicketPolicy(1),
-                new MinAgePolicy(100)
-        ));
+                new MinAgePolicy(100)));
 
-        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE,REGULAR_ZONE));
+        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, REGULAR_ZONE));
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.reason()).contains("At least one purchase condition");
@@ -566,8 +561,7 @@ class CompositePolicyTest {
     private static IPolicy trackingPolicy(
             boolean evaluateResult,
             AtomicInteger evalCalls,
-            String message
-    ) {
+            String message) {
         return new IBasicPolicy() {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
@@ -585,8 +579,8 @@ class CompositePolicyTest {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 return validate(context)
-                 ? PolicyValidationResult.success()
-                 : PolicyValidationResult.failure("expected exactly " + expected + " tickets"); 
+                        ? PolicyValidationResult.success()
+                        : PolicyValidationResult.failure("expected exactly " + expected + " tickets");
             }
 
             @Override
@@ -608,7 +602,7 @@ class CompositePolicyTest {
             @Override
             public PolicyValidationResult evaluate(PurchaseContext context) {
                 // not relevant
-                return null; 
+                return null;
             }
 
             @Override
@@ -626,5 +620,66 @@ class CompositePolicyTest {
                 // not relevant for isValidPolicy tests
             }
         };
+    }
+
+    // PP-07 / PP-08:
+    // Composite policies expose the correct PolicyType used by composition/conflict
+    // logic.
+    @Test
+    void compositePoliciesExposeCorrectPolicyTypes() {
+        AndPolicy andPolicy = new AndPolicy(List.of(passingPolicy(), passingPolicy()));
+        OrPolicy orPolicy = new OrPolicy(List.of(failingPolicy("fail"), passingPolicy()));
+
+        ZoneSpecificPolicy zonePassPolicy = new ZoneSpecificPolicy(
+                Set.of(VIP_ZONE),
+                passingPolicy(),
+                true);
+
+        ZoneSpecificPolicy zoneFailPolicy = new ZoneSpecificPolicy(
+                Set.of(VIP_ZONE),
+                passingPolicy(),
+                false);
+
+        assertThat(andPolicy.type()).isEqualTo(PolicyType.AND);
+        assertThat(orPolicy.type()).isEqualTo(PolicyType.OR);
+        assertThat(zonePassPolicy.type()).isEqualTo(PolicyType.ZONE_SPECIFIC_0_PASS);
+        assertThat(zoneFailPolicy.type()).isEqualTo(PolicyType.ZONE_SPECIFIC_0_FAIL);
+    }
+
+    // PP-07 / PP-08:
+    // Composite PolicyType helper recognizes all composite policy enum values.
+    @Test
+    void policyTypeIdentifiesCompositeRules() {
+        assertThat(PolicyType.AND.isCompositeRule()).isTrue();
+        assertThat(PolicyType.OR.isCompositeRule()).isTrue();
+        assertThat(PolicyType.ZONE_SPECIFIC_0_PASS.isCompositeRule()).isTrue();
+        assertThat(PolicyType.ZONE_SPECIFIC_0_FAIL.isCompositeRule()).isTrue();
+
+        assertThat(PolicyType.MIN_TICKETS.isCompositeRule()).isFalse();
+        assertThat(PolicyType.MAX_TICKETS.isCompositeRule()).isFalse();
+        assertThat(PolicyType.MIN_AGE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.CODE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.AFTER_DATE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.UNTIL_DATE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.ALWAYS_TRUE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.NEVER_ALLOW.isCompositeRule()).isFalse();
+    }
+
+    // DDD/extensibility:
+    // Composite types should not be misclassified as coupon/date/ticket quantity
+    // rules.
+    @Test
+    void compositePolicyTypesAreNotBasicRuleCategories() {
+        List<PolicyType> compositeTypes = List.of(
+                PolicyType.AND,
+                PolicyType.OR,
+                PolicyType.ZONE_SPECIFIC_0_PASS,
+                PolicyType.ZONE_SPECIFIC_0_FAIL);
+
+        for (PolicyType type : compositeTypes) {
+            assertThat(type.isTicketQuantityRule()).isFalse();
+            assertThat(type.isCouponRule()).isFalse();
+            assertThat(type.isDateRule()).isFalse();
+        }
     }
 }

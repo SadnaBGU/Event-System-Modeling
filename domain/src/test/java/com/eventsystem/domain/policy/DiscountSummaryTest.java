@@ -23,15 +23,15 @@ class DiscountSummaryTest {
                                 BigDecimal.valueOf(50),
                                 false);
 
-                assertThat(summary.getSpecificDiscountInfo(0)).isEqualTo("Early bird : 10 : 20");
-                assertThat(summary.getSpecificDiscountInfo("Student")).isEqualTo("Student : 15 : 30");
+                assertThat(summary.getSpecificDiscountPurchaseSummary(0)).isEqualTo("Early bird : 10 : 20");
+                assertThat(summary.getSpecificDiscountPurchaseSummary("Student")).isEqualTo("Student : 15 : 30");
         }
 
         @Test
         void getSpecificDiscountInfo_whenIndexInvalid_throwsIndexOutOfBounds() {
-                DiscountSummary summary = DiscountSummary.NoDiscountSummary();
+                DiscountSummary summary = DiscountSummary.noDiscountSummary();
 
-                assertThatThrownBy(() -> summary.getSpecificDiscountInfo(0))
+                assertThatThrownBy(() -> summary.getSpecificDiscountPurchaseSummary(0))
                                 .isInstanceOf(IndexOutOfBoundsException.class)
                                 .hasMessageContaining("Invalid discount index");
         }
@@ -45,7 +45,7 @@ class DiscountSummaryTest {
                                 BigDecimal.valueOf(20),
                                 false);
 
-                assertThatThrownBy(() -> summary.getSpecificDiscountInfo("Coupon"))
+                assertThatThrownBy(() -> summary.getSpecificDiscountPurchaseSummary("Coupon"))
                                 .isInstanceOf(DiscountPolicyException.class)
                                 .hasMessageContaining("Discount was not applied");
         }
@@ -113,7 +113,7 @@ class DiscountSummaryTest {
                                 BigDecimal.ZERO,
                                 false);
 
-                DiscountSummary replaced = original.ReplaceActualAmounts(
+                DiscountSummary replaced = original.replaceActualAmounts(
                                 List.of(BigDecimal.valueOf(25)),
                                 BigDecimal.valueOf(25));
 
@@ -166,11 +166,71 @@ class DiscountSummaryTest {
                                 BigDecimal.ZERO,
                                 false);
 
-                DiscountSummary replaced = summary.ReplaceActualAmounts(
+                DiscountSummary replaced = summary.replaceActualAmounts(
                                 List.of(BigDecimal.valueOf(70), BigDecimal.valueOf(40)),
                                 BigDecimal.valueOf(100));
 
                 assertThat(replaced.cappedAt100Percent()).isTrue();
                 assertThat(replaced.totalDiscount()).isEqualByComparingTo("100");
+        }
+
+        // DP-13:
+        // noDiscountSummary should represent no applied discount.
+        @Test
+        void noDiscountSummary_shouldBeEmptyAndZero() {
+                DiscountSummary summary = DiscountSummary.noDiscountSummary();
+
+                assertThat(summary.appliedDiscountsNames()).isEmpty();
+                assertThat(summary.appliedDiscountPercents()).isEmpty();
+                assertThat(summary.actualDiscountAmount()).isEmpty();
+                assertThat(summary.totalDiscount()).isEqualByComparingTo(BigDecimal.ZERO);
+                assertThat(summary.cappedAt100Percent()).isFalse();
+        }
+
+        // DP-13:
+        // replaceActualAmounts should preserve discount names/percents and update
+        // actual money values.
+        @Test
+        void replaceActualAmounts_shouldReturnNewSummaryWithUpdatedAmounts() {
+                DiscountSummary original = new DiscountSummary(
+                                List.of("A", "B"),
+                                List.of(BigDecimal.valueOf(10), BigDecimal.valueOf(15)),
+                                List.of(BigDecimal.ZERO, BigDecimal.ZERO),
+                                BigDecimal.ZERO,
+                                false);
+
+                DiscountSummary replaced = original.replaceActualAmounts(
+                                List.of(BigDecimal.valueOf(20), BigDecimal.valueOf(30)),
+                                BigDecimal.valueOf(50));
+
+                assertThat(replaced.appliedDiscountsNames()).containsExactly("A", "B");
+                assertThat(replaced.appliedDiscountPercents())
+                                .containsExactly(BigDecimal.valueOf(10), BigDecimal.valueOf(15));
+                assertThat(replaced.actualDiscountAmount())
+                                .containsExactly(BigDecimal.valueOf(20), BigDecimal.valueOf(30));
+                assertThat(replaced.totalDiscount()).isEqualByComparingTo("50");
+        }
+
+        // DP-13:
+        // Constructor should compute capped flag from percent list, ignoring supplied
+        // boolean.
+        @Test
+        void constructor_shouldComputeCappedFlagFromPercents() {
+                DiscountSummary capped = new DiscountSummary(
+                                List.of("A", "B"),
+                                List.of(BigDecimal.valueOf(70), BigDecimal.valueOf(40)),
+                                List.of(BigDecimal.ZERO, BigDecimal.ZERO),
+                                BigDecimal.ZERO,
+                                false);
+
+                DiscountSummary notCapped = new DiscountSummary(
+                                List.of("A", "B"),
+                                List.of(BigDecimal.valueOf(20), BigDecimal.valueOf(30)),
+                                List.of(BigDecimal.ZERO, BigDecimal.ZERO),
+                                BigDecimal.ZERO,
+                                true);
+
+                assertThat(capped.cappedAt100Percent()).isTrue();
+                assertThat(notCapped.cappedAt100Percent()).isFalse();
         }
 }

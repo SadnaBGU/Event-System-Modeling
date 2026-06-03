@@ -227,4 +227,172 @@ class DiscountTest {
                 assertThat(discount.validateDiscount(contextWithCode("STUDENT15", REGULAR_ZONE))).isTrue();
                 assertThat(discount.validateDiscount(contextWithCode("WRONG", REGULAR_ZONE))).isFalse();
         }
+
+        // DP-01 / DP-13:
+        // Discount percent must be valid and bounded by business limits.
+        @Test
+        void discountConstructor_rejectsInvalidPercent_DP01_DP13() {
+                assertThatThrownBy(() -> new Discount("Zero", BigDecimal.ZERO, AlwaysTruePolicy.INSTANCE))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("between 0 and 100");
+
+                assertThatThrownBy(() -> new Discount("Negative", BigDecimal.valueOf(-1), AlwaysTruePolicy.INSTANCE))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("between 0 and 100");
+
+                assertThatThrownBy(() -> new Discount("Too high", BigDecimal.valueOf(101), AlwaysTruePolicy.INSTANCE))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("between 0 and 100");
+
+                assertThatThrownBy(() -> new Discount("Null percent", null, AlwaysTruePolicy.INSTANCE))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("between 0 and 100");
+        }
+
+        // DP-14 / UAT-45:
+        // Visible discount exposes name, percent, and promotion end date through
+        // info().
+        @Test
+        void info_shouldExposeDiscountNamePercentAndEndDate_UAT45_DP14() {
+                LocalDate endDate = LocalDate.now().plusDays(10);
+
+                Discount discount = new Discount(
+                                "Early bird",
+                                BigDecimal.valueOf(20),
+                                AlwaysTruePolicy.INSTANCE,
+                                true,
+                                endDate);
+
+                DiscountInfo info = discount.info();
+
+                assertThat(info.discountName()).isEqualTo("Early bird");
+                assertThat(info.discountPercent()).isEqualByComparingTo("20");
+                assertThat(info.endDate()).isEqualTo(endDate);
+        }
+
+        // DP-08 / UAT-46:
+        // Coupon discount factory should create hidden discount that requires the code.
+        @Test
+        void couponDiscountFactory_shouldCreateHiddenDiscountThatRequiresCode_UAT46() {
+                Discount discount = Discount.CouponDiscount(
+                                "Secret coupon",
+                                BigDecimal.valueOf(15),
+                                LocalDate.now().plusDays(5),
+                                "SAVE15");
+
+                assertThat(discount.isVisible()).isFalse();
+                assertThat(discount.validateDiscount(contextWithCode("SAVE15", REGULAR_ZONE))).isTrue();
+                assertThat(discount.validateDiscount(contextWithCode("WRONG", REGULAR_ZONE))).isFalse();
+                assertThat(discount.getDiscountPercentForContext(contextWithCode("SAVE15", REGULAR_ZONE)))
+                                .isEqualByComparingTo("15");
+                assertThat(discount.getDiscountPercentForContext(contextWithCode("WRONG", REGULAR_ZONE)))
+                                .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        // DP-06 / TST-09:
+        // Expired discount should not apply.
+        @Test
+        void expiredDiscount_shouldNotApply_TST09() {
+                Discount discount = new Discount(
+                                "Expired",
+                                BigDecimal.valueOf(25),
+                                AlwaysTruePolicy.INSTANCE,
+                                true,
+                                LocalDate.now().minusDays(1));
+
+                PolicyValidationResult result = discount.evaluateDiscount(contextWithTickets(REGULAR_ZONE));
+
+                assertThat(result.isSuccess()).isFalse();
+                assertThat(result.reason()).contains("expired");
+                assertThat(discount.getDiscountPercentForContext(contextWithTickets(REGULAR_ZONE)))
+                                .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        // DP-14:
+        // General discount factory should create visible discount with optional end
+        // date.
+        @Test
+        void generalDiscountFactory_shouldCreateVisibleDiscountWithEndDate_DP14() {
+                LocalDate endDate = LocalDate.now().plusDays(3);
+
+                Discount discount = Discount.GeneralDiscount(
+                                "General",
+                                BigDecimal.valueOf(10),
+                                endDate);
+
+                assertThat(discount.isVisible()).isTrue();
+                assertThat(discount.getDiscountName()).isEqualTo("General");
+                assertThat(discount.getDiscountPercent()).isEqualByComparingTo("10");
+                assertThat(discount.getEndDate()).isEqualTo(endDate);
+                assertThat(discount.canExpire()).isTrue();
+        }
+
+        // DP-08 / DP-14:
+        // Visibility conversion helpers should keep discount data and only change
+        // visibility.
+        @Test
+        void toHiddenAndToVisible_shouldPreserveDiscountData_DP08_DP14() {
+                LocalDate endDate = LocalDate.now().plusDays(9);
+
+                Discount visible = new Discount(
+                                "Promo",
+                                BigDecimal.valueOf(30),
+                                AlwaysTruePolicy.INSTANCE,
+                                true,
+                                endDate);
+
+                Discount hidden = Discount.toHidden(visible);
+                Discount visibleAgain = Discount.toVisible(hidden);
+
+                assertThat(hidden.isVisible()).isFalse();
+                assertThat(hidden.getDiscountName()).isEqualTo("Promo");
+                assertThat(hidden.getDiscountPercent()).isEqualByComparingTo("30");
+                assertThat(hidden.getEndDate()).isEqualTo(endDate);
+
+                assertThat(visibleAgain.isVisible()).isTrue();
+                assertThat(visibleAgain.getDiscountName()).isEqualTo("Promo");
+                assertThat(visibleAgain.getDiscountPercent()).isEqualByComparingTo("30");
+                assertThat(visibleAgain.getEndDate()).isEqualTo(endDate);
+        }
+
+            // DP-14:
+    // DiscountInfo exposes promotion metadata and calculates amount off.
+    @Test
+    void amountOffWithDiscount_shouldCalculatePercentOfBaseCost_DP14() {
+        DiscountInfo info = new DiscountInfo(
+                "Early bird",
+                BigDecimal.valueOf(20),
+                LocalDate.now().plusDays(5)
+        );
+
+        assertThat(info.amountOffWithDiscount(BigDecimal.valueOf(200)))
+                .isEqualByComparingTo("40");
+    }
+
+    @Test
+    void amountOffWithDiscount_shouldRejectNullBaseCost() {
+        DiscountInfo info = new DiscountInfo("Promo", BigDecimal.TEN, null);
+
+        assertThatThrownBy(() -> info.amountOffWithDiscount(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("baseCost");
+    }
+
+    @Test
+    void amountOffWithDiscount_shouldRejectNegativeBaseCost() {
+        DiscountInfo info = new DiscountInfo("Promo", BigDecimal.TEN, null);
+
+        assertThatThrownBy(() -> info.amountOffWithDiscount(BigDecimal.valueOf(-1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("baseCost cannot be negative");
+    }
+
+    @Test
+    void constructor_shouldRejectNullRequiredFields() {
+        assertThatThrownBy(() -> new DiscountInfo(null, BigDecimal.TEN, null))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> new DiscountInfo("Promo", null, null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

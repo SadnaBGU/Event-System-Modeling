@@ -15,7 +15,7 @@ import com.eventsystem.domain.policy.composite.AndPolicy;
 public final class Discount {
 
     private final String discountName;
-    private final BigDecimal discountPrecent;
+    private final BigDecimal discountPercent;
     private final IPolicy discountPolicy;
     private final DiscountVisibility visibility;
     private final LocalDate endDate;
@@ -33,7 +33,7 @@ public final class Discount {
             policy = new AndPolicy(List.of(policy, new UntilDatePolicy(endDate)));
         }
         this.discountName = Objects.requireNonNull(discountName, "Discount Name must not be null");
-        this.discountPrecent = discountPercent;
+        this.discountPercent = discountPercent;
         this.visibility = isVisible ? DiscountVisibility.VISIBLE : DiscountVisibility.HIDDEN;
         PolicyConflictDetector.requireValidPolicy(policy);
         this.discountPolicy = Objects.requireNonNull(policy, "Discount policies must not be null");
@@ -66,14 +66,14 @@ public final class Discount {
 
     public PolicyValidationResult evaluateDiscount(PurchaseContext context) {
         Objects.requireNonNull(context, "Purchase Context cannot be null");
-        if (isExpired()) {
-            return PolicyValidationResult.failure("Discount has expired on date " + endDate.toString());
+        if (isExpired(context.purchaseDate())) {
+            return PolicyValidationResult.failure("Discount has expired on date " + endDate);
         }
         return discountPolicy.evaluate(context);
     }
 
     public BigDecimal getDiscountPercentForContext(PurchaseContext context) {
-       BigDecimal discount = !isExpired() && validateDiscount(context) ? discountPrecent :  BigDecimal.ZERO;
+       BigDecimal discount = !isExpired(context.purchaseDate()) && validateDiscount(context) ? discountPercent :  BigDecimal.ZERO;
        return discount;
     }
 
@@ -82,7 +82,7 @@ public final class Discount {
     }
 
     public BigDecimal getDiscountPercent() {
-        return discountPrecent;
+        return discountPercent;
     }
 
     public String getDiscountName() {
@@ -103,6 +103,10 @@ public final class Discount {
 
     public boolean isExpired() {
         return endDate == null ? false : LocalDate.now().isAfter(endDate);
+    }
+
+    public boolean isExpired(LocalDate now) {
+        return endDate == null ? false : now.isAfter(endDate);
     }
 
     private boolean isValidDiscountPercent(BigDecimal discountPercent) {
@@ -132,4 +136,9 @@ public final class Discount {
     public static Discount toVisible(Discount discount) {
         return new Discount (discount.discountName, discount.getDiscountPercent(), discount.discountPolicy, true, discount.endDate);
     }
+
+    public DiscountInfo info() {
+        return new DiscountInfo(discountName, discountPercent, endDate);
+    }
+
 }

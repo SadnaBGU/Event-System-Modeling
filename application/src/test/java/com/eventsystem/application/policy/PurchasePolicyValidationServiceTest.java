@@ -71,7 +71,7 @@ class PurchasePolicyValidationServiceTest {
         }
 
         private PurchasePolicy maxTicketPolicy(int maxTickets) {
-                PurchasePolicy policy = PurchasePolicy.NewMaxTicketPolicy(
+                PurchasePolicy policy = PurchasePolicy.newMaxTicketPolicy(
                                 COMPANY_ID,
                                 "Max " + maxTickets + " tickets",
                                 maxTickets);

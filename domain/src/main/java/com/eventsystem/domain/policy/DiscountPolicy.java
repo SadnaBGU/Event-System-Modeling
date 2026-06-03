@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
+import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
@@ -13,6 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.ArrayList;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 
 
@@ -27,7 +29,33 @@ public final class DiscountPolicy {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
-        public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope) {
+    private DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope,
+                           List<Discount> discounts, boolean isStackable, boolean isActive) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
+        this.scope = Objects.requireNonNull(scope, "scope must not be null");
+        this.discounts = new ArrayList<>(Objects.requireNonNull(discounts, "discounts must not be null"));
+        if (discounts.stream().anyMatch(discount -> discount == null)) {
+            throw new DiscountPolicyException("Given discounts cannot be null");
+        }
+        this.stackable = isStackable;
+        this.active = isActive; //inactive by default
+    }
+
+    public DiscountPolicy(CompanyId companyId, PolicyScope scope,
+                           List<Discount> discounts, boolean isStackable, boolean isActive) {
+        this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
+        this.scope = Objects.requireNonNull(scope, "scope must not be null");
+        this.discounts = new ArrayList<>(Objects.requireNonNull(discounts, "discounts must not be null"));
+        if (discounts.stream().anyMatch(discount -> discount == null)) {
+            throw new DiscountPolicyException("Given discounts cannot be null");
+        }
+        this.id = DiscountPolicyId.random();
+        this.stackable = isStackable;
+        this.active = isActive; //inactive by default
+    }
+
+    public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
@@ -54,6 +82,23 @@ public final class DiscountPolicy {
 
     public static DiscountPolicy inactiveForSingleEvent(CompanyId companyId, EventId eventId) {
         return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forSingleEvent(eventId));
+    }
+
+    public static DiscountPolicy withDiscounts(DiscountPolicy discountPolicy, List<Discount> toAdd) {
+        Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
+        Objects.requireNonNull(toAdd, "discounts to add must not be null");
+
+        List<Discount> joinedDiscounts = new ArrayList<>(discountPolicy.discounts());
+        joinedDiscounts.addAll(toAdd);
+
+        return new DiscountPolicy(
+                discountPolicy.id(),
+                discountPolicy.companyId,
+                discountPolicy.scope(),
+                joinedDiscounts,
+                discountPolicy.isStackable(),
+                discountPolicy.isActive()
+        );
     }
 
     public DiscountPolicyId id() {
@@ -164,9 +209,13 @@ public final class DiscountPolicy {
     }
 
     public List<Discount> visibleDiscounts() {
+        return visibleDiscounts(LocalDate.now());
+    }
+
+    public List<Discount> visibleDiscounts(LocalDate now) {
         return discounts.stream()
                 .filter(Discount::isVisible)
-                .filter(discount -> !discount.isExpired())
+                .filter(discount -> !discount.isExpired(now))
                 .toList();
     }
 
@@ -190,7 +239,7 @@ public final class DiscountPolicy {
         }
 
         return discounts.stream()
-                .filter(discount -> !discount.isExpired())
+                .filter(discount -> !discount.isExpired(context.purchaseDate()))
                 .filter(discount -> discount.validateDiscount(context))
                 .toList();
     }
@@ -208,13 +257,14 @@ public final class DiscountPolicy {
 
         return discounts.stream()
                 .filter(Discount::isVisible)
-                .filter(discount -> !discount.isExpired())
+                .filter(discount -> !discount.isExpired(context.purchaseDate()))
                 .filter(discount -> discount.validateDiscount(context))
                 .toList();
     }
 
-    public Set<String> discountedEventIds() {
-        return Set.of(scope.eventIds().toString());
+
+    public Set<EventId> discountedEventIds() {
+        return scope.eventIds();
     }
 
     public boolean isValidDiscountPolicy() {
@@ -273,7 +323,7 @@ public final class DiscountPolicy {
     private DiscountSummary getBestDiscountSummary(PurchaseContext context) {
         BigDecimal best = BigDecimal.ZERO;
         ArrayList<String> bestDiscountName = new ArrayList<>();
-        ArrayList<BigDecimal> bestDiscountPrecent = new ArrayList<>();
+        ArrayList<BigDecimal> bestDiscountPercent = new ArrayList<>();
         ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
 
 
@@ -284,12 +334,12 @@ public final class DiscountPolicy {
                 best = current;
                 if (bestDiscountName.isEmpty()) {
                     bestDiscountName.add(discount.getDiscountName());
-                    bestDiscountPrecent.add(current);
+                    bestDiscountPercent.add(current);
                     actualAmountPlaceholder.add(BigDecimal.ZERO);
                 }
                 else {
                     bestDiscountName.set(0, discount.getDiscountName());
-                    bestDiscountPrecent.set(0, current);
+                    bestDiscountPercent.set(0, current);
                 }
 
                 if (best.compareTo(HUNDRED) > 0) {
@@ -300,17 +350,17 @@ public final class DiscountPolicy {
 
 
         DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
-                                                             bestDiscountPrecent,
+                                                             bestDiscountPercent,
                                                              actualAmountPlaceholder,
                                                              BigDecimal.ZERO,
-                                                             DiscountSummary.shouldCapDiscountAt100(bestDiscountPrecent));
+                                                             DiscountSummary.shouldCapDiscountAt100(bestDiscountPercent));
         return noActualAmounts;
     }
 
     private DiscountSummary getStackedDiscountSummary(PurchaseContext context) {
         BigDecimal totalPercents = BigDecimal.ZERO;
-        ArrayList<String> bestDiscountName = new ArrayList<>();
-        ArrayList<BigDecimal> bestDiscountPrecent = new ArrayList<>();
+        ArrayList<String> appliedDiscountNames = new ArrayList<>();
+        ArrayList<BigDecimal> appliedDiscountPercents = new ArrayList<>();
         ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
 
         for (Discount discount : discounts) {
@@ -318,8 +368,8 @@ public final class DiscountPolicy {
 
             if (current.compareTo(BigDecimal.ZERO) > 0) {
                 totalPercents = totalPercents.add(current);
-                bestDiscountName.add(discount.getDiscountName());
-                bestDiscountPrecent.add(current);
+                appliedDiscountNames.add(discount.getDiscountName());
+                appliedDiscountPercents.add(current);
                 actualAmountPlaceholder.add(BigDecimal.ZERO);
 
                 if (totalPercents.compareTo(HUNDRED) > 0) {
@@ -328,10 +378,10 @@ public final class DiscountPolicy {
             }
         }
 
-        DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
-                                                             bestDiscountPrecent,
+        DiscountSummary noActualAmounts = new DiscountSummary(appliedDiscountNames,
+                                                             appliedDiscountPercents,
                                                              actualAmountPlaceholder,
-                                                             BigDecimal.ZERO, DiscountSummary.shouldCapDiscountAt100(bestDiscountPrecent)
+                                                             BigDecimal.ZERO, DiscountSummary.shouldCapDiscountAt100(appliedDiscountPercents)
                                                              );
         return noActualAmounts;
     }
@@ -341,13 +391,13 @@ public final class DiscountPolicy {
         Objects.requireNonNull(baseCost, "baseCost must not be null");
 
         if (!appliesTo(context)) {
-            return DiscountSummary.NoDiscountSummary();
+            return DiscountSummary.noDiscountSummary();
         }
 
         DiscountSummary noActualAmounts =  stackable ? getStackedDiscountSummary(context) : getBestDiscountSummary(context);
 
         if (noActualAmounts.appliedDiscountsNames().isEmpty()) {
-            return DiscountSummary.NoDiscountSummary();
+            return DiscountSummary.noDiscountSummary();
         }
 
         List<BigDecimal> newActualAmounts = new ArrayList<>();
@@ -362,7 +412,7 @@ public final class DiscountPolicy {
 
         BigDecimal temp =  totalPercent.divide(HUNDRED);
 
-        return noActualAmounts.ReplaceActualAmounts(newActualAmounts, temp.multiply(baseCost.amount()));
+        return noActualAmounts.replaceActualAmounts(newActualAmounts, temp.multiply(baseCost.amount()));
     }
 
     public BigDecimal getFullDiscountPercent(PurchaseContext context) {
@@ -397,6 +447,40 @@ public final class DiscountPolicy {
     public DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseCost) {
         DiscountSummary summary = getFullDiscountSummary(context, baseCost);
         return generateDiscountSnapshot(summary, baseCost);
+    }
+
+    public List<DiscountInfo> getDiscountInfos() {
+        return discounts.stream().map(Discount::info).toList();
+    }
+
+    public List<DiscountInfo> activeVisibleDiscountsInfo() {
+       return  !active
+        ? List.of()
+        : visibleDiscounts().stream().map(Discount::info).toList();
+    }
+
+    public LocalDate dateOfLatestActiveDiscount(boolean requireVisible) {
+        if (discounts.isEmpty()) {
+            throw new PolicyException("No discounts in current discount policy");
+        }
+        List<Discount> toCheck = requireVisible
+                                 ? discounts.stream().filter(Discount::isVisible).toList()
+                                 : discounts();
+
+        if (toCheck.isEmpty()) {
+            throw new PolicyException("No matching discounts in current discount policy");
+        }
+        LocalDate latest = LocalDate.of(0, 1, 1);
+        for (Discount discount : toCheck) {
+            LocalDate endDate = discount.getEndDate();
+            if (endDate == null) {
+                return null;
+            }
+            if(endDate.isAfter(latest)) {
+                latest = endDate;
+            }
+        }
+        return latest;
     }
 
 }

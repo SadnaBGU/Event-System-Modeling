@@ -207,7 +207,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
                     companyId,
                     eventId.value()
             );
-            return DiscountSummary.NoDiscountSummary();
+            return DiscountSummary.noDiscountSummary();
         }
 
         DiscountSummary bestSummary = calculateBestSummary(applicablePolicies, context, baseTotal);
@@ -271,7 +271,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
             );
         }
 
-        DiscountSummary bestSummary = DiscountSummary.NoDiscountSummary();
+        DiscountSummary bestSummary = DiscountSummary.noDiscountSummary();
 
         for (DiscountPolicy policy : applicablePolicies) {
             PurchaseContext legacyContext = PurchaseContext.fromPurchaseInfo(
@@ -304,7 +304,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
             PurchaseContext context,
             Money baseCost
     ) {
-        DiscountSummary bestSummary = DiscountSummary.NoDiscountSummary();
+        DiscountSummary bestSummary = DiscountSummary.noDiscountSummary();
 
         for (DiscountPolicy policy : policies) {
             DiscountSummary currentSummary = policy.getFullDiscountSummary(context, baseCost);

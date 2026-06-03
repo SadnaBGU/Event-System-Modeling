@@ -1184,4 +1184,180 @@ class PolicyManagementServiceTest {
                 assertThat(result).containsExactlyInAnyOrder(EVENT_ID, OTHER_EVENT_ID);
         }
 
+        // PRD-03 / UC16:
+        // Convenience helper creates company-wide purchase policy.
+        @Test
+        void createCompanyWidePurchasePolicy_shouldSaveCompanyWidePolicy() {
+                PurchasePolicyId id = service.createCompanyWidePurchasePolicy(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                "Max 4",
+                                new MaxTicketPolicy(4));
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.policyName()).isEqualTo("Max 4");
+                assertThat(saved.scope().isCompanyWide()).isTrue();
+        }
+
+        // PRD-03 / UC16:
+        // Convenience helper derives company from event and creates event-scoped
+        // policy.
+        @Test
+        void createEventScopedPurchasePolicy_shouldDeriveCompanyAndSaveEventScopedPolicy() {
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                PurchasePolicyId id = service.createEventScopedPurchasePolicy(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                "Max 4",
+                                new MaxTicketPolicy(4));
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+        }
+
+        // PP-05 / PRD-03 / UC16:
+        // Convenience helper creates min-age purchase policy for event.
+        @Test
+        void createMinAgePurchasePolicyForEvent_shouldCreateEventScopedMinAgePolicy() {
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                service.createMinAgePurchasePolicyForEvent(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                18,
+                                "18 plus");
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(saved.policyName()).isEqualTo("18 plus");
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+        }
+
+        // PP-06 / UAT-44:
+        // Convenience helper creates min/max ticket policy and rejects invalid ranges.
+        @Test
+        void createMinMaxTicketsPurchasePolicyForEvent_shouldCreatePolicyAndRejectInvalidRange_UAT44() {
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                service.createMinMaxTicketsPurchasePolicyForEvent(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                1,
+                                4,
+                                "1 to 4 tickets");
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(saved.policyName()).isEqualTo("1 to 4 tickets");
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+
+                assertThatThrownBy(() -> service.createMinMaxTicketsPurchasePolicyForEvent(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                5,
+                                4,
+                                "Invalid"))
+                                .isInstanceOf(IllegalArgumentException.class)
+                                .hasMessageContaining("maximum");
+        }
+
+        // DP-14 / UAT-45:
+        // Convenience helper creates company-wide visible discount draft.
+        @Test
+        void createGeneralCompanyWideDiscount_shouldSaveCompanyWideVisibleDiscountDraft_UAT45() {
+                DiscountPolicyId id = service.createGeneralCompanyWideDiscount(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                "Early bird",
+                                BigDecimal.valueOf(20),
+                                LocalDate.now().plusDays(7),
+                                false);
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.scope().isCompanyWide()).isTrue();
+                assertThat(saved.isActive()).isFalse(); // current helper creates draft
+                assertThat(saved.discounts()).hasSize(1);
+                assertThat(saved.discounts().get(0).isVisible()).isTrue();
+                assertThat(saved.discounts().get(0).getDiscountName()).isEqualTo("Early bird");
+        }
+
+        // DP-07 / DP-08 / UAT-46:
+        // Convenience helper creates company-wide hidden coupon discount draft.
+        @Test
+        void createCouponCompanyWideDiscount_shouldSaveHiddenCouponDiscountDraft_UAT46() {
+                DiscountPolicyId id = service.createCouponCompanyWideDiscount(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                "Secret coupon",
+                                BigDecimal.valueOf(15),
+                                LocalDate.now().plusDays(7),
+                                false,
+                                "SAVE15");
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.scope().isCompanyWide()).isTrue();
+                assertThat(saved.isActive()).isFalse(); // current helper creates draft
+                assertThat(saved.discounts()).hasSize(1);
+                assertThat(saved.discounts().get(0).isVisible()).isFalse();
+        }
+
+        // DP-10 / PRD-03:
+        // Event-set discount helper should verify all events belong to same company.
+        // This uses reflection because the helper is private.
+        @Test
+        void createNewDiscountPolicyForEvents_whenOneEventDoesNotBelongToCompany_shouldThrowSecurityException()
+                        throws Exception {
+                when(eventOwnershipChecker.companyOfEvent(any(EventId.class))).thenReturn(COMPANY_ID);
+
+                when(eventOwnershipChecker.isEventByCompany(OTHER_EVENT_ID, COMPANY_ID)).thenReturn(false);
+
+                var method = PolicyManagementService.class.getDeclaredMethod(
+                                "createNewDiscountPolicyForEvents",
+                                MemberId.class,
+                                Set.class,
+                                List.class,
+                                boolean.class);
+                method.setAccessible(true);
+
+                assertThatThrownBy(() -> method.invoke(
+                                service,
+                                ACTOR_ID,
+                                Set.of(EVENT_ID, OTHER_EVENT_ID),
+                                List.of(Discount.GeneralDiscount("Visible", BigDecimal.TEN, null)),
+                                false))
+                                .hasCauseInstanceOf(SecurityException.class);
+
+                verify(discountPolicyRepository, never()).save(any());
+        }
+
 }

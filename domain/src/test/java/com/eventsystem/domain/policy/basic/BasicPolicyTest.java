@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy.basic;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
+import com.eventsystem.domain.policy.PolicyType;
 import com.eventsystem.domain.policy.PolicyValidationResult;
 import com.eventsystem.domain.policy.PurchaseContext;
 import org.junit.jupiter.api.Test;
@@ -140,7 +141,8 @@ class BasicPolicyTest {
     @Test
     void untilDatePolicy_acceptsUntilAndIncludingDeadline_UAT45() {
         assertThat(new UntilDatePolicy(LocalDate.now()).validate(contextWithTickets(REGULAR_ZONE))).isTrue();
-        assertThat(new UntilDatePolicy(LocalDate.now().plusDays(1)).validate(contextWithTickets(REGULAR_ZONE))).isTrue();
+        assertThat(new UntilDatePolicy(LocalDate.now().plusDays(1)).validate(contextWithTickets(REGULAR_ZONE)))
+                .isTrue();
     }
 
     @Test
@@ -156,9 +158,11 @@ class BasicPolicyTest {
 
     @Test
     void afterDatePolicy_acceptsOnlyAfterConfiguredDate() {
-        assertThat(new AfterDatePolicy(LocalDate.now().minusDays(1)).validate(contextWithTickets(REGULAR_ZONE))).isTrue();
+        assertThat(new AfterDatePolicy(LocalDate.now().minusDays(1)).validate(contextWithTickets(REGULAR_ZONE)))
+                .isTrue();
         assertThat(new AfterDatePolicy(LocalDate.now()).validate(contextWithTickets(REGULAR_ZONE))).isFalse();
-        assertThat(new AfterDatePolicy(LocalDate.now().plusDays(1)).validate(contextWithTickets(REGULAR_ZONE))).isFalse();
+        assertThat(new AfterDatePolicy(LocalDate.now().plusDays(1)).validate(contextWithTickets(REGULAR_ZONE)))
+                .isFalse();
     }
 
     @Test
@@ -176,15 +180,13 @@ class BasicPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-
     @Test
     void minAgePolicy_rejectsBuyerWhoseBirthdayIsTomorrow() {
         MinAgePolicy policy = new MinAgePolicy(18);
 
         PurchaseContext context = contextWithBirthDate(
                 LocalDate.now().minusYears(18).plusDays(1),
-                REGULAR_ZONE
-        );
+                REGULAR_ZONE);
 
         assertThat(policy.validate(context)).isFalse();
     }
@@ -195,8 +197,7 @@ class BasicPolicyTest {
 
         PurchaseContext context = contextWithBirthDate(
                 LocalDate.now().minusYears(18).minusDays(1),
-                REGULAR_ZONE
-        );
+                REGULAR_ZONE);
 
         assertThat(policy.validate(context)).isTrue();
     }
@@ -241,8 +242,7 @@ class BasicPolicyTest {
                 List.of(REGULAR_ZONE),
                 exactly18,
                 purchaseDate,
-                null
-        );
+                null);
 
         MinAgePolicy policy = new MinAgePolicy(18);
 
@@ -260,8 +260,7 @@ class BasicPolicyTest {
                 List.of(REGULAR_ZONE),
                 notYet18,
                 purchaseDate,
-                null
-        );
+                null);
 
         MinAgePolicy policy = new MinAgePolicy(18);
 
@@ -325,6 +324,81 @@ class BasicPolicyTest {
                 .hasMessageContaining("Purchase policy restricts current purchase");
     }
 
-    
+    // PP-05 / PP-06 / DP-06 / DP-07:
+    // Basic policies expose the correct PolicyType used by conflict detection and
+    // policy building.
+    @Test
+    void basicPoliciesExposeCorrectPolicyTypes() {
+        assertThat(AlwaysTruePolicy.INSTANCE.type()).isEqualTo(PolicyType.ALWAYS_TRUE);
+        assertThat(NeverAllowPolicy.INSTANCE.type()).isEqualTo(PolicyType.NEVER_ALLOW);
+
+        assertThat(new MinTicketPolicy(2).type()).isEqualTo(PolicyType.MIN_TICKETS);
+        assertThat(new MaxTicketPolicy(4).type()).isEqualTo(PolicyType.MAX_TICKETS);
+        assertThat(new MinAgePolicy(18).type()).isEqualTo(PolicyType.MIN_AGE);
+
+        assertThat(new AfterDatePolicy(LocalDate.now().minusDays(1)).type()).isEqualTo(PolicyType.AFTER_DATE);
+        assertThat(new UntilDatePolicy(LocalDate.now().plusDays(1)).type()).isEqualTo(PolicyType.UNTIL_DATE);
+
+        assertThat(new CodePolicy("SAVE20").type()).isEqualTo(PolicyType.CODE);
+    }
+
+    // PP-06:
+    // Ticket quantity policy types are categorized correctly.
+    @Test
+    void policyTypeIdentifiesTicketQuantityRules() {
+        assertThat(PolicyType.MIN_TICKETS.isTicketQuantityRule()).isTrue();
+        assertThat(PolicyType.MAX_TICKETS.isTicketQuantityRule()).isTrue();
+
+        assertThat(PolicyType.MIN_AGE.isTicketQuantityRule()).isFalse();
+        assertThat(PolicyType.CODE.isTicketQuantityRule()).isFalse();
+        assertThat(PolicyType.AFTER_DATE.isTicketQuantityRule()).isFalse();
+        assertThat(PolicyType.UNTIL_DATE.isTicketQuantityRule()).isFalse();
+        assertThat(PolicyType.ALWAYS_TRUE.isTicketQuantityRule()).isFalse();
+        assertThat(PolicyType.NEVER_ALLOW.isTicketQuantityRule()).isFalse();
+    }
+
+    // DP-07 / DP-08:
+    // Coupon policy type is categorized correctly.
+    @Test
+    void policyTypeIdentifiesCouponRule() {
+        assertThat(PolicyType.CODE.isCouponRule()).isTrue();
+
+        assertThat(PolicyType.MIN_TICKETS.isCouponRule()).isFalse();
+        assertThat(PolicyType.MAX_TICKETS.isCouponRule()).isFalse();
+        assertThat(PolicyType.MIN_AGE.isCouponRule()).isFalse();
+        assertThat(PolicyType.AFTER_DATE.isCouponRule()).isFalse();
+        assertThat(PolicyType.UNTIL_DATE.isCouponRule()).isFalse();
+        assertThat(PolicyType.ALWAYS_TRUE.isCouponRule()).isFalse();
+        assertThat(PolicyType.NEVER_ALLOW.isCouponRule()).isFalse();
+    }
+
+    // DP-06 / TST-09:
+    // Date policy types are categorized correctly.
+    @Test
+    void policyTypeIdentifiesDateRules() {
+        assertThat(PolicyType.AFTER_DATE.isDateRule()).isTrue();
+        assertThat(PolicyType.UNTIL_DATE.isDateRule()).isTrue();
+
+        assertThat(PolicyType.MIN_TICKETS.isDateRule()).isFalse();
+        assertThat(PolicyType.MAX_TICKETS.isDateRule()).isFalse();
+        assertThat(PolicyType.MIN_AGE.isDateRule()).isFalse();
+        assertThat(PolicyType.CODE.isDateRule()).isFalse();
+        assertThat(PolicyType.ALWAYS_TRUE.isDateRule()).isFalse();
+        assertThat(PolicyType.NEVER_ALLOW.isDateRule()).isFalse();
+    }
+
+    // DDD/extensibility:
+    // Basic policy types are not composite rules.
+    @Test
+    void basicPolicyTypesAreNotCompositeRules() {
+        assertThat(PolicyType.ALWAYS_TRUE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.NEVER_ALLOW.isCompositeRule()).isFalse();
+        assertThat(PolicyType.MIN_TICKETS.isCompositeRule()).isFalse();
+        assertThat(PolicyType.MAX_TICKETS.isCompositeRule()).isFalse();
+        assertThat(PolicyType.MIN_AGE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.AFTER_DATE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.UNTIL_DATE.isCompositeRule()).isFalse();
+        assertThat(PolicyType.CODE.isCompositeRule()).isFalse();
+    }
 
 }
