@@ -1,7 +1,8 @@
-export function formatMoney(amount: number, currency = 'USD'): string {
+export function formatMoney(amount: number, currency?: string | null): string {
+  const cur = currency && currency.length === 3 ? currency : 'USD';
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
-    currency,
+    currency: cur,
     maximumFractionDigits: 2,
   }).format(amount);
 }

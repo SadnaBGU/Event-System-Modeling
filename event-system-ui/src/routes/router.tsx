@@ -49,8 +49,10 @@ export const router = createBrowserRouter([
 
       {
         path: '/companies',
+        // Any signed-in member can view the companies page; creating a company is the
+        // path to becoming an owner, so we cannot pre-require the owner role here.
         element: (
-          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+          <RequireAuth>
             <CompaniesListPage />
           </RequireAuth>
         ),

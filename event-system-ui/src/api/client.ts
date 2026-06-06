@@ -28,8 +28,32 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // Bus event so the router can react to forced logout without coupling axios to react-router.
 export const AUTH_EXPIRED_EVENT = 'eventsystem:auth-expired';
 
+// Backend serializes value-object IDs as `{ value: "<uuid>" }`. Collapse them to the bare
+// primitive at the network boundary so the rest of the app keeps treating IDs as strings.
+function flattenValueObjects(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(flattenValueObjects);
+  if (node && typeof node === 'object') {
+    const obj = node as Record<string, unknown>;
+    const keys = Object.keys(obj);
+    if (
+      keys.length === 1 &&
+      keys[0] === 'value' &&
+      (typeof obj.value === 'string' || typeof obj.value === 'number')
+    ) {
+      return obj.value;
+    }
+    const out: Record<string, unknown> = {};
+    for (const k of keys) out[k] = flattenValueObjects(obj[k]);
+    return out;
+  }
+  return node;
+}
+
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    r.data = flattenValueObjects(r.data);
+    return r;
+  },
   (error: AxiosError<ApiErrorBody>) => {
     const status = error.response?.status;
     const body = error.response?.data;

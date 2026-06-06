@@ -6,20 +6,27 @@ import type {
 } from '../../types/api';
 
 export const ordersApi = {
-  openOrCreate: (eventId: string) =>
+  // Backend POST /orders/active takes the full BuyerReference; memberId is the authenticated user's id.
+  openOrCreate: (eventId: string, memberId: string) =>
     api
-      .post<{ orderId: string; expiresAt: string }>('/orders/active', { eventId })
+      .post<OrderDto>('/orders/active', { eventId, buyerType: 'MEMBER', memberId })
       .then((r) => r.data),
 
   get: (orderId: string) =>
     api.get<OrderDto>(`/orders/${orderId}`).then((r) => r.data),
 
+  // Reserve seat — backend returns 202 with empty body; caller should refetch the order.
   addItem: (orderId: string, body: AddItemRequest) =>
-    api.post<OrderDto>(`/orders/${orderId}/items`, body).then((r) => r.data),
+    api.post<void>(`/orders/${orderId}/items`, body).then(() => undefined),
 
-  removeItem: (orderId: string, seatId: string) =>
-    api.delete<OrderDto>(`/orders/${orderId}/items/${seatId}`).then((r) => r.data),
+  // Release seat — backend takes the body via DELETE.
+  removeItem: (orderId: string, body: AddItemRequest) =>
+    api.delete<void>(`/orders/${orderId}/items`, { data: body }).then(() => undefined),
 
-  checkout: (orderId: string, body: CheckoutRequest) =>
-    api.post<{ recordId: string }>(`/orders/${orderId}/checkout`, body).then((r) => r.data),
+  // Checkout lives on its own controller. Returns 202 with empty body; status is polled separately.
+  checkout: (body: CheckoutRequest) =>
+    api.post<void>('/checkout', body).then(() => undefined),
+
+  checkoutStatus: (orderId: string) =>
+    api.get<{ orderId: string; status: string }>(`/checkout/${orderId}/status`).then((r) => r.data),
 };

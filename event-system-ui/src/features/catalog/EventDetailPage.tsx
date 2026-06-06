@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import { eventsApi } from '../../api/endpoints/events';
 import { ordersApi } from '../../api/endpoints/orders';
 import { lotteryApi } from '../../api/endpoints/lottery';
+import { useAuthStore } from '../../auth/authStore';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import '../../components/common.css';
 
 export function EventDetailPage() {
   const { eventId = '' } = useParams();
   const navigate = useNavigate();
+  const memberId = useAuthStore((s) => s.session?.memberId);
   const ev = useQuery({
     queryKey: ['event', eventId],
     queryFn: () => eventsApi.get(eventId),
@@ -17,7 +19,10 @@ export function EventDetailPage() {
   });
 
   const openOrder = useMutation({
-    mutationFn: () => ordersApi.openOrCreate(eventId),
+    mutationFn: () => {
+      if (!memberId) throw new Error('Sign in to start an order');
+      return ordersApi.openOrCreate(eventId, memberId);
+    },
     onSuccess: ({ orderId }) => {
       toast.success('Cart opened');
       navigate(`/orders/${orderId}`);
@@ -33,13 +38,17 @@ export function EventDetailPage() {
   if (ev.isError || !ev.data) return <p className="empty">Event not found.</p>;
 
   const e = ev.data;
+  const firstDate = e.dates[0];
   return (
     <section>
       <Link to="/events" className="btn ghost" style={{ marginBottom: '1rem' }}>← Catalog</Link>
-      <h1 className="page-title">{e.name}</h1>
+      <h1 className="page-title">{e.eventName}</h1>
       <div className="meta" style={{ marginBottom: '1rem' }}>
-        <div><strong>{e.companyName}</strong></div>
-        <div>{formatDateTime(e.dateTime)} · {e.venueName}</div>
+        {e.artist && <div><strong>{e.artist}</strong></div>}
+        <div>
+          {firstDate && formatDateTime(firstDate)}
+          {e.location && ` · ${e.location}`}
+        </div>
       </div>
       {e.description && <p>{e.description}</p>}
 
@@ -47,10 +56,10 @@ export function EventDetailPage() {
       {e.zones.map((z) => (
         <div className="zone-row" key={z.zoneId}>
           <div className="zone-info">
-            <strong>{z.name}</strong> · {z.type === 'SEATED' ? 'Seated' : 'Standing'}
-            <div className="meta">{z.available} of {z.capacity} available</div>
+            <strong>{z.zoneName}</strong> · {z.zoneType === 'SEATED' ? 'Seated' : 'Standing'}
+            <div className="meta">{z.availableCount} of {z.totalCapacity} available</div>
           </div>
-          <span className="price">{formatMoney(z.basePrice)}</span>
+          <span className="price">{formatMoney(z.price, z.currency)}</span>
         </div>
       ))}
 

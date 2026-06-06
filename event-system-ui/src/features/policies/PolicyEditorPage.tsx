@@ -2,14 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { DiscountNode, PolicyBundle, PurchaseNode } from '../../types/policies';
+import type { PolicyBundle, PurchaseNode } from '../../types/policies';
 import { policiesApi } from '../../api/endpoints/policies';
-import {
-  DiscountNodeEditor,
-  discountTemplates,
-} from './DiscountTreeEditor';
 import { PurchaseNodeEditor, purchaseTemplates } from './PurchaseTreeEditor';
-import { previewDiscount, previewPurchase } from './preview';
+import { previewPurchase } from './preview';
 import '../../components/common.css';
 import './policies.css';
 
@@ -57,26 +53,12 @@ export function PolicyEditorPage({ scope }: Props) {
         {scope === 'company' ? 'Company policies' : 'Event policies'}
       </h1>
 
-      <h2 style={{ fontSize: '1.05rem', marginTop: '1rem' }}>Discount policy</h2>
-      {bundle.discount ? (
-        <DiscountNodeEditor
-          node={bundle.discount}
-          onChange={(discount) => setBundle((b) => ({ ...b, discount }))}
-          onRemove={() => setBundle((b) => ({ ...b, discount: null }))}
-        />
-      ) : (
-        <EmptyTree
-          label="No discount policy yet."
-          templates={discountTemplates.map((t) => ({ label: t.label, make: t.make }))}
-          onPick={(node) => setBundle((b) => ({ ...b, discount: node as DiscountNode }))}
-        />
-      )}
-      <div className="preview-box">
-        <div className="label">Preview</div>
-        {previewDiscount(bundle.discount)}
-      </div>
+      <p className="meta">
+        The backend exposes only purchase-policy writes today. Discount policies and policy reads
+        will appear here once those endpoints exist.
+      </p>
 
-      <h2 style={{ fontSize: '1.05rem', marginTop: '1.5rem' }}>Purchase policy</h2>
+      <h2 style={{ fontSize: '1.05rem', marginTop: '1rem' }}>Purchase policy</h2>
       {bundle.purchase ? (
         <PurchaseNodeEditor
           node={bundle.purchase}
@@ -100,9 +82,9 @@ export function PolicyEditorPage({ scope }: Props) {
           type="button"
           className="btn success"
           onClick={() => save.mutate()}
-          disabled={save.isPending}
+          disabled={save.isPending || !bundle.purchase}
         >
-          {save.isPending ? 'Saving…' : 'Save policies'}
+          {save.isPending ? 'Saving…' : 'Save policy'}
         </button>
       </div>
     </section>

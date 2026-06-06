@@ -11,8 +11,6 @@ export function Layout() {
   const navigate = useNavigate();
 
   const isAdmin = session?.roles.includes('ADMIN') ?? false;
-  const isCompanyStaff =
-    session?.roles.some((r) => r === 'COMPANY_OWNER' || r === 'COMPANY_MANAGER') ?? false;
 
   function handleLogout() {
     clear();
@@ -27,7 +25,7 @@ export function Layout() {
           <nav className="layout-nav">
             <NavLink to="/events">Catalog</NavLink>
             <NavLink to="/history">My receipts</NavLink>
-            {isCompanyStaff && <NavLink to="/companies">Companies</NavLink>}
+            <NavLink to="/companies">Companies</NavLink>
             {isAdmin && <NavLink to="/admin">Admin</NavLink>}
           </nav>
         )}

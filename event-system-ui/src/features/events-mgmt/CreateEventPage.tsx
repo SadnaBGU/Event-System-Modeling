@@ -6,45 +6,35 @@ import { eventsMgmtApi } from '../../api/endpoints/eventsMgmt';
 import type { CreateEventRequest } from '../../types/api';
 import '../../components/common.css';
 
-interface ZoneDraft {
-  name: string;
-  type: 'SEATED' | 'STANDING';
-  basePrice: number;
-  capacity: number;
-}
-
 export function CreateEventPage() {
   const { companyId = '' } = useParams();
   const navigate = useNavigate();
 
-  const [name, setName] = useState('');
+  const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [location, setLocation] = useState('');
   const [dateTime, setDateTime] = useState('');
-  const [venueName, setVenueName] = useState('');
-  const [zones, setZones] = useState<ZoneDraft[]>([
-    { name: 'General', type: 'STANDING', basePrice: 50, capacity: 100 },
-  ]);
 
   const create = useMutation({
     mutationFn: () => {
+      // Backend takes LocalDateTime[] without zone offset, so strip the seconds-zone bits.
+      const dt = dateTime.length === 16 ? `${dateTime}:00` : dateTime;
       const body: CreateEventRequest = {
-        name,
+        eventName,
+        dates: [dt],
+        category: category || undefined,
+        location: location || undefined,
         description: description || undefined,
-        dateTime: new Date(dateTime).toISOString(),
-        venueName,
-        zones,
       };
       return eventsMgmtApi.create(companyId, body);
     },
-    onSuccess: (event) => {
+    onSuccess: (locationHeader) => {
       toast.success('Event created');
-      navigate(`/events/${event.eventId}`);
+      const newEventId = locationHeader.split('/').pop();
+      navigate(newEventId ? `/events/${newEventId}` : `/companies/${companyId}`);
     },
   });
-
-  function updateZone(i: number, patch: Partial<ZoneDraft>) {
-    setZones((cur) => cur.map((z, idx) => (idx === i ? { ...z, ...patch } : z)));
-  }
 
   return (
     <section>
@@ -62,7 +52,15 @@ export function CreateEventPage() {
       >
         <label>
           Event name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <input value={eventName} onChange={(e) => setEventName(e.target.value)} required />
+        </label>
+        <label>
+          Category
+          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Concert" />
+        </label>
+        <label>
+          Location
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Grand Hall" />
         </label>
         <label>
           Description
@@ -77,71 +75,10 @@ export function CreateEventPage() {
             required
           />
         </label>
-        <label>
-          Venue
-          <input value={venueName} onChange={(e) => setVenueName(e.target.value)} required />
-        </label>
 
-        <h2 style={{ fontSize: '1rem', marginTop: '1rem' }}>Zones</h2>
-        {zones.map((z, i) => (
-          <div className="zone-row" key={i}>
-            <div className="zone-info" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <input
-                value={z.name}
-                onChange={(e) => updateZone(i, { name: e.target.value })}
-                placeholder="Name"
-                required
-                style={{ background: '#0d1117', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, padding: '0.3rem 0.5rem' }}
-              />
-              <select
-                value={z.type}
-                onChange={(e) => updateZone(i, { type: e.target.value as 'SEATED' | 'STANDING' })}
-                style={{ background: '#0d1117', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, padding: '0.3rem 0.5rem' }}
-              >
-                <option value="STANDING">Standing</option>
-                <option value="SEATED">Seated</option>
-              </select>
-              <input
-                type="number"
-                min={0}
-                value={z.basePrice}
-                onChange={(e) => updateZone(i, { basePrice: Number(e.target.value) })}
-                placeholder="Price"
-                required
-                style={{ width: 100, background: '#0d1117', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, padding: '0.3rem 0.5rem' }}
-              />
-              <input
-                type="number"
-                min={1}
-                value={z.capacity}
-                onChange={(e) => updateZone(i, { capacity: Number(e.target.value) })}
-                placeholder="Capacity"
-                required
-                style={{ width: 100, background: '#0d1117', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, padding: '0.3rem 0.5rem' }}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => setZones((cur) => cur.filter((_, idx) => idx !== i))}
-              disabled={zones.length === 1}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() =>
-            setZones((cur) => [
-              ...cur,
-              { name: '', type: 'STANDING', basePrice: 0, capacity: 100 },
-            ])
-          }
-        >
-          + Add zone
-        </button>
+        <p className="meta">
+          Zones are configured separately under the company's venues after the event is created.
+        </p>
 
         <button type="submit" className="btn success" disabled={create.isPending}>
           {create.isPending ? 'Creating…' : 'Create event'}

@@ -21,7 +21,8 @@ export function ReceiptDetailPage() {
       <Link to="/history" className="btn ghost" style={{ marginBottom: '1rem' }}>← All receipts</Link>
       <h1 className="page-title">Receipt {r.recordId}</h1>
       <p className="meta"><strong>{r.eventName}</strong></p>
-      <p className="meta">Purchased {formatDateTime(r.purchasedAt)}</p>
+      <p className="meta">Purchased {formatDateTime(r.purchaseDate)}</p>
+      <p className="meta">Payment status: <code>{r.paymentStatus}</code></p>
 
       <table className="table" style={{ marginTop: '1rem' }}>
         <thead>
@@ -32,11 +33,11 @@ export function ReceiptDetailPage() {
           </tr>
         </thead>
         <tbody>
-          {r.items.map((it) => (
-            <tr key={`${it.zoneName}-${it.seatLabel}`}>
-              <td>{it.zoneName}</td>
-              <td>{it.seatLabel}</td>
-              <td>{formatMoney(it.unitPrice)}</td>
+          {r.tickets.map((it, idx) => (
+            <tr key={`${it.zoneId}-${it.seatId}-${idx}`}>
+              <td>{it.zoneId}</td>
+              <td>{it.seatId}</td>
+              <td>{formatMoney(it.price, r.currency)}</td>
             </tr>
           ))}
         </tbody>
@@ -44,7 +45,7 @@ export function ReceiptDetailPage() {
 
       <div className="totals">
         <span>Total paid</span>
-        <span>{formatMoney(r.totalPaid)}</span>
+        <span>{formatMoney(r.totalAmount, r.currency)}</span>
       </div>
     </section>
   );

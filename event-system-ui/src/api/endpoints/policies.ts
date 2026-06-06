@@ -1,16 +1,30 @@
 import { api } from '../client';
 import type { PolicyBundle } from '../../types/policies';
+import type { PurchasePolicyTree } from './policyMappers';
+import { purchaseNodeToTree } from './policyMappers';
 
+// Backend exposes only PUT for the purchase policy (single rule tree, no bundle wrapper).
+// There is no GET endpoint and no discount-policy endpoint yet.
 export const policiesApi = {
-  getCompany: (companyId: string) =>
-    api.get<PolicyBundle>(`/companies/${companyId}/policies`).then((r) => r.data),
+  getCompany: async (_companyId: string): Promise<PolicyBundle> => {
+    void _companyId;
+    return { discount: null, purchase: null };
+  },
 
-  putCompany: (companyId: string, body: PolicyBundle) =>
-    api.put<PolicyBundle>(`/companies/${companyId}/policies`, body).then((r) => r.data),
+  putCompany: (companyId: string, body: PolicyBundle) => {
+    const tree: PurchasePolicyTree | null = body.purchase ? purchaseNodeToTree(body.purchase) : null;
+    if (!tree) return Promise.resolve(undefined);
+    return api.put<void>(`/companies/${companyId}/policies`, tree).then(() => undefined);
+  },
 
-  getEvent: (eventId: string) =>
-    api.get<PolicyBundle>(`/events/${eventId}/policies`).then((r) => r.data),
+  getEvent: async (_eventId: string): Promise<PolicyBundle> => {
+    void _eventId;
+    return { discount: null, purchase: null };
+  },
 
-  putEvent: (eventId: string, body: PolicyBundle) =>
-    api.put<PolicyBundle>(`/events/${eventId}/policies`, body).then((r) => r.data),
+  putEvent: (eventId: string, body: PolicyBundle) => {
+    const tree: PurchasePolicyTree | null = body.purchase ? purchaseNodeToTree(body.purchase) : null;
+    if (!tree) return Promise.resolve(undefined);
+    return api.put<void>(`/events/${eventId}/policies`, tree).then(() => undefined);
+  },
 };

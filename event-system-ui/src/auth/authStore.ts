@@ -22,6 +22,7 @@ interface AuthState {
   session: Session | null;
   hydrated: boolean;
   setSession: (s: Session) => void;
+  addRole: (role: Role) => void;
   clear: () => void;
   hydrateFromStorage: () => void;
   hasRole: (role: Role) => boolean;
@@ -46,6 +47,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setSession: (s) => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     set({ session: s });
+  },
+  addRole: (role) => {
+    const cur = get().session;
+    if (!cur || cur.roles.includes(role)) return;
+    const updated: Session = { ...cur, roles: [...cur.roles, role] };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    set({ session: updated });
   },
   clear: () => {
     sessionStorage.removeItem(STORAGE_KEY);
@@ -74,4 +82,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 export function sessionFromLogin(token: string, memberId: string, expiresAt: string): Session {
   return { token, memberId, roles: decodeRoles(token), expiresAt };
+}
+
+// Hardcoded admin usernames — the real backend doesn't include a role claim in the JWT,
+// and the bootstrap admin (see infrastructure application.yml) ships with username "admin".
+const ADMIN_USERNAMES = new Set(['admin']);
+
+export function inferRoles(token: string, username: string): Role[] {
+  const fromToken = decodeRoles(token);
+  const hasAdmin = ADMIN_USERNAMES.has(username) || fromToken.includes('ADMIN');
+  const base = fromToken.filter((r) => r !== 'ADMIN');
+  return hasAdmin ? ['ADMIN', ...base] : base;
 }

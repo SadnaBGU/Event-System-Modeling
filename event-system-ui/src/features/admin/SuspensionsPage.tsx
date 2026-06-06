@@ -14,13 +14,13 @@ export function SuspensionsPage() {
   });
 
   const [targetMemberId, setTarget] = useState('');
-  const [duration, setDuration] = useState<string>('60'); // empty string => permanent
+  const [duration, setDuration] = useState<string>('1'); // empty string => permanent
   const [reason, setReason] = useState('');
 
   const suspend = useMutation({
     mutationFn: () =>
       adminApi.suspend(targetMemberId, {
-        durationMinutes: duration === '' ? null : Number(duration),
+        durationDays: duration === '' ? null : Number(duration),
         reason: reason || undefined,
       }),
     onSuccess: () => {
@@ -64,11 +64,11 @@ export function SuspensionsPage() {
             {list.data.map((s) => (
               <tr key={s.memberId}>
                 <td>
-                  {s.username}<br />
+                  {s.username ?? '—'}<br />
                   <code style={{ fontSize: '0.75rem' }}>{s.memberId}</code>
                 </td>
                 <td>{formatDateTime(s.suspendedAt)}</td>
-                <td>{s.durationMinutes === null ? 'Permanent' : `${s.durationMinutes} min`}</td>
+                <td>{s.durationDays === null ? 'Permanent' : `${s.durationDays} day${s.durationDays === 1 ? '' : 's'}`}</td>
                 <td>{s.endsAt ? formatDateTime(s.endsAt) : '—'}</td>
                 <td>{s.reason ?? '—'}</td>
                 <td>
@@ -105,7 +105,7 @@ export function SuspensionsPage() {
           />
         </label>
         <label>
-          Duration (minutes — leave blank for permanent)
+          Duration (days — leave blank for permanent)
           <input
             type="number"
             min={1}

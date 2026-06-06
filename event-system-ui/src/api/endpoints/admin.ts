@@ -1,6 +1,6 @@
 import { api } from '../client';
 import type {
-  GlobalHistoryRow,
+  GlobalHistoryPage,
   SuspendRequest,
   SuspensionDto,
 } from '../../types/api';
@@ -8,27 +8,24 @@ import type {
 export const adminApi = {
   // Companies
   closeCompany: (companyId: string) =>
-    api.delete<void>(`/admin/companies/${companyId}`).then((r) => r.data),
+    api.delete<void>(`/admin/companies/${companyId}`).then(() => undefined),
 
-  // Members
-  banMember: (memberId: string) =>
-    api.delete<void>(`/admin/members/${memberId}`).then((r) => r.data),
-
-  // Suspensions
+  // Suspensions — backend AdminController
   suspend: (memberId: string, body: SuspendRequest) =>
     api
-      .post<SuspensionDto>(`/admin/members/${memberId}/suspensions`, body)
-      .then((r) => r.data),
+      .post<void>(`/admin/members/${memberId}/suspensions`, body)
+      .then(() => undefined),
 
   unsuspend: (memberId: string) =>
     api
       .delete<void>(`/admin/members/${memberId}/suspensions`)
-      .then((r) => r.data),
+      .then(() => undefined),
 
+  // Backend lives at /admin/suspensions (not /admin/members/suspensions).
   listSuspensions: () =>
-    api.get<SuspensionDto[]>('/admin/members/suspensions').then((r) => r.data),
+    api.get<SuspensionDto[]>('/admin/suspensions').then((r) => r.data),
 
-  // Global history
-  globalHistory: () =>
-    api.get<GlobalHistoryRow[]>('/admin/history').then((r) => r.data),
+  // Global purchase history — paginated envelope from AdminStreamController.
+  globalHistory: (params: { page?: number; size?: number } = {}) =>
+    api.get<GlobalHistoryPage>('/admin/history', { params }).then((r) => r.data),
 };

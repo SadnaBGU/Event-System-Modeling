@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -29,50 +29,63 @@ export function OrderPage() {
   const [discount, setDiscount] = useState('');
   const [payment, setPayment] = useState('tok_visa_mock');
 
+  const refetchOrder = () => qc.invalidateQueries({ queryKey: ['order', orderId] });
+
   const addItem = useMutation({
     mutationFn: () => ordersApi.addItem(orderId, { zoneId, seatId }),
-    onSuccess: (updated) => {
+    onSuccess: () => {
       toast.success('Added to cart');
-      qc.setQueryData(['order', orderId], updated);
       setSeatId('');
+      refetchOrder();
     },
   });
 
   const removeItem = useMutation({
-    mutationFn: (sid: string) => ordersApi.removeItem(orderId, sid),
-    onSuccess: (updated) => {
-      qc.setQueryData(['order', orderId], updated);
+    mutationFn: (item: { zoneId: string; seatId: string }) => ordersApi.removeItem(orderId, item),
+    onSuccess: () => {
+      refetchOrder();
     },
   });
 
   const checkout = useMutation({
     mutationFn: () =>
-      ordersApi.checkout(orderId, {
+      ordersApi.checkout({
+        orderId,
         paymentToken: payment,
         discountCode: discount || undefined,
       }),
-    onSuccess: ({ recordId }) => {
-      toast.success('Purchase confirmed');
+    onSuccess: () => {
+      toast.success('Checkout submitted');
       qc.invalidateQueries({ queryKey: ['history'] });
-      navigate(`/history/${recordId}`);
+      // Backend processes checkout asynchronously; bounce to receipts so the user can poll.
+      navigate('/history');
     },
   });
+
+  const subtotal = useMemo(() => {
+    if (!orderQ.data) return { amount: 0, currency: 'USD' };
+    const items = orderQ.data.items;
+    const total = items.reduce((sum, i) => sum + i.unitPrice.amount * (i.quantity || 1), 0);
+    const currency = items[0]?.unitPrice.currency ?? 'USD';
+    return { amount: total, currency };
+  }, [orderQ.data]);
 
   if (orderQ.isLoading) return <p>Loading…</p>;
   if (orderQ.isError || !orderQ.data) return <p className="empty">Order not found.</p>;
 
   const order = orderQ.data;
   const event = eventQ.data;
+  const firstDate = event?.dates[0];
 
   return (
     <section>
       <h1 className="page-title">Your cart</h1>
       {event && (
         <p className="meta">
-          For <strong>{event.name}</strong> · {formatDateTime(event.dateTime)}
+          For <strong>{event.eventName}</strong>{firstDate ? ` · ${formatDateTime(firstDate)}` : ''}
         </p>
       )}
-      <p className="meta">Cart expires {formatDateTime(order.expiresAt)}</p>
+      <p className="meta">Cart expires {formatDateTime(order.reservationExpiry)}</p>
 
       <h2 style={{ fontSize: '1rem', marginTop: '1rem' }}>Items</h2>
       {order.items.length === 0 ? (
@@ -91,15 +104,15 @@ export function OrderPage() {
             {order.items.map((i) => {
               const zone = event?.zones.find((z) => z.zoneId === i.zoneId);
               return (
-                <tr key={i.seatId}>
-                  <td>{zone?.name ?? i.zoneId}</td>
-                  <td>{i.seatLabel ?? i.seatId}</td>
-                  <td>{formatMoney(i.unitPrice)}</td>
+                <tr key={`${i.zoneId}-${i.seatId}`}>
+                  <td>{zone?.zoneName ?? i.zoneId}</td>
+                  <td>{i.seatId}</td>
+                  <td>{formatMoney(i.unitPrice.amount, i.unitPrice.currency)}</td>
                   <td>
                     <button
                       type="button"
                       className="btn ghost"
-                      onClick={() => removeItem.mutate(i.seatId)}
+                      onClick={() => removeItem.mutate({ zoneId: i.zoneId, seatId: i.seatId })}
                       disabled={removeItem.isPending}
                     >
                       Remove
@@ -114,14 +127,8 @@ export function OrderPage() {
 
       <div className="totals">
         <span>Subtotal</span>
-        <span>{formatMoney(order.totalBeforeDiscount)}</span>
+        <span>{formatMoney(subtotal.amount, subtotal.currency)}</span>
       </div>
-      {order.totalAfterDiscount !== order.totalBeforeDiscount && (
-        <div className="totals" style={{ borderTop: 'none' }}>
-          <span>After discount</span>
-          <span>{formatMoney(order.totalAfterDiscount)}</span>
-        </div>
-      )}
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Add seat</h2>
       <form
@@ -150,7 +157,7 @@ export function OrderPage() {
             <option value="">Pick a zone…</option>
             {event?.zones.map((z) => (
               <option key={z.zoneId} value={z.zoneId}>
-                {z.name} ({formatMoney(z.basePrice)})
+                {z.zoneName} ({formatMoney(z.price, z.currency)})
               </option>
             ))}
           </select>
@@ -194,7 +201,7 @@ export function OrderPage() {
           type="submit"
           disabled={checkout.isPending || order.items.length === 0}
         >
-          {checkout.isPending ? 'Processing…' : `Pay ${formatMoney(order.totalAfterDiscount)}`}
+          {checkout.isPending ? 'Processing…' : `Pay ${formatMoney(subtotal.amount, subtotal.currency)}`}
         </button>
       </form>
 

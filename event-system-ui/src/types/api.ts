@@ -33,46 +33,94 @@ export interface MemberDto {
 }
 
 // ---------- Catalog ----------
-export interface EventSummaryDto {
+
+// Paginated envelope returned by listing endpoints.
+export interface Page<T> {
+  currentPage: number;
+  hasNext: boolean;
+  totalElements: number;
+  totalPages: number;
+  items: T[];
+}
+
+// Backend EventCatalogController returns the same shape for summary and detail.
+export interface EventDto {
   eventId: string;
-  name: string;
-  companyName: string;
-  dateTime: string;
-  venueName: string;
-  startingPrice?: number;
-  status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED';
-}
-
-export interface EventDetailDto extends EventSummaryDto {
+  eventName: string;
+  artist?: string;
+  dates: string[]; // ISO LocalDateTime[] (no zone)
+  category?: string;
+  location?: string;
   description?: string;
-  zones: ZoneSummaryDto[];
+  status: string; // backend EventStatus enum name
+  salesMethod?: string;
+  companyId: string;
+  zones: EventZoneDto[];
+  venueMap?: VenueMapElementDto[];
+  priceSummary?: PriceSummary;
 }
 
-export interface ZoneSummaryDto {
+export interface EventZoneDto {
   zoneId: string;
-  name: string;
-  type: 'SEATED' | 'STANDING';
-  basePrice: number;
-  available: number;
-  capacity: number;
+  zoneName: string;
+  zoneType: 'SEATED' | 'STANDING';
+  price: number;
+  currency: string;
+  totalCapacity: number;
+  availableCount: number;
+}
+
+export interface PriceSummary {
+  minPrice: number;
+  maxPrice: number;
+  currency: string;
+}
+
+export interface VenueMapElementDto {
+  elementType: string;
+  label?: string;
+  positionX?: number;
+  positionY?: number;
+  linkedZoneId?: string;
 }
 
 // ---------- Orders ----------
-export interface OrderDto {
-  orderId: string;
-  eventId: string;
-  expiresAt: string;
-  items: OrderItemDto[];
-  totalBeforeDiscount: number;
-  totalAfterDiscount: number;
-  status: 'ACTIVE' | 'CHECKED_OUT' | 'EXPIRED' | 'CANCELLED';
+// Matches backend ActiveOrderDTO.
+export type OrderStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | string;
+
+export interface MoneyDto {
+  amount: number;
+  currency: string;
 }
 
 export interface OrderItemDto {
   zoneId: string;
   seatId: string;
-  seatLabel?: string;
-  unitPrice: number;
+  quantity: number;
+  unitPrice: MoneyDto;
+}
+
+export interface BuyerRefDto {
+  buyerType: 'GUEST' | 'MEMBER';
+  sessionId?: string | null;
+  memberId?: string | null;
+}
+
+export interface OrderDto {
+  orderId: string;
+  buyerRef: BuyerRefDto;
+  eventId: string;
+  items: OrderItemDto[];
+  reservationExpiry: string;
+  status: OrderStatus;
+  version: number;
 }
 
 export interface AddItemRequest {
@@ -80,7 +128,9 @@ export interface AddItemRequest {
   seatId: string;
 }
 
+// CheckoutSagaController expects orderId in the body.
 export interface CheckoutRequest {
+  orderId: string;
   paymentToken: string;
   discountCode?: string;
 }
@@ -92,19 +142,25 @@ export interface QueueStatusDto {
 }
 
 // ---------- Purchase history ----------
-export interface PurchaseRecordDto {
+// Backend list-receipts items: { recordId, purchaseDate, eventName, totalAmount, currency }
+export interface PurchaseRecordSummaryDto {
   recordId: string;
-  eventId: string;
+  purchaseDate: string;
   eventName: string;
-  purchasedAt: string;
-  totalPaid: number;
-  items: PurchasedItemDto[];
+  totalAmount: number;
+  currency: string;
 }
 
-export interface PurchasedItemDto {
-  zoneName: string;
-  seatLabel: string;
-  unitPrice: number;
+// Backend receipt-detail: { recordId, purchaseDate, eventName, totalAmount, currency, paymentStatus, tickets[] }
+export interface PurchaseRecordDetailDto extends PurchaseRecordSummaryDto {
+  paymentStatus: 'COMPLETED' | 'PENDING' | string;
+  tickets: PurchasedTicketDto[];
+}
+
+export interface PurchasedTicketDto {
+  zoneId: string; // backend currently emits zoneName here under the key "zoneId"
+  seatId: string;
+  price: number;
 }
 
 // ---------- Companies ----------
@@ -124,6 +180,7 @@ export interface CompanyStatusUpdate {
   status: 'ACTIVE' | 'SUSPENDED';
 }
 
+// Backend CompanySalesReportDTO (full structure depends on service; we expose the rows the UI uses).
 export interface SalesReportRow {
   eventId: string;
   eventName: string;
@@ -156,12 +213,13 @@ export interface AppointRoleRequest {
 }
 
 // ---------- Event creation (company side) ----------
+// Matches backend CompanyController.CreateEventRequest.
 export interface CreateEventRequest {
-  name: string;
+  eventName: string;
+  dates: string[]; // ISO LocalDateTime[] (no zone, e.g. "2026-08-01T20:00:00")
+  category?: string;
+  location?: string;
   description?: string;
-  dateTime: string;
-  venueName: string;
-  zones: { name: string; type: 'SEATED' | 'STANDING'; basePrice: number; capacity: number }[];
 }
 
 // ---------- Lottery ----------
@@ -170,26 +228,36 @@ export interface LotteryRegistrationRequest {
 }
 
 // ---------- Admin ----------
+// Backend SuspensionDto in application layer uses durationDays + endsAt + reason.
 export interface SuspensionDto {
   memberId: string;
-  username: string;
+  username?: string;
   suspendedAt: string;
-  durationMinutes: number | null; // null = permanent
+  durationDays: number | null;
   endsAt: string | null;
   reason?: string;
 }
 
 export interface SuspendRequest {
-  durationMinutes: number | null; // null = permanent
+  durationDays: number | null;
   reason?: string;
 }
 
+// Backend AdminStreamController.PurchaseHistoryPageResponse wraps PurchaseRecordDTO[] in {items, page, size, totalElements, totalPages}.
 export interface GlobalHistoryRow {
   recordId: string;
-  buyerUsername: string;
+  buyerId?: string;
   eventName: string;
-  purchasedAt: string;
-  totalPaid: number;
+  purchaseTimestamp: string;
+  totalPaid: MoneyDto;
+}
+
+export interface GlobalHistoryPage {
+  items: GlobalHistoryRow[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 // ---------- Notifications ----------

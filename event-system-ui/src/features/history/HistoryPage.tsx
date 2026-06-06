@@ -30,8 +30,8 @@ export function HistoryPage() {
               <tr key={r.recordId}>
                 <td><code>{r.recordId}</code></td>
                 <td>{r.eventName}</td>
-                <td>{formatDateTime(r.purchasedAt)}</td>
-                <td>{formatMoney(r.totalPaid)}</td>
+                <td>{formatDateTime(r.purchaseDate)}</td>
+                <td>{formatMoney(r.totalAmount, r.currency)}</td>
                 <td>
                   <Link to={`/history/${r.recordId}`} className="btn ghost">View</Link>
                 </td>

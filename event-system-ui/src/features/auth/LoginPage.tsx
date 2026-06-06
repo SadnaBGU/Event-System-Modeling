@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authApi } from '../../api/endpoints/auth';
-import { sessionFromLogin, useAuthStore } from '../../auth/authStore';
+import { inferRoles, useAuthStore } from '../../auth/authStore';
 import { extractApiMessage } from '../../api/client';
 import './AuthPage.css';
 
@@ -16,9 +16,21 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
   const mutation = useMutation({
-    mutationFn: () => authApi.login({ username, plaintextPassword: password }),
-    onSuccess: (res) => {
-      setSession(sessionFromLogin(res.token, res.memberId, res.expiresAt));
+    mutationFn: async () => {
+      const res = await authApi.login({ username, plaintextPassword: password });
+      // Seed the session first so subsequent calls carry the Bearer token, then
+      // resolve roles using the canonical username from the member resource.
+      setSession({ token: res.token, memberId: res.memberId, roles: ['MEMBER'], expiresAt: res.expiresAt });
+      const me = await authApi.getMember(res.memberId);
+      setSession({
+        token: res.token,
+        memberId: res.memberId,
+        roles: inferRoles(res.token, me.username),
+        expiresAt: res.expiresAt,
+      });
+      return res;
+    },
+    onSuccess: () => {
       toast.success('Signed in');
       navigate(from, { replace: true });
     },
