@@ -1,3 +1,6 @@
+// Composite policy tree shapes for V2 §2.a + appendix.
+// Tree-of-nodes; matches WAF JSON until the team confirms a different normalized form.
+
 export type DiscountNode =
   | { kind: 'simple'; percent: number }
   | { kind: 'conditional'; percent: number; condition: DiscountCondition }

@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'msw';
+import { policyHandlers } from './policies';
 
 // Each student adds their handlers here using the spread pattern:
 // export const handlers: RequestHandler[] = [
@@ -7,4 +8,6 @@ import type { RequestHandler } from 'msw';
 //   ...notificationHandlers,  // Student C
 // ];
 
-export const handlers: RequestHandler[] = [];
+export const handlers: RequestHandler[] = [
+  ...policyHandlers,
+];

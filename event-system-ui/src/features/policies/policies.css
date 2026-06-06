@@ -1,0 +1,98 @@
+.tree-node {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tree-node .node-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.tree-node .node-head .kind-pill {
+  background: #1f6feb33;
+  color: #58a6ff;
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tree-node .node-head .spacer {
+  flex: 1;
+}
+
+.tree-node .fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.tree-node .fields label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: #8b949e;
+}
+
+.tree-node .fields input,
+.tree-node .fields select {
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+}
+
+.tree-children {
+  border-left: 2px dashed #30363d;
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.tree-add {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.tree-empty {
+  border: 1px dashed #30363d;
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+  color: #8b949e;
+}
+
+.preview-box {
+  background: #1c2128;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #c9d1d9;
+}
+
+.preview-box .label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8b949e;
+  margin-bottom: 0.25rem;
+}
