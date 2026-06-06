@@ -8,6 +8,7 @@ import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,11 @@ public class InMemoryProductionCompanyRepository implements IProductionCompanyRe
             return Optional.empty();
         }
         return Optional.ofNullable(companiesById.get(companyId));
+    }
+
+    @Override
+    public List<ProductionCompany> findAll() {
+        return List.copyOf(companiesById.values());
     }
 
     @Override
