@@ -1,0 +1,159 @@
+classDiagram
+    direction TB
+
+%% ══════════════════════════════════════════
+%% Member domain:
+%% Updated Member design for current code
+%% ══════════════════════════════════════════
+
+    namespace Domain_Member {
+
+        class Member
+        class MemberId
+        class PersonalDetails
+        class HashedCredentials
+        class Suspension
+        class Notification
+        class MemberStatus
+        class NotificationType
+
+    }
+
+%% ══════════════════════════════════════════
+%% AGGREGATE Member:
+%% Registered platform user.
+%% Owns profile details, hashed credentials, suspension state,
+%% status, and delayed notification inbox.
+%% ══════════════════════════════════════════
+
+    class Member:::aggregate {
+        <<Aggregate Root>>
+        - MemberId memberId
+        - String username
+        - HashedCredentials hashedCredentials
+        - PersonalDetails personalDetails
+        - MemberStatus status
+        - Suspension suspension
+        - List~Notification~ notificationInbox
+        + updateDetails(PersonalDetails) void
+        + changeCredentials(HashedCredentials) void
+        + addNotification(Notification) void
+        + getUndeliveredNotifications() List~Notification~
+        + markNotificationsDelivered() void
+        + cancel() void
+        + suspend(Instant, Duration, String) void
+        + unsuspend() void
+        + refreshSuspensionStatusAt(Instant) boolean
+        + isSuspendedAt(Instant) boolean
+    }
+
+%% ══════════════════════════════════════════
+%% VALUE OBJECTS, ENTITIES AND ENUMS
+%% ══════════════════════════════════════════
+
+    class MemberId:::idValueObject {
+        <<ID - Value Object>>
+        + generate() MemberId
+    }
+
+    class PersonalDetails:::valueObject {
+        <<Value Object>>
+        - String firstName
+        - String lastName
+        - String email
+        - LocalDate dateOfBirth
+    }
+
+    class HashedCredentials:::valueObject {
+        <<Value Object>>
+        - String hash
+        - String salt
+        - String algorithm
+    }
+
+    class Suspension:::valueObject {
+        <<Value Object>>
+        - Instant suspendedAt
+        - Duration duration
+        - String reason
+        + isPermanent() boolean
+        + endsAt() Instant
+        + isExpiredAt(Instant) boolean
+    }
+
+    class Notification:::entity {
+        <<Entity>>
+        - String notificationId
+        - NotificationType type
+        - String content
+        - Instant createdAt
+        - boolean delivered
+        + create(NotificationType, String) Notification
+        + markDelivered() void
+        + isDelivered() boolean
+    }
+
+    class MemberStatus:::enum {
+        <<enumeration>>
+        ACTIVE
+        SUSPENDED
+        CANCELLED
+    }
+
+    class NotificationType:::enum {
+        <<enumeration>>
+        PURCHASE_COMPLETED
+        EVENT_CANCELLED
+        ORDER_EXPIRING
+        SOLD_OUT
+        COMPANY_SUSPENDED
+        COMPANY_TERMINATED
+        COMPANY_REOPENED
+        ROLE_CHANGED
+        LOTTERY_WON
+        PURCHASE_FAILED
+        QUEUE_TURN_ARRIVED
+    }
+
+%% ══════════════════════════════════════════
+%% CORE DOMAIN RELATIONS
+%% ══════════════════════════════════════════
+
+    Member "1" *-- "1" MemberId
+    Member "1" *-- "1" PersonalDetails
+    Member "1" *-- "1" HashedCredentials
+    Member "1" o-- "0..1" Suspension
+    Member "1" *-- "0..n" Notification
+    Member --> MemberStatus
+
+    Notification --> NotificationType
+
+%% ══════════════════════════════════════════
+%% PERSISTENCE BOUNDARY / REPOSITORY ADAPTERS
+%% Included to show how Member aggregates are stored and loaded.
+%% ══════════════════════════════════════════
+
+    namespace Infrastructure_Persistence {
+        class MemberRepository:::repository
+    }
+
+    class MemberRepository {
+        <<Repository>>
+        - ConcurrentMap~MemberId, Member~ byId
+        - ConcurrentMap~String, MemberId~ idByUsername
+    }
+
+    MemberRepository ..> Member : manages persistence
+
+%% ══════════════════════════════════════════
+%% STYLING
+%% ══════════════════════════════════════════
+
+    classDef aggregate fill:#ffe8cc,stroke:#d9480f,stroke-width:2px,color:#000
+    classDef entity fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
+    classDef valueObject fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef idValueObject fill:#fff0f6,stroke:#c2255c,stroke-width:1px,color:#000
+    classDef enum fill:#f3f0ff,stroke:#6741d9,stroke-width:1px,color:#000
+    classDef external fill:#f1f3f5,stroke:#495057,stroke-width:1px,color:#000
+    classDef repository fill:#e6fcf5,stroke:#0ca678,stroke-width:1px,color:#000
+    classDef legend fill:#ffffff,stroke:#212529,stroke-width:1px,color:#000

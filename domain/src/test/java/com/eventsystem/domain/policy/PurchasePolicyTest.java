@@ -1,10 +1,17 @@
 package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.domainexceptions.PurchasePolicyException;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.basic.MaxTicketPolicy;
-import com.eventsystem.domain.policy.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
+import com.eventsystem.domain.policy.shared.PolicyValidationResult;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -28,348 +35,441 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class PurchasePolicyTest {
 
-    private static final CompanyId COMPANY_ID = new CompanyId("company-1");
-    private static final EventId EVENT_ID = new EventId("event-1");
-    private static final EventId OTHER_EVENT_ID = new EventId("event-2");
-    private static final String POLICY_NAME = "Test purchase policy";
+        private static final CompanyId COMPANY_ID = new CompanyId("company-1");
+        private static final EventId EVENT_ID = new EventId("event-1");
+        private static final EventId OTHER_EVENT_ID = new EventId("event-2");
+        private static final String POLICY_NAME = "Test purchase policy";
 
-    @Test
-    void allowAllPolicyAcceptsAnyPurchase() {
-        PurchasePolicy policy = PurchasePolicy.NewAllowAllPolicy(COMPANY_ID, "Allow all");
+        @Test
+        void allowAllPolicyAcceptsAnyPurchase() {
+                PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(COMPANY_ID, "Allow all");
 
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
 
-        assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
-                .doesNotThrowAnyException();
-    }
+                assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
+                                .doesNotThrowAnyException();
+        }
 
-    @Test
-    void neverAllowedPolicyRejectsAnyPurchase() {
-        PurchasePolicy policy = PurchasePolicy.NewNeverAllowedPolicy(COMPANY_ID, "Never allow");
+        @Test
+        void neverAllowedPolicyRejectsAnyPurchase() {
+                PurchasePolicy policy = PurchasePolicy.newNeverAllowedPolicy(COMPANY_ID, "Never allow");
 
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isFalse();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isFalse();
 
-        assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE)))
-                .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Purchase Policy");
-    }
+                assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE)))
+                                .isInstanceOf(PurchasePolicyException.class)
+                                .hasMessageContaining("Purchase policy");
+        }
 
-    @Test
-    void purchasePolicyCreatedFromSinglePolicyValidatesPurchase_UAT44() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCreatedFromSinglePolicyValidatesPurchase_UAT44() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
-    }
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+        }
 
-    @Test
-    void purchasePolicyCreatedFromListRequiresAllRules() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                List.of(
-                        new MinTicketPolicy(2),
-                        new MaxTicketPolicy(4)
-                )
-        );
+        @Test
+        void purchasePolicyCreatedFromListRequiresAllRules() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                List.of(
+                                                new MinTicketPolicy(2),
+                                                new MaxTicketPolicy(4)));
 
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isFalse();
-    }
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isFalse();
+        }
 
-    @Test
-    void purchasePolicyThrowsWrappedViolationOnRequire_UAT27() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(1)
-        );
+        @Test
+        void purchasePolicyThrowsWrappedViolationOnRequire_UAT27() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(1));
 
-        assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
-                .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("Purchase Policy")
-                .hasMessageContaining("Cannot Purchase more than 1 tickets");
-    }
+                assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
+                                .isInstanceOf(PurchasePolicyException.class)
+                                .hasMessageContaining("Purchase policy")
+                                .hasMessageContaining("Cannot purchase more than 1 tickets");
+        }
 
-    @Test
-    void purchasePolicyEvaluateReturnsSuccessWhenPolicyPasses() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyEvaluateReturnsSuccessWhenPolicyPasses() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, VIP_ZONE));
+                PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, VIP_ZONE));
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.failureReason()).isEmpty();
-    }
+                assertThat(result.isSuccess()).isTrue();
+                assertThat(result.failureReason()).isEmpty();
+        }
 
-    @Test
-    void purchasePolicyEvaluateReturnsFailureWhenPolicyFails() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(1)
-        );
+        @Test
+        void purchasePolicyEvaluateReturnsFailureWhenPolicyFails() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(1));
 
-        PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, VIP_ZONE));
+                PolicyValidationResult result = policy.evaluate(contextWithTickets(REGULAR_ZONE, VIP_ZONE));
 
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.failureReason()).isPresent();
-    }
+                assertThat(result.isSuccess()).isFalse();
+                assertThat(result.failureReason()).isPresent();
+        }
 
-    @Test
-    void purchasePolicyRejectsInvalidConstruction() {
-        assertThatThrownBy(() -> new PurchasePolicy(
-                null,
-                COMPANY_ID,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                new MaxTicketPolicy(1)
-        )).isInstanceOf(NullPointerException.class);
+        @Test
+        void purchasePolicyRejectsInvalidConstruction() {
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                null,
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                new MaxTicketPolicy(1))).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                null,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                new MaxTicketPolicy(1)
-        )).isInstanceOf(NullPointerException.class);
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                null,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                new MaxTicketPolicy(1))).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                null,
-                PolicyScope.clearScope(),
-                new MaxTicketPolicy(1)
-        )).isInstanceOf(NullPointerException.class);
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                null,
+                                PolicyScope.clearScope(),
+                                new MaxTicketPolicy(1))).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                POLICY_NAME,
-                null,
-                new MaxTicketPolicy(1)
-        )).isInstanceOf(NullPointerException.class);
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                null,
+                                new MaxTicketPolicy(1))).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                (IPolicy) null
-        )).isInstanceOf(PurchasePolicyException.class);
-    }
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                (IPolicy) null)).isInstanceOf(NullPointerException.class);
+        }
 
-    @Test
-    void purchasePolicyRejectsInvalidPolicyListConstruction() {
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                (List<IPolicy>) null
-        )).isInstanceOf(PurchasePolicyException.class);
+        @Test
+        void purchasePolicyRejectsInvalidPolicyListConstruction() {
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                (List<IPolicy>) null)).isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                List.of()
-        )).isInstanceOf(PurchasePolicyException.class);
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                List.of())).isInstanceOf(PolicyException.class);
 
-        assertThatThrownBy(() -> new PurchasePolicy(
-                PurchasePolicyId.random(),
-                COMPANY_ID,
-                POLICY_NAME,
-                PolicyScope.clearScope(),
-                Arrays.asList(new MaxTicketPolicy(1), null)
-        ))
-                .isInstanceOf(PurchasePolicyException.class)
-                .hasMessageContaining("null policies");
-    }
+                assertThatThrownBy(() -> new PurchasePolicy(
+                                PurchasePolicyId.random(),
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                PolicyScope.clearScope(),
+                                Arrays.asList(new MaxTicketPolicy(1), null)))
+                                .isInstanceOf(PolicyException.class);
+        }
 
-    @Test
-    void purchasePolicyRequireDoesNotThrowWhenAllRulesPass_UAT44() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                List.of(
-                        new MinTicketPolicy(2),
-                        new MaxTicketPolicy(4)
-                )
-        );
+        @Test
+        void purchasePolicyRequireDoesNotThrowWhenAllRulesPass_UAT44() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                List.of(
+                                                new MinTicketPolicy(2),
+                                                new MaxTicketPolicy(4)));
 
-        assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
-                .doesNotThrowAnyException();
-    }
+                assertThatCode(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE, VIP_ZONE)))
+                                .doesNotThrowAnyException();
+        }
 
-    @Test
-    void purchasePolicyListConstructorDefensivelyCopiesPolicies() {
-        java.util.ArrayList<IPolicy> policies = new java.util.ArrayList<>();
-        policies.add(new MaxTicketPolicy(1));
+        @Test
+        void purchasePolicyListConstructorDefensivelyCopiesPolicies() {
+                java.util.ArrayList<IPolicy> policies = new java.util.ArrayList<>();
+                policies.add(new MaxTicketPolicy(1));
 
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                policies
-        );
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                policies);
 
-        policies.clear();
+                policies.clear();
 
-        assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
-    }
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
+        }
 
-    @Test
-    void purchasePolicyStoresIdentityAndOwnerMetadata() {
-        PurchasePolicyId policyId = PurchasePolicyId.random();
-        PolicyScope scope = PolicyScope.clearScope();
+        @Test
+        void purchasePolicyStoresIdentityAndOwnerMetadata() {
+                PurchasePolicyId policyId = PurchasePolicyId.random();
+                PolicyScope scope = PolicyScope.clearScope();
 
-        PurchasePolicy policy = new PurchasePolicy(
-                policyId,
-                COMPANY_ID,
-                POLICY_NAME,
-                scope,
-                new MaxTicketPolicy(4)
-        );
+                PurchasePolicy policy = new PurchasePolicy(
+                                policyId,
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                scope,
+                                new MaxTicketPolicy(4));
 
-        assertThat(policy.id()).isEqualTo(policyId);
-        assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
-        assertThat(policy.policyName()).isEqualTo(POLICY_NAME);
-    }
+                assertThat(policy.id()).isEqualTo(policyId);
+                assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(policy.policyName()).isEqualTo(POLICY_NAME);
+        }
 
-    @Test
-    void purchasePolicyCanRenamePolicy() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCanRenamePolicy() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        policy.setNameTo("Updated name");
+                policy.setNameTo("Updated name");
 
-        assertThat(policy.policyName()).isEqualTo("Updated name");
-    }
+                assertThat(policy.policyName()).isEqualTo("Updated name");
+        }
 
-    @Test
-    void purchasePolicyRejectsNullNameUpdate() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyRejectsNullNameUpdate() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        assertThatThrownBy(() -> policy.setNameTo(null))
-                .isInstanceOf(NullPointerException.class);
-    }
+                assertThatThrownBy(() -> policy.setNameTo(null))
+                                .isInstanceOf(NullPointerException.class);
+        }
 
-    @Test
-    void newPurchasePolicyStartsInactiveBecauseScopeIsClear() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void newPurchasePolicyStartsInactiveBecauseScopeIsClear() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        assertThat(policy.isActive()).isFalse();
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
-    }
+                assertThat(policy.isActive()).isFalse();
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
+        }
 
-    @Test
-    void purchasePolicyCanBecomeCompanyWide() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCanBecomeCompanyWide() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        policy.setCompanyWide();
+                policy.setCompanyWide();
 
-        assertThat(policy.isActive()).isTrue();
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
-        assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isTrue();
-    }
+                assertThat(policy.isActive()).isTrue();
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
+                assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isTrue();
+        }
 
-    @Test
-    void purchasePolicyCanDeactivateCompanyWide() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCanDeactivateCompanyWide() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        policy.setCompanyWide();
-        policy.deactivateCompanyWide();
+                policy.setCompanyWide();
+                policy.deactivateCompanyWide();
 
-        assertThat(policy.isActive()).isFalse();
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
-    }
+                assertThat(policy.isActive()).isFalse();
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
+        }
 
-    @Test
-    void purchasePolicyCanActivateAndDeactivateSpecificEvent() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCanActivateAndDeactivateSpecificEvent() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        policy.activateForEvent(EVENT_ID);
+                policy.activateForEvent(EVENT_ID);
 
-        assertThat(policy.isActive()).isTrue();
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
-        assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isFalse();
+                assertThat(policy.isActive()).isTrue();
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
+                assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isFalse();
 
-        policy.deactivateForEvent(EVENT_ID);
+                policy.deactivateForEvent(EVENT_ID);
 
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
-        assertThat(policy.isActive()).isFalse();
-    }
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isFalse();
+                assertThat(policy.isActive()).isFalse();
+        }
 
-    @Test
-    void purchasePolicyRejectsNullEventActivationChanges() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyRejectsNullEventActivationChanges() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        assertThatThrownBy(() -> policy.activateForEvent(null))
-                .isInstanceOf(NullPointerException.class);
+                assertThatThrownBy(() -> policy.activateForEvent(null))
+                                .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> policy.deactivateForEvent(null))
-                .isInstanceOf(NullPointerException.class);
-    }
+                assertThatThrownBy(() -> policy.deactivateForEvent(null))
+                                .isInstanceOf(NullPointerException.class);
+        }
 
-    @Test
-    void purchasePolicyCanSetScopeDirectly() {
-        PurchasePolicy policy = PurchasePolicy.NewPurchasePolicy(
-                COMPANY_ID,
-                POLICY_NAME,
-                new MaxTicketPolicy(4)
-        );
+        @Test
+        void purchasePolicyCanSetScopeDirectly() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                POLICY_NAME,
+                                new MaxTicketPolicy(4));
 
-        PolicyScope newScope = new PolicyScope(false, Set.of(EVENT_ID));
-        policy.setScopeTo(newScope);
+                PolicyScope newScope = new PolicyScope(false, Set.of(EVENT_ID));
+                policy.setScopeTo(newScope);
 
-        assertThat(policy.isActive()).isTrue();
-        assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
-        assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isFalse();
-    }
+                assertThat(policy.isActive()).isTrue();
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
+                assertThat(policy.isActiveForEvent(OTHER_EVENT_ID)).isFalse();
+        }
 
-    @Test
-    void assertInvalidPolicyValidationResultThrows() {
-        assertThrows(IllegalArgumentException.class, () -> {new PolicyValidationResult(false, null);});
-        assertThrows(IllegalArgumentException.class, () -> {new PolicyValidationResult(true, "NOT NULL");});
-    }
+        @Test
+        void assertInvalidPolicyValidationResultThrows() {
+                assertThrows(IllegalArgumentException.class, () -> {
+                        new PolicyValidationResult(false, null);
+                });
+                assertThrows(IllegalArgumentException.class, () -> {
+                        new PolicyValidationResult(true, "NOT NULL");
+                });
+        }
 
-    @Test
-    void assertInvalidPolicyScopeThrows() {
-        assertThrows(Exception.class, () -> {new PolicyScope(false, Set.of((EventId)null));});
-    }
+        @Test
+        void assertInvalidPolicyScopeThrows() {
+                assertThrows(Exception.class, () -> {
+                        new PolicyScope(false, Set.of((EventId) null));
+                });
+        }
+
+        @Test
+        void allowAllFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
+                PurchasePolicyId id = PurchasePolicyId.random();
+
+                PurchasePolicy policy = PurchasePolicy.allowAll(id, COMPANY_ID, "Allow all");
+
+                assertThat(policy.id()).isEqualTo(id);
+                assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(policy.policyName()).isEqualTo("Allow all");
+                assertThat(policy.isActive()).isFalse();
+        }
+
+        @Test
+        void notAllowedFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
+                PurchasePolicyId id = PurchasePolicyId.random();
+
+                PurchasePolicy policy = PurchasePolicy.notAllowed(id, COMPANY_ID, "Never allow");
+
+                assertThat(policy.id()).isEqualTo(id);
+                assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(policy.policyName()).isEqualTo("Never allow");
+                assertThat(policy.isActive()).isFalse();
+        }
+
+        @Test
+        void newNeverAllowedPolicyRejectsPurchaseAfterActivation() {
+                PurchasePolicy policy = PurchasePolicy.newNeverAllowedPolicy(COMPANY_ID, "Closed sale");
+                policy.activateForEvent(EVENT_ID);
+
+                assertThat(policy.evaluate(contextWithTickets(REGULAR_ZONE)).isSuccess()).isFalse();
+
+                assertThatThrownBy(() -> policy.requirePurchasePolicy(contextWithTickets(REGULAR_ZONE)))
+                                .isInstanceOf(com.eventsystem.domain.domainexceptions.PurchasePolicyException.class)
+                                .hasMessageContaining("Purchase policy violation");
+        }
+
+        @Test
+        void evaluateWhenContextHasNoTickets_shouldFailBeforeInnerPolicy() {
+                PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(COMPANY_ID, "Allow all");
+                policy.activateForEvent(EVENT_ID);
+
+                PolicyValidationResult result = policy.evaluate(contextWithTickets());
+
+                assertThat(result.isSuccess()).isFalse();
+                assertThat(result.reason()).contains("no tickets");
+        }
+
+        // PP-01 / PP-02:
+        // emptyScope factory should create inactive policy with readable evaluation.
+        @Test
+        void emptyScopeFactory_shouldCreateInactivePolicyButStillEvaluateRule() {
+                PurchasePolicy policy = PurchasePolicy.emptyScope(
+                                COMPANY_ID,
+                                "Max 1",
+                                new MaxTicketPolicy(1));
+
+                assertThat(policy.isActive()).isFalse();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isTrue();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
+        }
+
+        // PP-01:
+        // allowAll explicit-id factory should preserve identity and allow purchase.
+        @Test
+        void allowAllFactory_shouldPreserveIdAndAllowPurchase() {
+                PurchasePolicyId id = PurchasePolicyId.random();
+
+                PurchasePolicy policy = PurchasePolicy.allowAll(id, COMPANY_ID, "Allow all");
+                policy.activateForEvent(EVENT_ID);
+
+                assertThat(policy.id()).isEqualTo(id);
+                assertThat(policy.policyName()).isEqualTo("Allow all");
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
+        }
+
+        // PP-01:
+        // notAllowed explicit-id factory should preserve identity and reject purchase.
+        @Test
+        void notAllowedFactory_shouldPreserveIdAndRejectPurchase() {
+                PurchasePolicyId id = PurchasePolicyId.random();
+
+                PurchasePolicy policy = PurchasePolicy.notAllowed(id, COMPANY_ID, "Closed");
+                policy.activateForEvent(EVENT_ID);
+
+                assertThat(policy.id()).isEqualTo(id);
+                assertThat(policy.policyName()).isEqualTo("Closed");
+                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
+                assertThat(policy.evaluate(contextWithTickets(REGULAR_ZONE)).isSuccess()).isFalse();
+        }
+
+        // PP-06 / UAT-44:
+        @Test
+        void newMaxTicketPolicy_shouldCreateMaxTicketPolicy() {
+                PurchasePolicy policy = PurchasePolicy.newMaxTicketPolicy(
+                                COMPANY_ID,
+                                "Max 1",
+                                1);
+
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isTrue();
+                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
+        }
+
+        // PP-02 / UC9:
+        @Test
+        void evaluate_whenNoTickets_shouldReturnFailureBeforeInnerPolicy() {
+                PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(COMPANY_ID, "Allow all");
+
+                PolicyValidationResult result = policy.evaluate(contextWithTickets());
+
+                assertThat(result.isSuccess()).isFalse();
+                assertThat(result.reason()).contains("no tickets");
+        }
 
 }

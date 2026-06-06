@@ -1,17 +1,27 @@
 /**
  * Policy domain model.
  *
- * <p>Owns: {@code PurchasePolicy} + {@code DiscountPolicy} + {@code Ipolicy} + {@code Discount} +{@Code PolicyBuilder}
- * <p> {@code PurchasePolicy} + {@code DiscountPolicy}: Aggregate roots for Discount Policies and Purchase Policies.
- * <p> {@code IPolicy} Interface: policy simply checks conditions, and can be built of multiple condition checks.
- * basic folder contains single check polices, using Strategy Pattern, composite folder contains logical and scoped rules using Composition.
- * <p> {@code PolicyBuilder} : uses Builder for ease of constructing policies.
+ * <p>Root package of the Policy bounded context. It contains the shared
+ * policy construction and analysis services. Concrete policy aggregates,
+ * rules, and shared value objects are organized in subpackages.</p>
  *
- * Used by purchase-flow services during checkout.
+ * <p>Package contents:</p>
+ * <ul>
+ *   <li>{@code purchase}: purchase-policy aggregate and identity;</li>
+ *   <li>{@code discount}: discount-policy aggregate and discount-specific value objects;</li>
+ *   <li>{@code rule}: reusable policy-rule language, including basic and composite rules;</li>
+ *   <li>{@code shared}: shared policy value objects, evaluation context, and validation results;</li>
+ *   <li>{@link PolicyBuilder}: factory/helper for building complex policy rule trees;</li>
+ *   <li>{@link PolicyConflictDetector}: domain service for detecting internal rule conflicts
+ *       and conflicts between purchase and discount policies.</li>
+ * </ul>
  *
- * <p> **Concrete policies live in subpackages such as {@code basic} and {@code composite}.
- * <p> **To add policies: Create relevant class that implements IPolicy, for ease of use add it to {@code PolicyBuilder}
+ * <p>To add a new policy condition, start in {@code rule}. If the rule should be
+ * built from application/API commands, also expose it through {@link PolicyBuilder}
+ * and the application policy command assembler.</p>
  *
- * <p>See: {@code docs/6_Policies.mmd}.
+ * @see com.eventsystem.domain.policy.shared.PurchaseContext
+ * @see com.eventsystem.domain.policy.shared.PolicyValidationResult
+ * @see com.eventsystem.domain.policy.rule.IPolicy
  */
 package com.eventsystem.domain.policy;

@@ -2,8 +2,9 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.PurchasePolicy;
-import com.eventsystem.domain.policy.PurchasePolicyId;
+import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -135,7 +136,7 @@ class InMemoryPurchasePolicyRepositoryTest {
     }
 
     private static PurchasePolicy inactivePolicy(CompanyId companyId) {
-        return PurchasePolicy.NewAllowAllPolicy(companyId, "Allow all");
+        return PurchasePolicy.newAllowAllPolicy(companyId, "Allow all");
     }
 
     private static PurchasePolicy eventScopedPolicy(CompanyId companyId, EventId eventId) {

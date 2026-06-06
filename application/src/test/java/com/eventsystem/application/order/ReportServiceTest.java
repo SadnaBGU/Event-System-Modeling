@@ -1,5 +1,9 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.event.Event;
+import com.eventsystem.domain.event.EventDetails;
+import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
 import com.eventsystem.domain.shared.Money;
@@ -11,8 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -76,4 +82,76 @@ class ReportServiceTest {
         // total revenue: 100.50 + 200.25 = 300.75
         assertEquals(Money.of(new BigDecimal("300.75"), "USD"), summary.totalRevenue());
     }
+
+        @Test
+        void generateCompanySalesReport_WithMultipleEvents_CalculatesGrandTotalsAndPerEventSummaries() {
+        CompanyId companyId = new CompanyId("COMP-1");
+        Event firstEvent = new Event(
+            "EVENT-1",
+            companyId.value(),
+            new EventDetails(
+                "Concert A",
+                List.of(LocalDateTime.of(2026, 6, 1, 18, 0)),
+                "Music",
+                "Hall A",
+                "Description A"
+            ),
+            VenueMap.empty()
+        );
+        Event secondEvent = new Event(
+            "EVENT-2",
+            companyId.value(),
+            new EventDetails(
+                "Concert B",
+                List.of(LocalDateTime.of(2026, 6, 2, 20, 0)),
+                "Music",
+                "Hall B",
+                "Description B"
+            ),
+            VenueMap.empty()
+        );
+
+        PurchasedItem firstItem = mock(PurchasedItem.class);
+        when(firstItem.quantity()).thenReturn(2);
+        PurchaseRecord firstRecord = mock(PurchaseRecord.class);
+        when(firstRecord.items()).thenReturn(List.of(firstItem));
+        when(firstRecord.totalPaid()).thenReturn(Money.of(new BigDecimal("120.00"), "USD"));
+
+        PurchasedItem secondItem = mock(PurchasedItem.class);
+        when(secondItem.quantity()).thenReturn(3);
+        PurchaseRecord secondRecord = mock(PurchaseRecord.class);
+        when(secondRecord.items()).thenReturn(List.of(secondItem));
+        when(secondRecord.totalPaid()).thenReturn(Money.of(new BigDecimal("180.00"), "USD"));
+
+        when(purchaseRecordRepository.findByEvent("EVENT-1")).thenReturn(List.of(firstRecord));
+        when(purchaseRecordRepository.findByEvent("EVENT-2")).thenReturn(List.of(secondRecord));
+
+        ReportService.CompanySalesReportDTO report = reportService.generateCompanySalesReport(
+            companyId,
+            List.of(firstEvent, secondEvent)
+        );
+
+        assertEquals(companyId.value(), report.companyId());
+        assertEquals(new BigDecimal("300.00"), report.grandTotalRevenue());
+        assertEquals(2, report.events().size());
+        assertEquals("EVENT-1", report.events().get(0).eventId());
+        assertEquals("Concert A", report.events().get(0).eventName());
+        assertEquals(2, report.events().get(0).ticketsSold());
+        assertEquals(new BigDecimal("120.00"), report.events().get(0).revenue());
+        assertEquals("EVENT-2", report.events().get(1).eventId());
+        assertEquals("Concert B", report.events().get(1).eventName());
+        assertEquals(3, report.events().get(1).ticketsSold());
+        assertEquals(new BigDecimal("180.00"), report.events().get(1).revenue());
+        }
+
+        @Test
+        void generateCompanySalesReport_whenArgumentsAreNull_throwsNullPointerException() {
+        assertThatThrownBy(() -> reportService.generateCompanySalesReport(null, List.of()))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("companyId");
+
+        assertThatThrownBy(() -> reportService.generateCompanySalesReport(new CompanyId("COMP-1"), null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("events");
+        }
 }

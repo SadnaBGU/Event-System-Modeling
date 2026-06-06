@@ -5,8 +5,8 @@ import java.util.List;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.policy.DiscountSummary;
-import com.eventsystem.domain.policy.PurchaseContext;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
 
@@ -33,19 +33,10 @@ public interface IDiscountApplicationPort {
 
     DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseTotal);
 
+    List<EventId> getEventIdsWithActiveVisibleDiscounts();
+
     PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items, String discountCode);
 
-
-    /**
-     * Temporary compatibility method for the existing event/query purchase flow.
-     *
-     * <p>New code should use {@link #generateDiscountSnapshot(PurchaseContext, Money)}
-     * instead, because discount calculation may depend on the full purchase context,
-     * not only event id and discount code.</p>
-     *
-     * @deprecated use {@link #generateDiscountSnapshot(PurchaseContext, Money)} instead.
-     */
     @Deprecated
     DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal);
-
 }
