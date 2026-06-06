@@ -1,0 +1,475 @@
+flowchart TB
+
+    %% ============================================
+    %% COLOR DEFINITIONS
+    %% ============================================
+    classDef appSvc fill:#4A90D9,stroke:#2C5F8A,color:#fff,font-weight:bold
+    classDef port fill:#F5A623,stroke:#C47D1A,color:#fff,font-weight:bold
+    classDef aggRoot fill:#7ED321,stroke:#5A9A18,color:#fff,font-weight:bold
+    classDef policy fill:#B8E986,stroke:#7CB342,color:#333
+    classDef valueObj fill:#D0A9F5,stroke:#9B59B6,color:#333
+    classDef internal fill:#F8E71C,stroke:#C5B200,color:#333,font-weight:bold
+    classDef infra fill:#E07070,stroke:#C0392B,color:#fff,font-weight:bold
+    classDef repo fill:#90CAF9,stroke:#1565C0,color:#1a3a5c,font-style:italic
+
+    %% ============================================
+    %% APPLICATION LAYER
+    %% ============================================
+    subgraph APP["🔵 APPLICATION LAYER — Services & Ports"]
+        direction LR
+
+        subgraph UserSession["User & Session"]
+            AuthSvc["AuthService"]
+            MemberSvc["MemberService"]
+            AdminSvc["AdminService"]
+        end
+
+        subgraph CompanyMgmt["Company Management"]
+            CompanySvc["CompanyService"]
+            ApptSvc["AppointmentService"]
+            EvtMgmtSvc["EventMgmtService"]
+            PolicySvc["PolicyManagementService"]
+            DiscountSvc["DiscountApplicationService"]
+            PurchasePolicyValidationSvc["PurchasePolicyValidationService"]
+            ReportSvc["ReportService"]
+        end
+
+        subgraph PurchaseFlow["Purchase Flow"]
+            SearchSvc["SearchService"]
+            OrderSvc["OrderService"]
+            CheckoutSvc["CheckoutSaga"]
+            QueueSvc["QueueService"]
+            LotterySvc["LotteryService"]
+        end
+
+        subgraph Notifications["Notifications & History"]
+            NotifSvc["NotificationService"]
+            HistorySvc["PurchaseHistoryService"]
+        end
+
+        subgraph AppRepositories["Application Repository Interfaces"]
+            direction TB
+            PlatformRepo["PlatformRepository"]
+            MemberRepo["MemberRepository"]
+            CompanyRepo["CompanyRepository"]
+            EventRepo["EventRepository"]
+            ZoneRepo["ZoneRepository"]
+            PPolRepo["PurchasePolicyRepository"]
+            DPolRepo["DiscountPolicyRepository"]
+            OrderRepo["OrderRepository"]
+            QueueRepo["QueueRepository"]
+            LotteryRepo["LotteryRepository"]
+            PurchaseRepo["PurchaseRecordRepository"]
+        end
+    end
+
+    %% ============================================
+    %% PORT INTERFACES
+    %% ============================================
+    subgraph PORTS["🟠 EXTERNAL SERVICE INTERFACES"]
+        direction LR
+        PayGw["PaymentGateway"]
+        IssGw["IssuanceGateway"]
+        NotifCh["NotificationChannel"]
+    end
+
+    %% ============================================
+    %% DOMAIN LAYER
+    %% ============================================
+    subgraph DOMAIN["🟢 DOMAIN LAYER"]
+        direction LR
+
+        subgraph Col1[" "]
+            subgraph AGG_PLATFORM["⬡ Platform"]
+                Platform["Platform"]
+            end
+
+            subgraph AGG_MEMBER["⬡ Member"]
+                Member["Member"]
+                Notif["Notification"]
+            end
+        end
+
+        subgraph Col2[" "]
+            subgraph AGG_COMPANY["⬡ ProductionCompany"]
+                Company["ProductionCompany"]
+                AppTree["AppointmentTree"]
+                ONode["OwnerNode"]
+                MNode["ManagerNode"]
+            end
+
+            subgraph AGG_EVENT["⬡ Event"]
+                Event["Event"]
+                VMap["VenueMap"]
+            end
+
+            subgraph AGG_ZONE["⬡ Zone"]
+                Zone["Zone"]
+                RowE["Row"]
+                SeatE["Seat"]
+            end
+
+            subgraph AGG_POLICY["⬡ Policy"]
+                direction TB
+
+                subgraph PURCHASE_POLICY["Purchase Policy"]
+                    PPol["PurchasePolicy"]
+                end
+
+                subgraph DISCOUNT_POLICY["Discount Policy"]
+                    DPol["DiscountPolicy"]
+                    DRule["DiscountRule"]
+                end
+
+                subgraph POLICY_DOMAIN_SERVICES["Policy Domain Services"]
+                    direction LR
+                    PolicyBuilder["PolicyBuilder"]
+                    ConflictDetector["PolicyConflictDetector"]
+                end
+            end
+        end
+
+        subgraph Col3[" "]
+            subgraph AGG_ORDER["⬡ ActiveOrder"]
+                Order["ActiveOrder"]
+                OItem["OrderItem"]
+            end
+
+            subgraph AGG_QUEUE["⬡ VirtualQueue"]
+                VQueue["VirtualQueue"]
+                QEntry["QueueEntry"]
+                AToken["AdmissionToken"]
+            end
+
+            subgraph AGG_LOTTERY["⬡ Lottery"]
+                Lottery["Lottery"]
+                LWinner["LotteryWinner"]
+            end
+
+            subgraph AGG_PURCHASE["⬡ PurchaseRecord"]
+                PurchRec["PurchaseRecord"]
+                PItem["PurchasedItem"]
+            end
+        end
+
+        subgraph DomainServices["Domain Services"]
+            direction LR
+            OFactory["OrderFactory"]
+        end
+    end
+
+    %% ============================================
+    %% INFRASTRUCTURE LAYER
+    %% ============================================
+    subgraph INFRA["🔴 INFRASTRUCTURE LAYER"]
+        direction TB
+
+        subgraph InfraTop["API, Security & Config"]
+            direction LR
+
+            subgraph API["API / REST"]
+                direction TB
+
+                subgraph UserApi["User API"]
+                    AuthController["AuthController"]
+                    MemberController["MemberController"]
+                end
+
+                subgraph AdminApi["Admin API"]
+                    AdminController["AdminController"]
+                    AdminPlatformController["AdminPlatformController"]
+                    AdminStreamController["AdminStreamController"]
+                end
+
+                subgraph CompanyApi["Company API"]
+                    CompanyController["CompanyController"]
+                    CompanyPolicyController["CompanyPolicyController"]
+                end
+
+                subgraph EventApi["Event API"]
+                    EventCatalogController["EventCatalogController"]
+                    EventLotteryController["EventLotteryController"]
+                    EventQueueController["EventQueueController"]
+                end
+
+                subgraph PurchaseApi["Purchase / Checkout API"]
+                    OrdersRestController["OrdersRestController"]
+                    CheckoutSagaController["CheckoutSagaController"]
+                end
+
+                subgraph NotificationApi["Notification & History API"]
+                    NotificationsRestController["NotificationsRestController"]
+                    PurchaseHistoryController["PurchaseHistoryController"]
+                end
+
+                subgraph ApiSupport["API Support"]
+                    GlobalExceptionHandler["GlobalExceptionHandler"]
+                end
+            end
+
+            subgraph Security["Security"]
+                direction TB
+                AuthInterceptor["AuthenticationInterceptor"]
+                TokenService["JwtTokenService"]
+                PasswordHasher["BCryptPasswordHasher"]
+            end
+
+            subgraph Config["Config / Bootstrap"]
+                direction TB
+                AppConfig["AppConfig"]
+                WebMvcConfig["WebMvcConfig"]
+                NotificationsConfig["NotificationsWebSocketConfig"]
+                AdminBootstrap["AdminBootstrap"]
+            end
+        end
+
+        subgraph InfraBottom["Notifications & External Adapters"]
+            direction LR
+
+            subgraph NotificationsInfra["Notifications Infrastructure"]
+                direction TB
+                NotifSessionListener["NotificationsSessionListener"]
+            end
+
+            subgraph ExternalAdapters["External Adapters"]
+                direction TB
+                PayAdapt["Payment Adapters"]
+                IssAdapt["Issuance Adapters"]
+                NotifAdapt["Notification Adapters"]
+            end
+        end
+    end
+
+    %% ============================================
+    %% API → APPLICATION CONNECTIONS
+    %% ============================================
+    UserApi -->|"maps requests to"| UserSession
+    AdminApi -->|"maps requests to"| UserSession
+    CompanyApi -->|"maps requests to"| CompanyMgmt
+    EventApi -->|"maps requests to"| CompanyMgmt
+    EventApi -->|"maps requests to"| PurchaseFlow
+    PurchaseApi -->|"maps requests to"| PurchaseFlow
+    NotificationApi -->|"maps requests to"| Notifications
+    ApiSupport -.->|"handles API errors"| API
+
+    %% ============================================
+    %% INFRASTRUCTURE INTERNAL CONNECTIONS
+    %% ============================================
+    Security -->|"protects"| API
+    Config -->|"configures"| Security
+    Config -->|"configures"| API
+    NotificationsInfra -->|"supports"| NotificationApi
+    NotificationsInfra -->|"uses"| NotifAdapt
+
+    %% ============================================
+    %% LAYER CONNECTIONS
+    %% ============================================
+    APP -->|"uses"| PORTS
+    PORTS -->|"implemented by"| ExternalAdapters
+
+    %% ============================================
+    %% SERVICE → DOMAIN CONNECTIONS
+    %% ============================================
+
+    %% User/Admin
+    AuthSvc --> Member
+    MemberSvc --> Member
+    AdminSvc --> Platform
+    NotifSvc --> Member
+
+    %% Company/Event/Policy
+    CompanySvc --> Company
+    ApptSvc --> Company
+    ApptSvc --> Member
+    EvtMgmtSvc --> Event
+    EvtMgmtSvc --> Zone
+
+    PolicySvc --> PPol
+    PolicySvc --> DPol
+    PolicySvc --> PolicyBuilder
+    PolicySvc --> ConflictDetector
+
+    DiscountSvc --> DPol
+    PurchasePolicyValidationSvc --> PPol
+
+    %% Purchase flow
+    SearchSvc --> Event
+    SearchSvc --> Zone
+    OrderSvc --> Order
+    OrderSvc --> Zone
+    CheckoutSvc --> Order
+    CheckoutSvc --> Zone
+    CheckoutSvc --> PurchRec
+    CheckoutSvc --> VQueue
+    CheckoutSvc --> PPol
+    CheckoutSvc --> DPol
+    QueueSvc --> VQueue
+    LotterySvc --> Lottery
+    HistorySvc --> PurchRec
+    ReportSvc --> PurchRec
+
+    %% ============================================
+    %% REPOSITORY → DOMAIN CONNECTIONS
+    %% ============================================
+    PlatformRepo --> Platform
+    MemberRepo --> Member
+    CompanyRepo --> Company
+    EventRepo --> Event
+    ZoneRepo --> Zone
+    PPolRepo --> PPol
+    DPolRepo --> DPol
+    OrderRepo --> Order
+    QueueRepo --> VQueue
+    LotteryRepo --> Lottery
+    PurchaseRepo --> PurchRec
+
+    %% ============================================
+    %% LINK STYLES
+    %% ============================================
+
+    %% API links
+    linkStyle 0 stroke:#C0392B,stroke-width:2px
+    linkStyle 1 stroke:#C0392B,stroke-width:2px
+    linkStyle 2 stroke:#C0392B,stroke-width:2px
+    linkStyle 3 stroke:#C0392B,stroke-width:2px
+    linkStyle 4 stroke:#C0392B,stroke-width:2px
+    linkStyle 5 stroke:#C0392B,stroke-width:2px
+    linkStyle 6 stroke:#C0392B,stroke-width:2px
+    linkStyle 7 stroke:#C0392B,stroke-width:2px,stroke-dasharray:4 2
+
+    %% Infrastructure internal links
+    linkStyle 8 stroke:#C0392B,stroke-width:2px
+    linkStyle 9 stroke:#C0392B,stroke-width:2px
+    linkStyle 10 stroke:#C0392B,stroke-width:2px
+    linkStyle 11 stroke:#C0392B,stroke-width:2px
+    linkStyle 12 stroke:#C0392B,stroke-width:2px
+
+    %% Layer connections
+    linkStyle 13 stroke:#999,stroke-width:2px
+    linkStyle 14 stroke:#999,stroke-width:2px
+
+    %% Service links
+    linkStyle 15 stroke:#1E88E5,stroke-width:2px
+    linkStyle 16 stroke:#5E35B1,stroke-width:2px
+    linkStyle 17 stroke:#6D4C41,stroke-width:2px
+    linkStyle 18 stroke:#00897B,stroke-width:2px
+    linkStyle 19 stroke:#F4511E,stroke-width:2px
+    linkStyle 20 stroke:#D81B60,stroke-width:2px
+    linkStyle 21 stroke:#D81B60,stroke-width:2px
+    linkStyle 22 stroke:#FB8C00,stroke-width:2px
+    linkStyle 23 stroke:#FB8C00,stroke-width:2px
+    linkStyle 24 stroke:#FFB300,stroke-width:2px
+    linkStyle 25 stroke:#FFB300,stroke-width:2px
+    linkStyle 26 stroke:#FFB300,stroke-width:2px
+    linkStyle 27 stroke:#FFB300,stroke-width:2px
+    linkStyle 28 stroke:#C0CA33,stroke-width:2px
+    linkStyle 29 stroke:#8BC34A,stroke-width:2px
+    linkStyle 30 stroke:#43A047,stroke-width:2px
+    linkStyle 31 stroke:#43A047,stroke-width:2px
+    linkStyle 32 stroke:#039BE5,stroke-width:2px
+    linkStyle 33 stroke:#039BE5,stroke-width:2px
+    linkStyle 34 stroke:#E53935,stroke-width:2px
+    linkStyle 35 stroke:#E53935,stroke-width:2px
+    linkStyle 36 stroke:#E53935,stroke-width:2px
+    linkStyle 37 stroke:#E53935,stroke-width:2px
+    linkStyle 38 stroke:#E53935,stroke-width:2px
+    linkStyle 39 stroke:#E53935,stroke-width:2px
+    linkStyle 40 stroke:#8E24AA,stroke-width:2px
+    linkStyle 41 stroke:#00ACC1,stroke-width:2px
+    linkStyle 42 stroke:#7CB342,stroke-width:2px
+    linkStyle 43 stroke:#546E7A,stroke-width:2px
+
+    %% Repository links
+    linkStyle 44 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 45 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 46 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 47 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 48 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 49 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 50 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 51 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 52 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 53 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 54 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+
+    %% ============================================
+    %% APPLY STYLES
+    %% ============================================
+    style AuthSvc fill:#1E88E5,stroke:#1565C0,color:#fff,font-weight:bold
+    style MemberSvc fill:#5E35B1,stroke:#4527A0,color:#fff,font-weight:bold
+    style AdminSvc fill:#6D4C41,stroke:#4E342E,color:#fff,font-weight:bold
+    style NotifSvc fill:#00897B,stroke:#00695C,color:#fff,font-weight:bold
+    style CompanySvc fill:#F4511E,stroke:#D84315,color:#fff,font-weight:bold
+    style ApptSvc fill:#D81B60,stroke:#AD1457,color:#fff,font-weight:bold
+    style EvtMgmtSvc fill:#FB8C00,stroke:#EF6C00,color:#fff,font-weight:bold
+    style PolicySvc fill:#FFB300,stroke:#FF8F00,color:#333,font-weight:bold
+    style DiscountSvc fill:#C0CA33,stroke:#9E9D24,color:#333,font-weight:bold
+    style PurchasePolicyValidationSvc fill:#8BC34A,stroke:#689F38,color:#333,font-weight:bold
+    style SearchSvc fill:#43A047,stroke:#2E7D32,color:#fff,font-weight:bold
+    style OrderSvc fill:#039BE5,stroke:#0277BD,color:#fff,font-weight:bold
+    style CheckoutSvc fill:#E53935,stroke:#C62828,color:#fff,font-weight:bold
+    style QueueSvc fill:#8E24AA,stroke:#6A1B9A,color:#fff,font-weight:bold
+    style LotterySvc fill:#00ACC1,stroke:#00838F,color:#fff,font-weight:bold
+    style HistorySvc fill:#7CB342,stroke:#558B2F,color:#fff,font-weight:bold
+    style ReportSvc fill:#546E7A,stroke:#37474F,color:#fff,font-weight:bold
+
+    class PayGw,IssGw,NotifCh port
+    class Platform,Member,Company,Event,Zone,Order,PurchRec,VQueue,Lottery,PPol,DPol aggRoot
+    class AppTree,ONode,MNode,VMap,RowE,SeatE,OItem,Notif,QEntry,AToken,LWinner,PItem internal
+    class OFactory,PolicyBuilder,ConflictDetector internal
+    class DRule policy
+    class PlatformRepo,MemberRepo,CompanyRepo,EventRepo,ZoneRepo,PPolRepo,DPolRepo,OrderRepo,QueueRepo,LotteryRepo,PurchaseRepo repo
+    class AuthController,MemberController,AdminController,AdminPlatformController,AdminStreamController,CompanyController,CompanyPolicyController,EventCatalogController,EventLotteryController,EventQueueController,OrdersRestController,CheckoutSagaController,NotificationsRestController,PurchaseHistoryController,GlobalExceptionHandler infra
+    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener infra
+    class PayAdapt,IssAdapt,NotifAdapt infra
+
+    %% ============================================
+    %% SUBGRAPH STYLES
+    %% ============================================
+    style APP fill:#E8F0FE,stroke:#4A90D9,stroke-width:3px,color:#1a3a5c
+    style PORTS fill:#FFF3E0,stroke:#F5A623,stroke-width:3px,color:#7a4a00
+    style DOMAIN fill:#E8F5E9,stroke:#7ED321,stroke-width:3px,color:#1b5e20
+    style INFRA fill:#FFEBEE,stroke:#E07070,stroke-width:3px,color:#7a1a1a
+
+    style AGG_PLATFORM fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_MEMBER fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_COMPANY fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_EVENT fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_ZONE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_POLICY fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_ORDER fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_PURCHASE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_QUEUE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_LOTTERY fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+
+    style PURCHASE_POLICY fill:#C8E6C9,stroke:#2E7D32,stroke-width:1px
+    style DISCOUNT_POLICY fill:#C8E6C9,stroke:#2E7D32,stroke-width:1px
+    style POLICY_DOMAIN_SERVICES fill:#FFF9C4,stroke:#FDD835,stroke-width:2px
+    style DomainServices fill:#FFF9C4,stroke:#FDD835,stroke-width:2px
+
+    style API fill:#FDECEC,stroke:#C0392B,stroke-width:2px
+    style UserApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style AdminApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style CompanyApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style EventApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style PurchaseApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style NotificationApi fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+    style ApiSupport fill:#FADBD8,stroke:#C0392B,stroke-width:1px
+
+    style Security fill:#FDECEC,stroke:#C0392B,stroke-width:2px
+    style Config fill:#FDECEC,stroke:#C0392B,stroke-width:2px
+    style NotificationsInfra fill:#FDECEC,stroke:#E07070,stroke-width:2px
+    style ExternalAdapters fill:#FDECEC,stroke:#E07070,stroke-width:2px
+
+    style AppRepositories fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
+    style InfraTop fill:transparent,stroke:none
+    style InfraBottom fill:transparent,stroke:none
+
+    style UserSession fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
+    style CompanyMgmt fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
+    style PurchaseFlow fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
+    style Notifications fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
+
+    style Col1 fill:transparent,stroke:none
+    style Col2 fill:transparent,stroke:none
+    style Col3 fill:transparent,stroke:none
