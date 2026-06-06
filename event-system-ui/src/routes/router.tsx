@@ -1,49 +1,115 @@
-import { createBrowserRouter, Outlet } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
+import { Layout } from '../components/Layout';
+import { HomePage } from '../features/home/HomePage';
+import { LoginPage } from '../features/auth/LoginPage';
+import { RegisterPage } from '../features/auth/RegisterPage';
+import { CatalogPage } from '../features/catalog/CatalogPage';
+import { EventDetailPage } from '../features/catalog/EventDetailPage';
+import { QueuePage } from '../features/queue/QueuePage';
+import { OrderPage } from '../features/orders/OrderPage';
+import { HistoryPage } from '../features/history/HistoryPage';
+import { ReceiptDetailPage } from '../features/history/ReceiptDetailPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { CompaniesListPage } from '../features/companies/CompaniesListPage';
+import { CompanyDetailPage } from '../features/companies/CompanyDetailPage';
+import { RolesPage } from '../features/companies/RolesPage';
+import { CreateEventPage } from '../features/events-mgmt/CreateEventPage';
+import { PolicyEditorPage } from '../features/policies/PolicyEditorPage';
+import { AdminDashboardPage } from '../features/admin/AdminDashboardPage';
+import { SuspensionsPage } from '../features/admin/SuspensionsPage';
+import { GlobalHistoryPage } from '../features/admin/GlobalHistoryPage';
+import { BanMemberPage } from '../features/admin/BanMemberPage';
+import { CloseCompanyPage } from '../features/admin/CloseCompanyPage';
 import { Placeholder } from '../components/Placeholder';
-
-// Minimal shell — Student A will replace this with the real Layout component
-function MinimalShell() {
-  return (
-    <div>
-      <header style={{ padding: '1rem', borderBottom: '1px solid #ccc' }}>
-        <strong>EventSystem</strong>
-        <span style={{ opacity: 0.5, marginLeft: '1rem' }}>
-          (base scaffold — real nav coming soon)
-        </span>
-      </header>
-      <main style={{ padding: '1rem' }}>
-        <Outlet />
-      </main>
-    </div>
-  );
-}
+import { RequireAuth } from '../auth/RequireAuth';
 
 export const router = createBrowserRouter([
   {
-    element: <MinimalShell />,
+    element: <Layout />,
     children: [
-      { path: '/',                    element: <Placeholder title="Home" /> },
-      { path: '/login',              element: <Placeholder title="Login" /> },
-      { path: '/register',           element: <Placeholder title="Register" /> },
-      { path: '/events',             element: <Placeholder title="Event Catalog" /> },
-      { path: '/events/:eventId',    element: <Placeholder title="Event Detail" /> },
-      { path: '/events/:eventId/queue',     element: <Placeholder title="Queue" /> },
-      { path: '/events/:eventId/policies',  element: <Placeholder title="Event Policies" /> },
-      { path: '/orders/:orderId',    element: <Placeholder title="Order" /> },
-      { path: '/history',            element: <Placeholder title="Purchase History" /> },
-      { path: '/history/:recordId',  element: <Placeholder title="Receipt Detail" /> },
-      { path: '/notifications',      element: <Placeholder title="Notifications" /> },
-      { path: '/companies',          element: <Placeholder title="Companies" /> },
-      { path: '/companies/:companyId',          element: <Placeholder title="Company Detail" /> },
-      { path: '/companies/:companyId/roles',    element: <Placeholder title="Roles" /> },
-      { path: '/companies/:companyId/policies', element: <Placeholder title="Company Policies" /> },
-      { path: '/companies/:companyId/events/new', element: <Placeholder title="Create Event" /> },
-      { path: '/admin',              element: <Placeholder title="Admin Dashboard" /> },
-      { path: '/admin/suspensions',  element: <Placeholder title="Suspensions" /> },
-      { path: '/admin/members',      element: <Placeholder title="Ban Member" /> },
-      { path: '/admin/companies',    element: <Placeholder title="Close Company" /> },
-      { path: '/admin/history',      element: <Placeholder title="Global History" /> },
-      { path: '*',                   element: <Placeholder title="Not Found" /> },
+      { path: '/', element: <HomePage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+
+      { path: '/events', element: <RequireAuth><CatalogPage /></RequireAuth> },
+      { path: '/events/:eventId', element: <RequireAuth><EventDetailPage /></RequireAuth> },
+      { path: '/events/:eventId/queue', element: <RequireAuth><QueuePage /></RequireAuth> },
+      {
+        path: '/events/:eventId/policies',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+            <PolicyEditorPage scope="event" />
+          </RequireAuth>
+        ),
+      },
+      { path: '/orders/:orderId', element: <RequireAuth><OrderPage /></RequireAuth> },
+      { path: '/history', element: <RequireAuth><HistoryPage /></RequireAuth> },
+      { path: '/history/:recordId', element: <RequireAuth><ReceiptDetailPage /></RequireAuth> },
+      { path: '/notifications', element: <RequireAuth><NotificationsPage /></RequireAuth> },
+
+      {
+        path: '/companies',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+            <CompaniesListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/companies/:companyId',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+            <CompanyDetailPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/companies/:companyId/roles',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER']}>
+            <RolesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/companies/:companyId/policies',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+            <PolicyEditorPage scope="company" />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/companies/:companyId/events/new',
+        element: (
+          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+            <CreateEventPage />
+          </RequireAuth>
+        ),
+      },
+
+      {
+        path: '/admin',
+        element: <RequireAuth roles={['ADMIN']}><AdminDashboardPage /></RequireAuth>,
+      },
+      {
+        path: '/admin/suspensions',
+        element: <RequireAuth roles={['ADMIN']}><SuspensionsPage /></RequireAuth>,
+      },
+      {
+        path: '/admin/members',
+        element: <RequireAuth roles={['ADMIN']}><BanMemberPage /></RequireAuth>,
+      },
+      {
+        path: '/admin/companies',
+        element: <RequireAuth roles={['ADMIN']}><CloseCompanyPage /></RequireAuth>,
+      },
+      {
+        path: '/admin/history',
+        element: <RequireAuth roles={['ADMIN']}><GlobalHistoryPage /></RequireAuth>,
+      },
+
+      { path: '*', element: <Placeholder title="Not found" /> },
     ],
   },
 ]);
