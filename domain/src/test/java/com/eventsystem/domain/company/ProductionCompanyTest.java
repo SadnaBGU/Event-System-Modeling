@@ -117,4 +117,123 @@ class ProductionCompanyTest {
                 .isInstanceOf(CompanyDomainException.class)
                 .hasMessageContaining("already has an appointment");
     }
+    @Test
+    void stateTransitionsAndRequireActive() {
+        MemberId founder = MemberId.random();
+        ProductionCompany company = ProductionCompany.create(founder, "Test", "desc", 5.0);
+
+        // בדיקת השהיית חברה
+        company.suspend();
+        assertThat(company.status()).isEqualTo(CompanyStatus.SUSPENDED);
+
+        // בדיקה שפעולות נחסמות כשהחברה לא פעילה 
+        assertThatThrownBy(() -> company.updateName("New Name"))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("company is not active");
+            
+        // אין הרשאות כשהחברה מושהית
+        assertThat(company.hasPermission(founder, Permission.MODIFY_POLICIES)).isFalse();
+
+        // בדיקת פתיחה מחדש
+        company.reopen();
+        assertThat(company.status()).isEqualTo(CompanyStatus.ACTIVE);
+        assertThat(company.hasPermission(founder, Permission.MODIFY_POLICIES)).isTrue();
+
+        // בדיקת סגירת אדמין
+        company.adminClose();
+        assertThat(company.status()).isEqualTo(CompanyStatus.ADMIN_CLOSED);
+        assertThatThrownBy(() -> company.reopen())
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("admin-closed company cannot be reopened");
+
+        // בדיקת סגירה לצמיתות (Terminate)
+        ProductionCompany company2 = ProductionCompany.create(founder, "Test2", "desc", 5.0);
+        company2.terminate();
+        assertThat(company2.status()).isEqualTo(CompanyStatus.TERMINATED);
+        assertThatThrownBy(() -> company2.suspend())
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("terminated company cannot be suspended");
+        assertThatThrownBy(() -> company2.reopen())
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("terminated company cannot be reopened");
+    }
+
+    @Test
+    void updateCompanyDetailsValidations() {
+        MemberId founder = MemberId.random();
+        ProductionCompany company = ProductionCompany.create(founder, "Name", "Desc", 3.0);
+
+        
+        company.updateName("New Name");
+        assertThat(company.companyDetails().name()).isEqualTo("New Name");
+
+        company.updateDescription("New Desc");
+        assertThat(company.companyDetails().description()).isEqualTo("New Desc");
+
+        company.updateRating(4.5);
+        assertThat(company.companyDetails().rating()).isEqualTo(4.5);
+
+        
+        assertThatThrownBy(() -> company.updateName(""))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> company.updateDescription(""))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> company.updateRating(6.0))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> company.updateRating(-1.0))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void relinquishOwnership_throwsForFounder_butWorksForNormalOwner() {
+        MemberId founder = MemberId.random();
+        MemberId owner = MemberId.random();
+        ProductionCompany company = ProductionCompany.create(founder, "Name", "Desc", 3.0);
+        
+        
+        assertThatThrownBy(() -> company.relinquishOwnership(founder))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("founder cannot relinquish ownership");
+
+        // בעלים רגיל כן יכול לוותר
+        company.appointOwner(founder, owner);
+        company.acceptAppointment(owner);
+        company.relinquishOwnership(owner);
+        
+        assertThat(company.isOwner(owner)).isFalse();
+        
+    }
+    @Test
+    void inactiveCompany_BlocksPermissionsAndAcceptance() {
+        MemberId founder = MemberId.random();
+        MemberId target = MemberId.random();
+        ProductionCompany company = ProductionCompany.create(founder, "Test", "desc", 5.0);
+        
+        company.appointOwner(founder, target); 
+        company.suspend(); 
+        
+        
+        assertThat(company.hasPermission(founder, Permission.MODIFY_POLICIES)).isFalse();
+        
+        
+        assertThatThrownBy(() -> company.acceptAppointment(target))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("company is not active");
+    }
+
+    @Test
+    void queriesReturnFalseForUnknownMembers() {
+        MemberId founder = MemberId.random();
+        ProductionCompany company = ProductionCompany.create(founder, "Test", "desc", 5.0);
+        
+        MemberId unknown = MemberId.random();
+        
+        // validate that the aggregate correctly returns false for unknown members in isOwner/isManager/hasPermission
+        assertThat(company.isOwner(unknown)).isFalse();
+        assertThat(company.isManager(unknown)).isFalse();
+        assertThat(company.hasPermission(unknown, Permission.VIEW_PURCHASE_HISTORY)).isFalse();
+        
+        
+        assertThat(company.getAppointmentSubTree(founder)).containsExactly(founder);
+    }
 }
