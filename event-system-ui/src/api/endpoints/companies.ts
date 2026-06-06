@@ -6,12 +6,8 @@ import type {
   SalesReportRow,
 } from '../../types/api';
 
-// NOTE: backend currently exposes no GET /companies and no GET /companies/{id}.
-// The list() and get() functions below resolve to empty/null so company screens
-// render their empty states instead of crashing. Wire to real endpoints once the
-// backend grows them.
 export const companiesApi = {
-  list: async (): Promise<CompanyDto[]> => [],
+  list: () => api.get<CompanyDto[]>('/companies').then((r) => r.data),
 
   create: (body: CreateCompanyRequest) =>
     api
@@ -22,18 +18,26 @@ export const companiesApi = {
         return { companyId, companyName: body.companyName, status: 'ACTIVE', contactDetails: body.contactDetails } satisfies CompanyDto;
       }),
 
-  get: async (_companyId: string): Promise<CompanyDto | null> => {
-    void _companyId;
-    return null;
-  },
+  get: (companyId: string) =>
+    api.get<CompanyDto>(`/companies/${companyId}`).then((r) => r.data),
 
   updateStatus: (companyId: string, body: CompanyStatusUpdate) =>
     api.patch<void>(`/companies/${companyId}/status`, body).then(() => undefined),
 
   salesReport: (companyId: string) =>
     api
-      .get<{ companyId: string; reportGeneratedAt: string; grandTotalRevenue: number; events: SalesReportRow[] }>(
-        `/companies/${companyId}/reports/sales`,
-      )
-      .then((r) => r.data.events ?? []),
+      .get<{
+        companyId: string;
+        reportGeneratedAt: string;
+        grandTotalRevenue: number;
+        events: Array<{ eventId: string; eventName: string; ticketsSold: number; revenue: number }>;
+      }>(`/companies/${companyId}/reports/sales`)
+      .then((r) =>
+        (r.data.events ?? []).map<SalesReportRow>((e) => ({
+          eventId: e.eventId,
+          eventName: e.eventName,
+          ticketsSold: e.ticketsSold,
+          grossRevenue: e.revenue,
+        })),
+      ),
 };

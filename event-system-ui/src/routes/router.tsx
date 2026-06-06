@@ -60,7 +60,7 @@ export const router = createBrowserRouter([
       {
         path: '/companies/:companyId',
         element: (
-          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+          <RequireAuth>
             <CompanyDetailPage />
           </RequireAuth>
         ),
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       {
         path: '/companies/:companyId/roles',
         element: (
-          <RequireAuth roles={['COMPANY_OWNER']}>
+          <RequireAuth>
             <RolesPage />
           </RequireAuth>
         ),
@@ -76,7 +76,7 @@ export const router = createBrowserRouter([
       {
         path: '/companies/:companyId/policies',
         element: (
-          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+          <RequireAuth>
             <PolicyEditorPage scope="company" />
           </RequireAuth>
         ),
@@ -84,7 +84,7 @@ export const router = createBrowserRouter([
       {
         path: '/companies/:companyId/events/new',
         element: (
-          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+          <RequireAuth>
             <CreateEventPage />
           </RequireAuth>
         ),

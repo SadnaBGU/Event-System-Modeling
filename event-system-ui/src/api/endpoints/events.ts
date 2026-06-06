@@ -9,6 +9,13 @@ export interface EventSearchParams {
   size?: number;
 }
 
+export interface AddZoneRequest {
+  zoneName: string;
+  price: number;
+  currency?: string;
+  capacity: number;
+}
+
 export const eventsApi = {
   search: (params: EventSearchParams = {}) =>
     api.get<Page<EventDto>>('/events', { params }).then((r) => r.data.items),
@@ -18,4 +25,10 @@ export const eventsApi = {
 
   get: (eventId: string) =>
     api.get<EventDto>(`/events/${eventId}`).then((r) => r.data),
+
+  publish: (eventId: string) =>
+    api.post<void>(`/events/${eventId}/publish`).then(() => undefined),
+
+  addZone: (eventId: string, body: AddZoneRequest) =>
+    api.post<void>(`/events/${eventId}/zones`, body).then(() => undefined),
 };

@@ -1,12 +1,9 @@
 import { api } from '../client';
 import type { AppointRoleRequest, CompanyRoleDto } from '../../types/api';
 
-// Backend has no GET /companies/{id}/roles. list() returns empty so the page renders.
 export const rolesApi = {
-  list: async (_companyId: string): Promise<CompanyRoleDto[]> => {
-    void _companyId;
-    return [];
-  },
+  list: (companyId: string) =>
+    api.get<CompanyRoleDto[]>(`/companies/${companyId}/roles`).then((r) => r.data),
 
   appoint: (companyId: string, body: AppointRoleRequest) =>
     api

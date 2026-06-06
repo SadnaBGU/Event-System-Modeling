@@ -38,10 +38,7 @@ export function CompaniesListPage() {
 
       {list.isLoading && <p>Loading…</p>}
       {list.data && list.data.length === 0 && (
-        <p className="empty">
-          The backend doesn't expose a list-companies endpoint yet. Create one below, or open one
-          directly via its id at <code>/companies/&lt;id&gt;</code>.
-        </p>
+        <p className="empty">No companies yet. Create one below.</p>
       )}
       {list.data && list.data.length > 0 && (
         <table className="table" style={{ marginBottom: '1.5rem' }}>
