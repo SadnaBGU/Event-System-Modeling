@@ -102,6 +102,9 @@ public class OrderService {
      * Add a seat to the active order. This involves:
      * 1. Locking the seat through the ZoneRepository.
      * 2. If the lock is successful, adding the item to our order aggregate and saving it.
+     *
+     * For standing zones (no per-seat identity), the seatId is treated as a label only and
+     * the zone is decremented by 1 via reserveStanding.
      */
     public void reserveSeat(String orderId, String zoneId, String seatId) {
         logger.info("Attempting to reserve seat {} in zone {} for order {}", seatId, zoneId, orderId);
@@ -119,10 +122,14 @@ public class OrderService {
             zoneRepository.withLock(zId, () -> {
                 Zone zone = zoneRepository.findById(zId)
                         .orElseThrow(() -> new ZoneDomainException("Zone not found"));
-                
-                zone.reserveSeat(new SeatId(seatId));
+
+                if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
+                    zone.reserveStanding(1);
+                } else {
+                    zone.reserveSeat(new SeatId(seatId));
+                }
                 zoneRepository.save(zone);
-                
+
                 itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, 1, zone.pricePerTicket());
             });
 
@@ -145,6 +152,8 @@ public class OrderService {
      * Release a seat from the active order. This involves:
      * 1. Removing the item from our order aggregate and saving it.
      * 2. Unlocking the seat through the ZoneRepository to make it available again.
+     *
+     * For standing zones, increments the available count by 1 via releaseStanding.
      */
     public void releaseSeat(String orderId, String zoneId, String seatId) {
         logger.info("Attempting to release seat {} from order {}", seatId, orderId);
@@ -163,8 +172,12 @@ public class OrderService {
         zoneRepository.withLock(zId, () -> {
             Zone zone = zoneRepository.findById(zId)
                     .orElseThrow(() -> new ZoneDomainException("Zone not found"));
-            
-            zone.releaseSeat(new SeatId(seatId));
+
+            if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
+                zone.releaseStanding(1);
+            } else {
+                zone.releaseSeat(new SeatId(seatId));
+            }
             zoneRepository.save(zone);
         });
         
@@ -197,7 +210,11 @@ public class OrderService {
                 ZoneId zId = new ZoneId(item.getZoneId());
                 zoneRepository.withLock(zId, () -> {
                     zoneRepository.findById(zId).ifPresent(zone -> {
-                        zone.releaseSeat(new SeatId(item.getSeatId()));
+                        if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
+                            zone.releaseStanding(item.getQuantity());
+                        } else {
+                            zone.releaseSeat(new SeatId(item.getSeatId()));
+                        }
                         zoneRepository.save(zone);
                     });
                 });

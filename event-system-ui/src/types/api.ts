@@ -191,11 +191,13 @@ export interface SalesReportRow {
 // ---------- Roles ----------
 export type RoleType = 'OWNER' | 'MANAGER';
 
+// Must match backend domain.company.Permission enum values exactly.
 export const ALL_PERMISSIONS = [
-  'MANAGE_EVENTS',
-  'MANAGE_POLICIES',
-  'MANAGE_ROLES',
-  'VIEW_REPORTS',
+  'EVENT_INVENTORY_MANAGEMENT',
+  'VENUE_CONFIGURATION',
+  'MODIFY_POLICIES',
+  'VIEW_PURCHASE_HISTORY',
+  'GENERATE_SALES_REPORT',
 ] as const;
 export type Permission = typeof ALL_PERMISSIONS[number];
 
@@ -228,16 +230,17 @@ export interface LotteryRegistrationRequest {
 }
 
 // ---------- Admin ----------
-// Backend SuspensionDto in application layer uses durationDays + endsAt + reason.
+// Backend SuspensionDto in application layer: { memberId, username, suspendedAt, duration, endsAt }
+// where duration is "PERMANENT" or an ISO-8601 duration like "PT24H" / "P1D".
 export interface SuspensionDto {
   memberId: string;
   username?: string;
   suspendedAt: string;
-  durationDays: number | null;
+  duration: string;
   endsAt: string | null;
-  reason?: string;
 }
 
+// AdminController accepts { durationDays?: number, reason?: string }; days==0 / null => permanent.
 export interface SuspendRequest {
   durationDays: number | null;
   reason?: string;
@@ -247,7 +250,8 @@ export interface SuspendRequest {
 export interface GlobalHistoryRow {
   recordId: string;
   buyerId?: string;
-  eventName: string;
+  buyerDisplayName?: string;
+  eventSnapshot?: { eventName?: string };
   purchaseTimestamp: string;
   totalPaid: MoneyDto;
 }

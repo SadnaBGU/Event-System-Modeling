@@ -6,6 +6,20 @@ import { adminApi } from '../../api/endpoints/admin';
 import { formatDateTime } from '../../lib/format';
 import '../../components/common.css';
 
+// Backend SuspensionDto.duration is "PERMANENT" or an ISO-8601 duration like "PT24H" / "P1D".
+function formatDuration(d: string | null | undefined): string {
+  if (!d || d === 'PERMANENT') return 'Permanent';
+  // Quick ISO-8601 readability pass.
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/.exec(d);
+  if (!match) return d;
+  const [, dd, hh, mm] = match;
+  const parts: string[] = [];
+  if (dd) parts.push(`${dd}d`);
+  if (hh) parts.push(`${hh}h`);
+  if (mm) parts.push(`${mm}m`);
+  return parts.length > 0 ? parts.join(' ') : d;
+}
+
 export function SuspensionsPage() {
   const qc = useQueryClient();
   const list = useQuery({
@@ -53,7 +67,6 @@ export function SuspensionsPage() {
               <th>Suspended at</th>
               <th>Duration</th>
               <th>Ends at</th>
-              <th>Reason</th>
               <th aria-label="actions" />
             </tr>
           </thead>
@@ -68,9 +81,8 @@ export function SuspensionsPage() {
                   <code style={{ fontSize: '0.75rem' }}>{s.memberId}</code>
                 </td>
                 <td>{formatDateTime(s.suspendedAt)}</td>
-                <td>{s.durationDays === null ? 'Permanent' : `${s.durationDays} day${s.durationDays === 1 ? '' : 's'}`}</td>
+                <td>{formatDuration(s.duration)}</td>
                 <td>{s.endsAt ? formatDateTime(s.endsAt) : '—'}</td>
-                <td>{s.reason ?? '—'}</td>
                 <td>
                   <button
                     type="button"

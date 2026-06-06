@@ -37,8 +37,8 @@ export function GlobalHistoryPage() {
               {rows.map((r) => (
                 <tr key={r.recordId}>
                   <td><code>{r.recordId}</code></td>
-                  <td><code style={{ fontSize: '0.75rem' }}>{r.buyerId ?? '—'}</code></td>
-                  <td>{r.eventName}</td>
+                  <td><code style={{ fontSize: '0.75rem' }}>{r.buyerDisplayName ?? r.buyerId ?? '—'}</code></td>
+                  <td>{r.eventSnapshot?.eventName ?? '—'}</td>
                   <td>{formatDateTime(r.purchaseTimestamp)}</td>
                   <td>{formatMoney(r.totalPaid.amount, r.totalPaid.currency)}</td>
                 </tr>

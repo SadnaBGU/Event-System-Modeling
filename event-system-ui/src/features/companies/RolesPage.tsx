@@ -21,7 +21,7 @@ export function RolesPage() {
 
   const [targetMemberId, setTarget] = useState('');
   const [roleType, setRoleType] = useState<RoleType>('MANAGER');
-  const [permissions, setPermissions] = useState<Permission[]>(['MANAGE_EVENTS']);
+  const [permissions, setPermissions] = useState<Permission[]>(['EVENT_INVENTORY_MANAGEMENT']);
 
   const appoint = useMutation({
     mutationFn: () =>
