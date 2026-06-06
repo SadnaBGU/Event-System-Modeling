@@ -1,7 +1,7 @@
 // DTOs shared with the WAF REST API. Single source of truth for request/response shapes.
+// Update jointly with WAF team when contracts change.
 
-
-//Auth & Members 
+// ---------- Auth & Members ----------
 export interface LoginRequest {
   username: string;
   plaintextPassword: string;
@@ -32,7 +32,7 @@ export interface MemberDto {
   status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 }
 
-//Catalog 
+// ---------- Catalog ----------
 export interface EventSummaryDto {
   eventId: string;
   name: string;
@@ -57,7 +57,7 @@ export interface ZoneSummaryDto {
   capacity: number;
 }
 
-//Orders
+// ---------- Orders ----------
 export interface OrderDto {
   orderId: string;
   eventId: string;
@@ -85,13 +85,13 @@ export interface CheckoutRequest {
   discountCode?: string;
 }
 
-//Queue
+// ---------- Queue ----------
 export interface QueueStatusDto {
   isAdmitted: boolean;
   position?: number;
 }
 
-//Purchase history
+// ---------- Purchase history ----------
 export interface PurchaseRecordDto {
   recordId: string;
   eventId: string;
@@ -107,7 +107,7 @@ export interface PurchasedItemDto {
   unitPrice: number;
 }
 
-//Companies 
+// ---------- Companies ----------
 export interface CompanyDto {
   companyId: string;
   companyName: string;
@@ -131,7 +131,7 @@ export interface SalesReportRow {
   grossRevenue: number;
 }
 
-//Roles 
+// ---------- Roles ----------
 export type RoleType = 'OWNER' | 'MANAGER';
 
 export const ALL_PERMISSIONS = [
@@ -155,7 +155,7 @@ export interface AppointRoleRequest {
   permissionsList: Permission[];
 }
 
-//Event creation (company side) 
+// ---------- Event creation (company side) ----------
 export interface CreateEventRequest {
   name: string;
   description?: string;
@@ -164,12 +164,12 @@ export interface CreateEventRequest {
   zones: { name: string; type: 'SEATED' | 'STANDING'; basePrice: number; capacity: number }[];
 }
 
-//Lottery 
+// ---------- Lottery ----------
 export interface LotteryRegistrationRequest {
   zoneId?: string;
 }
 
-//Admin
+// ---------- Admin ----------
 export interface SuspensionDto {
   memberId: string;
   username: string;
@@ -192,7 +192,7 @@ export interface GlobalHistoryRow {
   totalPaid: number;
 }
 
-//Notifications 
+// ---------- Notifications ----------
 export interface NotificationDto {
   id: string;
   type:
@@ -208,7 +208,7 @@ export interface NotificationDto {
   meta?: Record<string, unknown>;
 }
 
-//Error envelope
+// ---------- Error envelope ----------
 export interface ApiErrorBody {
   timestamp: string;
   status: number;
