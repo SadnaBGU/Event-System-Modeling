@@ -1,8 +1,6 @@
-package com.eventsystem.application.lottery;
+package com.eventsystem.domain.lottery;
 
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.lottery.Lottery;
-import com.eventsystem.domain.lottery.LotteryId;
 
 import java.util.Optional;
 

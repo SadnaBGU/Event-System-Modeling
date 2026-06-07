@@ -10,6 +10,7 @@ import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;

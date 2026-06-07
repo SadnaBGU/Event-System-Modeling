@@ -1,31 +1,21 @@
 package com.eventsystem.infrastructure.config;
 
 import com.eventsystem.application.admin.AdminService;
-import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
-import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.event.EventPurchaseService;
 import com.eventsystem.application.event.EventService;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
-import com.eventsystem.application.event.IEventRepository;
-import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.event.ZoneService;
-import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.application.lottery.LotteryService;
 import com.eventsystem.application.member.IMemberInformationPort;
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.member.MemberService;
-import com.eventsystem.application.member.NotificationService;
 import com.eventsystem.application.order.CheckoutSaga;
-import com.eventsystem.application.order.IActiveOrderRepository;
 import com.eventsystem.application.order.IPaymentGatewayPort;
-import com.eventsystem.application.order.IPurchaseRecordRepository;
 import com.eventsystem.application.order.ITicketIssuancePort;
-import com.eventsystem.application.order.IVirtualQueueRepository;
 import com.eventsystem.application.order.IssuanceResult;
 import com.eventsystem.application.order.OrderService;
 import com.eventsystem.application.order.PaymentResult;
@@ -35,25 +25,35 @@ import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.application.order.ReportService;
 import com.eventsystem.application.policy.DiscountApplicationService;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
-import com.eventsystem.application.policy.IDiscountPolicyRepository;
 import com.eventsystem.application.policy.IPolicyManagementPort;
-import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.application.policy.PurchasePolicyValidationService;
 import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 import com.eventsystem.application.security.ITokenService;
-import com.eventsystem.application.venue.IVenueRepository;
 import com.eventsystem.application.venue.VenueManagementService;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.Permission;
+import com.eventsystem.domain.event.IEventRepository;
+import com.eventsystem.domain.lottery.ILotteryRepository;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
+import com.eventsystem.domain.platform.IPlatformRepository;
+import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
+import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
+import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
+import com.eventsystem.domain.queue.IVirtualQueueRepository;
 import com.eventsystem.domain.shared.Money;
+import com.eventsystem.domain.venue.IVenueRepository;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.application.event.EventCatalogService;
+import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
 import com.eventsystem.infrastructure.persistence.InMemoryActiveOrderRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryEventRepository;
@@ -342,9 +342,9 @@ public class AppConfig {
     }
 
     @Bean
-    public NotificationService notificationService(IMemberRepository memberRepo,
+    public NotificationPortImpl notificationService(IMemberRepository memberRepo,
                                                    com.eventsystem.application.member.NotificationBroadcaster broadcaster) {
-        return new NotificationService(memberRepo, broadcaster);
+        return new NotificationPortImpl(memberRepo, broadcaster);
     }
 
     @Bean

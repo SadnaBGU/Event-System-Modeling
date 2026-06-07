@@ -1,10 +1,9 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
-import com.eventsystem.application.lottery.ILotteryRepository;
 
 import java.util.Objects;
 import java.util.Optional;

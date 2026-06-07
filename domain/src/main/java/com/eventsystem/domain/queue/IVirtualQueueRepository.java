@@ -1,6 +1,5 @@
-package com.eventsystem.application.order;
+package com.eventsystem.domain.queue;
 
-import com.eventsystem.domain.queue.VirtualQueue;
 import java.util.Optional;
 
 public interface IVirtualQueueRepository {

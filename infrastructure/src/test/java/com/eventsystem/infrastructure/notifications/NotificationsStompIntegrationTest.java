@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
-import com.eventsystem.application.member.NotificationService;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.Notification;
@@ -52,7 +51,7 @@ import java.util.List;
 public class NotificationsStompIntegrationTest {
 
     @MockBean
-    NotificationService notificationService;
+    NotificationPortImpl notificationService;
 
     @MockBean
     ITokenService tokenService;

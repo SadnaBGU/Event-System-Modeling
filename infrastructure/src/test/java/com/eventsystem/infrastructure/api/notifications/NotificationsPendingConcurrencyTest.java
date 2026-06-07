@@ -1,13 +1,14 @@
 package com.eventsystem.infrastructure.api.notifications;
 
 import com.eventsystem.domain.member.HashedCredentials;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.PersonalDetails;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;
 import com.eventsystem.infrastructure.security.JwtTokenService;
-import com.eventsystem.application.member.IMemberRepository;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

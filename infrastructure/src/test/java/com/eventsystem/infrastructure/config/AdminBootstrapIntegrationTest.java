@@ -2,11 +2,11 @@ package com.eventsystem.infrastructure.config;
 
 import com.eventsystem.application.admin.AdminService;
 import com.eventsystem.application.admin.PlatformDto;
-import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
-import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.domain.member.IMemberRepository;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.PlatformStatus;
 import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
 import com.eventsystem.infrastructure.persistence.InMemoryPlatformRepository;

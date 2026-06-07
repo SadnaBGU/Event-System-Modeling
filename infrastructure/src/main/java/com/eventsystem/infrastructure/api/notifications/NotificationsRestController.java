@@ -1,10 +1,11 @@
 package com.eventsystem.infrastructure.api.notifications;
 
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
-import com.eventsystem.application.member.NotificationService;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;

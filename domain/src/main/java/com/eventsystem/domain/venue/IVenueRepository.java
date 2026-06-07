@@ -1,8 +1,6 @@
-package com.eventsystem.application.venue;
+package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.venue.Venue;
-import com.eventsystem.domain.venue.VenueId;
 
 import java.util.List;
 import java.util.Optional;

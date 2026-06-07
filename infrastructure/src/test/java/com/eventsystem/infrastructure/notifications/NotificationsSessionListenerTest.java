@@ -14,13 +14,11 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import org.springframework.messaging.simp.stomp.StompCommand;
 
-import com.eventsystem.application.member.NotificationService;
-
 public class NotificationsSessionListenerTest {
 
     @Test
     public void connected_should_notify_notificationService() {
-        NotificationService mockService = Mockito.mock(NotificationService.class);
+        NotificationPortImpl mockService = Mockito.mock(NotificationPortImpl.class);
         NotificationsSessionListener listener = new NotificationsSessionListener(mockService);
 
         StompHeaderAccessor sha = StompHeaderAccessor.create(StompCommand.CONNECT);
@@ -36,7 +34,7 @@ public class NotificationsSessionListenerTest {
 
     @Test
     public void disconnected_should_notify_notificationService() {
-        NotificationService mockService = Mockito.mock(NotificationService.class);
+        NotificationPortImpl mockService = Mockito.mock(NotificationPortImpl.class);
         NotificationsSessionListener listener = new NotificationsSessionListener(mockService);
 
         StompHeaderAccessor sha = StompHeaderAccessor.create(StompCommand.DISCONNECT);

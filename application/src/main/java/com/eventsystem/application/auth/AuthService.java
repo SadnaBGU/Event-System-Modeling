@@ -2,11 +2,11 @@ package com.eventsystem.application.auth;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.domain.member.HashedCredentials;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;

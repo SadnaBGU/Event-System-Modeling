@@ -1,17 +1,18 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.application.event.IEventQueryPort;
-import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.ZoneId;
 
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
@@ -19,6 +20,7 @@ import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.shared.Money;
 import org.junit.jupiter.api.Test;

@@ -2,6 +2,7 @@ package com.eventsystem.application.order;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.Event;
+import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
 import com.eventsystem.domain.shared.Money;

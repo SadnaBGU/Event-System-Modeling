@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.policy.IPurchasePolicyRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.company.CompanyId;

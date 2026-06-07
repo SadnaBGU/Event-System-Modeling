@@ -1,20 +1,18 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.event.IZoneServicePort;
-import com.eventsystem.application.lottery.ILotteryRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.order.*;
 import com.eventsystem.domain.shared.Money;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Row;
 import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneType;
-
-import com.eventsystem.application.event.IZoneRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

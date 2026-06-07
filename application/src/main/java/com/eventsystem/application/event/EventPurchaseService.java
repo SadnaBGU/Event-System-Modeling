@@ -2,10 +2,12 @@ package com.eventsystem.application.event;
 
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.application.company.ICompanyPermissionServicePort;

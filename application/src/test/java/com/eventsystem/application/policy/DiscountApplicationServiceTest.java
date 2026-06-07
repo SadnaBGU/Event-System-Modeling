@@ -13,6 +13,7 @@ import com.eventsystem.domain.policy.discount.Discount;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 import com.eventsystem.domain.policy.discount.DiscountSummary;
+import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
 import com.eventsystem.domain.policy.rule.basic.CodePolicy;
 import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;

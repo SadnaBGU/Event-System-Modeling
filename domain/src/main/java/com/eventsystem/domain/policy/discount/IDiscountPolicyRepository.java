@@ -1,9 +1,7 @@
-package com.eventsystem.application.policy;
+package com.eventsystem.domain.policy.discount;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.discount.DiscountPolicy;
-import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 
 import java.util.Optional;
 import java.util.List;

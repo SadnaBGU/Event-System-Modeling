@@ -1,10 +1,11 @@
 package com.eventsystem.application.company;
 
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
 
 import java.util.Objects;

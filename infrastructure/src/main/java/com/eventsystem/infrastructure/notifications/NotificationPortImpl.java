@@ -1,5 +1,8 @@
-package com.eventsystem.application.member;
+package com.eventsystem.infrastructure.notifications;
 
+import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.member.NotificationBroadcaster;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.Notification;
@@ -12,9 +15,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class NotificationService implements INotificationPort {
+public class NotificationPortImpl implements INotificationPort {
 
-    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
+    private static final Logger logger = LoggerFactory.getLogger(NotificationPortImpl.class);
     
     private final IMemberRepository memberRepository;
 
@@ -23,11 +26,11 @@ public class NotificationService implements INotificationPort {
 
     private final NotificationBroadcaster broadcaster;
 
-    public NotificationService(IMemberRepository memberRepository) {
+    public NotificationPortImpl(IMemberRepository memberRepository) {
         this(memberRepository, null);
     }
 
-    public NotificationService(IMemberRepository memberRepository, NotificationBroadcaster broadcaster) {
+    public NotificationPortImpl(IMemberRepository memberRepository, NotificationBroadcaster broadcaster) {
         this.memberRepository = memberRepository;
         this.broadcaster = broadcaster;
     }

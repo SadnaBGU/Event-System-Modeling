@@ -1,11 +1,9 @@
-package com.eventsystem.application.policy;
+package com.eventsystem.domain.policy.purchase;
 
 import java.util.List;
 import java.util.Optional;
 
 import com.eventsystem.domain.event.EventId;
-import com.eventsystem.domain.policy.purchase.PurchasePolicy;
-import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.company.CompanyId;
 
 public interface IPurchasePolicyRepository {

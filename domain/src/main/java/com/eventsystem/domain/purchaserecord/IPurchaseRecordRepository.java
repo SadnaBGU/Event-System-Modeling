@@ -1,9 +1,7 @@
-package com.eventsystem.application.order;
+package com.eventsystem.domain.purchaserecord;
 
 import java.util.List;
 import java.util.Optional;
-
-import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
 public interface IPurchaseRecordRepository {
     void append(PurchaseRecord record);

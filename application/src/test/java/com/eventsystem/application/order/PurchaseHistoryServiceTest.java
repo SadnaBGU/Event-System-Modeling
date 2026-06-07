@@ -3,6 +3,7 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.purchaserecorddto.PurchaseRecordDTO;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

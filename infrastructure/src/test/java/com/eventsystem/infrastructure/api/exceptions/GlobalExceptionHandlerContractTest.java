@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.api.exceptions;
 
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
