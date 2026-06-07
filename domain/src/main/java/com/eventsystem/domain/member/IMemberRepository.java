@@ -1,10 +1,7 @@
-package com.eventsystem.application.member;
+package com.eventsystem.domain.member;
 
 import java.util.Collection;
 import java.util.Optional;
-
-import com.eventsystem.domain.member.Member;
-import com.eventsystem.domain.member.MemberId;
 
 /**
  * Repository interface (port) for the {@link Member} aggregate.

@@ -14,6 +14,8 @@ import com.eventsystem.domain.policy.PolicyConflictDetector;
 import com.eventsystem.domain.policy.discount.Discount;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.DiscountPolicyId;
+import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
+import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.policy.rule.IPolicy;

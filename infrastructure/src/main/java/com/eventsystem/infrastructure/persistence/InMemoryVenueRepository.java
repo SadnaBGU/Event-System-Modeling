@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.venue.IVenueRepository;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.venue.IVenueRepository;
 import com.eventsystem.domain.venue.Venue;
 import com.eventsystem.domain.venue.VenueId;
 

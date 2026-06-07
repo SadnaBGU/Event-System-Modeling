@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

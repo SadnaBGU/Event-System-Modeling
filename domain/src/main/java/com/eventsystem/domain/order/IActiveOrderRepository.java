@@ -1,7 +1,5 @@
-package com.eventsystem.application.order;
+package com.eventsystem.domain.order;
 
-import com.eventsystem.domain.order.ActiveOrder;
-import com.eventsystem.domain.order.BuyerReference;
 import java.util.Optional;
 import java.util.List;
 

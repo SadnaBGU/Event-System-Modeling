@@ -1,10 +1,11 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
-import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

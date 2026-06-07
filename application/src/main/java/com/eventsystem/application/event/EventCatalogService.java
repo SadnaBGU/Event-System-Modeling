@@ -1,9 +1,11 @@
 package com.eventsystem.application.event;
 
-import com.eventsystem.application.company.IProductionCompanyRepository;
+import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
 import org.springframework.stereotype.Service;
 

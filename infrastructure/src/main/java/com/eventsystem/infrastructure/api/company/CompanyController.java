@@ -46,6 +46,7 @@ public class CompanyController {
         this.reportService = reportService;
     }
 
+    @SuppressWarnings("null")
     @PostMapping
     public ResponseEntity<Void> createCompany(@RequestAttribute("authenticatedMemberId") MemberId actor,
                                               @RequestBody CreateCompanyRequest request) {
@@ -129,6 +130,7 @@ public class CompanyController {
         return ResponseEntity.noContent().build();
     }
 
+    @SuppressWarnings("null")
     @PostMapping("/{companyId}/events")
     public ResponseEntity<Void> createEvent(@RequestAttribute("authenticatedMemberId") MemberId actor,
                                            @PathVariable String companyId,

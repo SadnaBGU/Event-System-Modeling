@@ -7,6 +7,7 @@ import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.EventStatus;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.event.SalesMethod;
 import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.domain.member.MemberId;

@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.admin.IPlatformRepository;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 
 import java.util.Objects;

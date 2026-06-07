@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.member.IMemberRepository;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 

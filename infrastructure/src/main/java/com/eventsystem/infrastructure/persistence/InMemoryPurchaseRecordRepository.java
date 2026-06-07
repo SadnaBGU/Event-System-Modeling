@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.order.IPurchaseRecordRepository;
+import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 
 import org.slf4j.Logger;

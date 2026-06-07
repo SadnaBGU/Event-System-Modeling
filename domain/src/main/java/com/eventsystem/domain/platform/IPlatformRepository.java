@@ -1,8 +1,6 @@
-package com.eventsystem.application.admin;
+package com.eventsystem.domain.platform;
 
 import java.util.Optional;
-
-import com.eventsystem.domain.platform.Platform;
 
 /**
  * Repository interface (port) for the singleton {@link Platform} aggregate.

@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.event.IZoneRepository;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 

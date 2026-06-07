@@ -8,17 +8,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import com.eventsystem.application.member.NotificationService;
-
 @Component
 public class NotificationsSessionListener {
 
-    private final NotificationService notificationService;
+    private final NotificationPortImpl notificationService;
 
-    public NotificationsSessionListener(NotificationService notificationService) {
+    public NotificationsSessionListener(NotificationPortImpl notificationService) {
         this.notificationService = notificationService;
     }
 
+    @SuppressWarnings("null")
     @EventListener
     public void handleSessionConnected(SessionConnectedEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());

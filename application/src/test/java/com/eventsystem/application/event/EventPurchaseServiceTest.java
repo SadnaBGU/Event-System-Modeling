@@ -6,10 +6,12 @@ import com.eventsystem.domain.domainexceptions.EventDomainException;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
+import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 

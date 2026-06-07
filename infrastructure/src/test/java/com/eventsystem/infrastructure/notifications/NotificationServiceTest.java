@@ -1,8 +1,10 @@
-package com.eventsystem.application.member;
+package com.eventsystem.infrastructure.notifications;
 
 import com.eventsystem.domain.member.*;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +24,7 @@ class NotificationServiceTest {
     private IMemberRepository memberRepository;
 
     @InjectMocks
-    private NotificationService notificationService;
+    private NotificationPortImpl notificationService;
 
     private Member testMember;
     private BuyerReference testBuyer;

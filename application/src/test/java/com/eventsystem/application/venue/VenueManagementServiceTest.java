@@ -1,8 +1,8 @@
 package com.eventsystem.application.venue;
 
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.shared.Money;

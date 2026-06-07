@@ -49,6 +49,7 @@ class EventCatalogControllerTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private AuthenticationInterceptor authenticationInterceptor;
 
+    @SuppressWarnings("null")
     @BeforeEach
     void allowMvcRequests() throws Exception {
         when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);

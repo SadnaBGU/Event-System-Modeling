@@ -1,8 +1,8 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.event.IEventRepository;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.company.CompanyId;
 
 

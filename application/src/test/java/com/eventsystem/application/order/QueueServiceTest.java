@@ -3,6 +3,7 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.queue.IVirtualQueueRepository;
 import com.eventsystem.domain.queue.VirtualQueue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

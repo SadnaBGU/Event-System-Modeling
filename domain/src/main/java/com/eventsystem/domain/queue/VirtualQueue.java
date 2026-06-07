@@ -120,6 +120,7 @@ public class VirtualQueue {
      */
     public int positionOf(BuyerReference visitor) {
         if (isAdmitted(visitor)) return 0;
+        @SuppressWarnings("unused")
         int pos = 1;
         for (QueueEntry e : waitingEntries) {
             if (e.getVisitorRef().equals(visitor)) return e.getPosition();

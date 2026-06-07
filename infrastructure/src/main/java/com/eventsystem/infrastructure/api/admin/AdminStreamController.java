@@ -1,11 +1,11 @@
 package com.eventsystem.infrastructure.api.admin;
 
-import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.order.PurchaseHistoryService;
 import com.eventsystem.application.purchaserecorddto.PurchaseRecordDTO;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 
 import jakarta.servlet.http.HttpServletResponse;

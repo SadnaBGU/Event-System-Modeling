@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.security;
 
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;

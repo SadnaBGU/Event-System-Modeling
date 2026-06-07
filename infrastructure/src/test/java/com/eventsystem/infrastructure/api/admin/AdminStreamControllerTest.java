@@ -1,6 +1,5 @@
 package com.eventsystem.infrastructure.api.admin;
 
-import com.eventsystem.application.admin.IPlatformRepository;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.order.PurchaseHistoryService;
@@ -10,6 +9,7 @@ import com.eventsystem.application.purchaserecorddto.PurchasedItemDTO;
 import com.eventsystem.application.purchaserecorddto.DiscountSnapshotDTO;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;

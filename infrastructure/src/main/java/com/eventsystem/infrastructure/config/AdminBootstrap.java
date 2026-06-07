@@ -1,12 +1,12 @@
 package com.eventsystem.infrastructure.config;
 
-import com.eventsystem.application.admin.IPlatformRepository;
-import com.eventsystem.application.member.IMemberRepository;
 import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.domain.member.HashedCredentials;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.PersonalDetails;
+import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 
 import org.slf4j.Logger;

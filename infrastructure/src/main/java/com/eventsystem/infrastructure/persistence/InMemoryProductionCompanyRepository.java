@@ -1,10 +1,9 @@
 package com.eventsystem.infrastructure.persistence;
 
-import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
-import com.eventsystem.application.company.IProductionCompanyRepository;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 
