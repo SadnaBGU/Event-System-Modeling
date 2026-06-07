@@ -17,6 +17,7 @@ public class NotificationsSessionListener {
         this.notificationService = notificationService;
     }
 
+    @SuppressWarnings("null")
     @EventListener
     public void handleSessionConnected(SessionConnectedEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());

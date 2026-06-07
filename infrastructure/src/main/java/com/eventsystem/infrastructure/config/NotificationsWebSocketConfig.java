@@ -3,8 +3,7 @@ package com.eventsystem.infrastructure.config;
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.security.ITokenService.TokenClaims;
-import com.eventsystem.domain.member.Notification;
-import com.eventsystem.infrastructure.api.notifications.NotificationDto;
+import com.eventsystem.infrastructure.notifications.NotificationBroadcasterImpl;
 
 import io.micrometer.common.lang.NonNull;
 
@@ -27,7 +26,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 import java.security.Principal;
-import java.time.ZoneOffset;
 import java.util.List;
 
 @Configuration
@@ -88,14 +86,6 @@ public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfi
     @SuppressWarnings("null")
     @Bean
     public NotificationBroadcaster notificationBroadcaster(SimpMessagingTemplate template) {
-        return (memberId, notification) -> {
-            NotificationDto dto = new NotificationDto(
-                    notification.getNotificationId(),
-                    notification.getType().name(),
-                    notification.getContent(),
-                    notification.getCreatedAt().atOffset(ZoneOffset.UTC).toString(),
-                    notification.isDelivered());
-            template.convertAndSendToUser(memberId, "/queue/notifications", dto);
-        };
+        return new NotificationBroadcasterImpl(template);
     }
 }

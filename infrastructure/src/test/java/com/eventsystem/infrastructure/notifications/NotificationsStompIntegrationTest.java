@@ -62,7 +62,7 @@ public class NotificationsStompIntegrationTest {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.context.ApplicationContext ctx;
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({ "deprecation", "null" })
     @Test
     public void connect_and_receive_broadcast() throws Exception {
         // start client

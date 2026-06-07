@@ -10,6 +10,7 @@ import com.eventsystem.domain.member.NotificationType;
 import com.eventsystem.domain.order.BuyerReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 
 import java.util.List;
 import java.util.Set;
@@ -22,7 +23,7 @@ public class NotificationPortImpl implements INotificationPort {
     private final IMemberRepository memberRepository;
 
     // map memberId -> set of sessionIds to support multi-tab/multi-session
-    private final java.util.concurrent.ConcurrentHashMap<String, java.util.Set<String>> memberSessions = new java.util.concurrent.ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Set<String>> memberSessions = new ConcurrentHashMap<>();
 
     private final NotificationBroadcaster broadcaster;
 
@@ -40,13 +41,14 @@ public class NotificationPortImpl implements INotificationPort {
      * whenever a user logs in, to update their online status in the notification 
      * system. When a user comes online, any pending notifications will be dispatched immediately.
      */
-    public void clientConnected(String memberId) {
+    public void clientConnected(@NonNull String memberId) {
         clientConnected(memberId, "default");
     }
 
-    public void clientConnected(String memberId, String sessionId) {
+    public void clientConnected(@NonNull String memberId, String sessionId) {
         memberSessions.compute(memberId, (k, set) -> {
-            if (set == null) set = java.util.concurrent.ConcurrentHashMap.newKeySet();
+            if (set == null) 
+                set = ConcurrentHashMap.newKeySet();
             set.add(sessionId);
             return set;
         });
@@ -69,7 +71,7 @@ public class NotificationPortImpl implements INotificationPort {
         });
     }
 
-    private void dispatchDelayedNotifications(String memberIdStr) {
+    private void dispatchDelayedNotifications(@NonNull String memberIdStr) {
         memberRepository.findById(new MemberId(memberIdStr)).ifPresent(member -> {
             List<Notification> pending = member.getUndeliveredNotifications();
             if (!pending.isEmpty()) {
@@ -85,6 +87,7 @@ public class NotificationPortImpl implements INotificationPort {
         });
     }
 
+    @SuppressWarnings("null")
     private void dispatchMessage(BuyerReference buyer, NotificationType type, String message) {
         String memberIdStr = buyer.memberId();
         Notification notification = Notification.create(type, message);
