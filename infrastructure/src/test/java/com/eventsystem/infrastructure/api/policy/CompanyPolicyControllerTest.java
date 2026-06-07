@@ -31,6 +31,7 @@ class CompanyPolicyControllerTest {
                 .build();
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithMinAge_Returns200Ok() throws Exception {
         String jsonBody = """
@@ -47,6 +48,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setCompanyPolicy_WithAndOperator_Returns200Ok() throws Exception {
         String jsonBody = """
@@ -66,6 +68,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
     // --- טסטים לסוגי מדיניות נוספים ---
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithCodePolicy_Returns200Ok() throws Exception {
         String jsonBody = """
@@ -81,6 +84,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithBeforeDatePolicy_Returns200Ok() throws Exception {
         String jsonBody = """
@@ -96,6 +100,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithOrOperator_Returns200Ok() throws Exception {
         String jsonBody = """
@@ -115,6 +120,7 @@ class CompanyPolicyControllerTest {
     }
 
     // --- טסטים לשגיאות (Defensive Programming) ---
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_MissingType_ThrowsException() throws Exception {
         String jsonBody = """
@@ -129,6 +135,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isBadRequest()); // מצפה ל-400
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_AndOperatorWithEmptyOperands_ThrowsException() throws Exception {
         String jsonBody = """
@@ -144,6 +151,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isBadRequest()); // מצפה ל-400
     }
     // --- השלמת שאר סוגי המדיניות ---
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithAfterDatePolicy_Returns200Ok() throws Exception {
         String jsonBody = "{ \"type\": \"AFTER_DATE\", \"value\": \"2026-01-01\" }";
@@ -154,6 +162,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithMaxTicketsPolicy_Returns200Ok() throws Exception {
         String jsonBody = "{ \"type\": \"MAX_TICKETS_PER_USER\", \"value\": 5 }";
@@ -164,6 +173,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_WithMinTicketsPolicy_Returns200Ok() throws Exception {
         String jsonBody = "{ \"type\": \"MIN_TICKETS\", \"value\": 2 }";
@@ -175,6 +185,7 @@ class CompanyPolicyControllerTest {
     }
 
     // --- כיסוי לשגיאות טיפוסים (intValue / text) ---
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_InvalidInt_ThrowsException() throws Exception {
         String jsonBody = "{ \"type\": \"MIN_AGE\", \"value\": \"לא-מספר\" }";
@@ -185,6 +196,7 @@ class CompanyPolicyControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @SuppressWarnings("null")
     @Test
     void setEventPolicy_BlankText_ThrowsException() throws Exception {
         String jsonBody = "{ \"type\": \"CODE\", \"value\": \"   \" }"; 

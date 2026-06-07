@@ -58,7 +58,8 @@ class CompanyControllerTest {
     
     }
 
-    @Test
+    @SuppressWarnings("null")
+@Test
     void createCompany_Returns201Created() throws Exception {
         CompanyController.CreateCompanyRequest request = 
                 new CompanyController.CreateCompanyRequest("Test Co", "test@co.com");
@@ -74,7 +75,8 @@ class CompanyControllerTest {
                 .andExpect(header().string("Location", "/api/companies/comp-999"));
     }
 
-    @Test
+    @SuppressWarnings("null")
+@Test
     void updateCompanyStatus_Returns204NoContent() throws Exception {
         CompanyController.CompanyStatusRequest request = 
                 new CompanyController.CompanyStatusRequest("SUSPENDED");
@@ -86,7 +88,8 @@ class CompanyControllerTest {
                 .andExpect(status().isNoContent());
     }
 
-    @Test
+    @SuppressWarnings("null")
+@Test
     void createEvent_Returns201Created() throws Exception {
         CompanyController.CreateEventRequest request = new CompanyController.CreateEventRequest(
                 "My Event", List.of(LocalDateTime.now().plusDays(1)), "Music", "Tel Aviv", "A great show");
@@ -124,7 +127,8 @@ class CompanyControllerTest {
     }
 
     // --- טסטים לעץ המינויים (Roles) ---
-    @Test
+    @SuppressWarnings("null")
+@Test
     void appointRole_Owner_Returns200Ok() throws Exception {
         CompanyController.RoleRequest request = new CompanyController.RoleRequest("target-1", "OWNER", null);
 
@@ -135,7 +139,8 @@ class CompanyControllerTest {
                 .andExpect(status().isOk());
     }
 
-    @Test
+    @SuppressWarnings("null")
+@Test
     void appointRole_Manager_Returns200Ok() throws Exception {
         CompanyController.RoleRequest request = new CompanyController.RoleRequest(
                 "target-1", "MANAGER", List.of("GENERATE_SALES_REPORT"));
@@ -147,7 +152,8 @@ class CompanyControllerTest {
                 .andExpect(status().isOk());
     }
 
-    @Test
+    @SuppressWarnings("null")
+@Test
     void appointRole_Manager_EmptyPermissions_ThrowsException() throws Exception {
         CompanyController.RoleRequest request = new CompanyController.RoleRequest("target-1", "MANAGER", List.of());
 
