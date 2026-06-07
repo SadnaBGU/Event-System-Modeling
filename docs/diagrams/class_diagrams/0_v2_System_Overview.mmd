@@ -47,19 +47,9 @@ flowchart TB
             HistorySvc["PurchaseHistoryService"]
         end
 
-        subgraph AppRepositories["Application Repository Interfaces"]
-            direction TB
-            PlatformRepo["PlatformRepository"]
-            MemberRepo["MemberRepository"]
-            CompanyRepo["CompanyRepository"]
-            EventRepo["EventRepository"]
-            ZoneRepo["ZoneRepository"]
-            PPolRepo["PurchasePolicyRepository"]
-            DPolRepo["DiscountPolicyRepository"]
-            OrderRepo["OrderRepository"]
-            QueueRepo["QueueRepository"]
-            LotteryRepo["LotteryRepository"]
-            PurchaseRepo["PurchaseRecordRepository"]
+        subgraph AppPorts["Application Ports"]
+            direction LR
+            NotifPort["INotificationPort"]
         end
     end
 
@@ -82,11 +72,13 @@ flowchart TB
         subgraph Col1[" "]
             subgraph AGG_PLATFORM["⬡ Platform"]
                 Platform["Platform"]
+                PlatformRepo["PlatformRepository"]
             end
 
             subgraph AGG_MEMBER["⬡ Member"]
                 Member["Member"]
                 Notif["Notification"]
+                MemberRepo["MemberRepository"]
             end
         end
 
@@ -96,17 +88,20 @@ flowchart TB
                 AppTree["AppointmentTree"]
                 ONode["OwnerNode"]
                 MNode["ManagerNode"]
+                CompanyRepo["CompanyRepository"]
             end
 
             subgraph AGG_EVENT["⬡ Event"]
                 Event["Event"]
                 VMap["VenueMap"]
+                EventRepo["EventRepository"]
             end
 
             subgraph AGG_ZONE["⬡ Zone"]
                 Zone["Zone"]
                 RowE["Row"]
                 SeatE["Seat"]
+                ZoneRepo["ZoneRepository"]
             end
 
             subgraph AGG_POLICY["⬡ Policy"]
@@ -114,11 +109,13 @@ flowchart TB
 
                 subgraph PURCHASE_POLICY["Purchase Policy"]
                     PPol["PurchasePolicy"]
+                    PPolRepo["PurchasePolicyRepository"]
                 end
 
                 subgraph DISCOUNT_POLICY["Discount Policy"]
                     DPol["DiscountPolicy"]
                     DRule["DiscountRule"]
+                    DPolRepo["DiscountPolicyRepository"]
                 end
 
                 subgraph POLICY_DOMAIN_SERVICES["Policy Domain Services"]
@@ -133,22 +130,26 @@ flowchart TB
             subgraph AGG_ORDER["⬡ ActiveOrder"]
                 Order["ActiveOrder"]
                 OItem["OrderItem"]
+                OrderRepo["OrderRepository"]
             end
 
             subgraph AGG_QUEUE["⬡ VirtualQueue"]
                 VQueue["VirtualQueue"]
                 QEntry["QueueEntry"]
                 AToken["AdmissionToken"]
+                QueueRepo["QueueRepository"]
             end
 
             subgraph AGG_LOTTERY["⬡ Lottery"]
                 Lottery["Lottery"]
                 LWinner["LotteryWinner"]
+                LotteryRepo["LotteryRepository"]
             end
 
             subgraph AGG_PURCHASE["⬡ PurchaseRecord"]
                 PurchRec["PurchaseRecord"]
                 PItem["PurchasedItem"]
+                PurchaseRepo["PurchaseRecordRepository"]
             end
         end
 
@@ -229,6 +230,7 @@ flowchart TB
             subgraph NotificationsInfra["Notifications Infrastructure"]
                 direction TB
                 NotifSessionListener["NotificationsSessionListener"]
+                NotificationPortImpl["NotificationPortImpl"]
             end
 
             subgraph ExternalAdapters["External Adapters"]
@@ -309,6 +311,7 @@ flowchart TB
     ReportSvc --> PurchRec
 
     %% ============================================
+    %% ============================================
     %% REPOSITORY → DOMAIN CONNECTIONS
     %% ============================================
     PlatformRepo --> Platform
@@ -322,6 +325,11 @@ flowchart TB
     QueueRepo --> VQueue
     LotteryRepo --> Lottery
     PurchaseRepo --> PurchRec
+
+    %% ============================================
+    %% APPLICATION PORT → INFRASTRUCTURE IMPLEMENTATION
+    %% ============================================
+    NotifPort --> NotificationPortImpl
 
     %% ============================================
     %% LINK STYLES
@@ -391,6 +399,7 @@ flowchart TB
     linkStyle 52 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 53 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 54 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 55 stroke:#8E0000,stroke-width:2px
 
     %% ============================================
     %% APPLY STYLES
@@ -420,7 +429,7 @@ flowchart TB
     class DRule policy
     class PlatformRepo,MemberRepo,CompanyRepo,EventRepo,ZoneRepo,PPolRepo,DPolRepo,OrderRepo,QueueRepo,LotteryRepo,PurchaseRepo repo
     class AuthController,MemberController,AdminController,AdminPlatformController,AdminStreamController,CompanyController,CompanyPolicyController,EventCatalogController,EventLotteryController,EventQueueController,OrdersRestController,CheckoutSagaController,NotificationsRestController,PurchaseHistoryController,GlobalExceptionHandler infra
-    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener infra
+    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener,NotificationPortImpl infra
     class PayAdapt,IssAdapt,NotifAdapt infra
 
     %% ============================================
@@ -461,7 +470,6 @@ flowchart TB
     style NotificationsInfra fill:#FDECEC,stroke:#E07070,stroke-width:2px
     style ExternalAdapters fill:#FDECEC,stroke:#E07070,stroke-width:2px
 
-    style AppRepositories fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
     style InfraTop fill:transparent,stroke:none
     style InfraBottom fill:transparent,stroke:none
 

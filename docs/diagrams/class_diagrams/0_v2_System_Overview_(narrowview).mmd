@@ -88,6 +88,7 @@ flowchart LR
 
             subgraph NotificationsInfra["Notifications Infrastructure"]
                 NotifSessionListener["NotificationsSessionListener"]
+                NotificationPortImpl["NotificationPortImpl"]
             end
 
             subgraph ExternalAdapters["External Adapters"]
@@ -101,7 +102,7 @@ flowchart LR
     %% ============================================
     %% APPLICATION LAYER
     %% ============================================
-    subgraph APP["🔵 APPLICATION LAYER — Services & Repository Interfaces"]
+    subgraph APP["🔵 APPLICATION LAYER — Services & Ports"]
         direction TB
 
         subgraph AppServices["Application Services"]
@@ -145,31 +146,9 @@ flowchart LR
             end
         end
 
-        subgraph AppRepositories["Application Repository Interfaces"]
+        subgraph AppPorts["Application Ports"]
             direction LR
-
-            subgraph CoreRepos["Core Repositories"]
-                PlatformRepo["PlatformRepository"]
-                MemberRepo["MemberRepository"]
-                CompanyRepo["CompanyRepository"]
-            end
-
-            subgraph CatalogRepos["Catalog Repositories"]
-                EventRepo["EventRepository"]
-                ZoneRepo["ZoneRepository"]
-            end
-
-            subgraph PolicyRepos["Policy Repositories"]
-                PPolRepo["PurchasePolicyRepository"]
-                DPolRepo["DiscountPolicyRepository"]
-            end
-
-            subgraph PurchaseRepos["Purchase Repositories"]
-                OrderRepo["OrderRepository"]
-                QueueRepo["QueueRepository"]
-                LotteryRepo["LotteryRepository"]
-                PurchaseRepo["PurchaseRecordRepository"]
-            end
+            NotifPort["INotificationPort"]
         end
     end
 
@@ -194,11 +173,13 @@ flowchart LR
 
             subgraph AGG_PLATFORM["⬡ Platform"]
                 Platform["Platform"]
+                PlatformRepo["PlatformRepository"]
             end
 
             subgraph AGG_MEMBER["⬡ Member"]
                 Member["Member"]
                 Notif["Notification"]
+                MemberRepo["MemberRepository"]
             end
 
             subgraph AGG_COMPANY["⬡ ProductionCompany"]
@@ -206,6 +187,7 @@ flowchart LR
                 AppTree["AppointmentTree"]
                 ONode["OwnerNode"]
                 MNode["ManagerNode"]
+                CompanyRepo["CompanyRepository"]
             end
         end
 
@@ -215,12 +197,14 @@ flowchart LR
             subgraph AGG_EVENT["⬡ Event"]
                 Event["Event"]
                 VMap["VenueMap"]
+                EventRepo["EventRepository"]
             end
 
             subgraph AGG_ZONE["⬡ Zone"]
                 Zone["Zone"]
                 RowE["Row"]
                 SeatE["Seat"]
+                ZoneRepo["ZoneRepository"]
             end
 
             subgraph AGG_POLICY["⬡ Policy"]
@@ -228,11 +212,13 @@ flowchart LR
 
                 subgraph PURCHASE_POLICY["Purchase Policy"]
                     PPol["PurchasePolicy"]
+                    PPolRepo["PurchasePolicyRepository"]
                 end
 
                 subgraph DISCOUNT_POLICY["Discount Policy"]
                     DPol["DiscountPolicy"]
                     DRule["DiscountRule"]
+                    DPolRepo["DiscountPolicyRepository"]
                 end
 
                 subgraph POLICY_DOMAIN_SERVICES["Policy Domain Services"]
@@ -249,22 +235,26 @@ flowchart LR
             subgraph AGG_ORDER["⬡ ActiveOrder"]
                 Order["ActiveOrder"]
                 OItem["OrderItem"]
+                OrderRepo["OrderRepository"]
             end
 
             subgraph AGG_QUEUE["⬡ VirtualQueue"]
                 VQueue["VirtualQueue"]
                 QEntry["QueueEntry"]
                 AToken["AdmissionToken"]
+                QueueRepo["QueueRepository"]
             end
 
             subgraph AGG_LOTTERY["⬡ Lottery"]
                 Lottery["Lottery"]
                 LWinner["LotteryWinner"]
+                LotteryRepo["LotteryRepository"]
             end
 
             subgraph AGG_PURCHASE["⬡ PurchaseRecord"]
                 PurchRec["PurchaseRecord"]
                 PItem["PurchasedItem"]
+                PurchaseRepo["PurchaseRecordRepository"]
             end
         end
 
@@ -358,6 +348,11 @@ flowchart LR
     PurchaseRepo --> PurchRec
 
     %% ============================================
+    %% APPLICATION PORT → INFRASTRUCTURE IMPLEMENTATION
+    %% ============================================
+    NotifPort --> NotificationPortImpl
+
+    %% ============================================
     %% LINK STYLES — colored by responsibility
     %% ============================================
 
@@ -437,6 +432,7 @@ flowchart LR
     linkStyle 52 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 53 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 54 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 55 stroke:#8E0000,stroke-width:2px
 
     %% ============================================
     %% APPLY NODE STYLES
@@ -466,7 +462,7 @@ flowchart LR
     class DRule policy
     class PlatformRepo,MemberRepo,CompanyRepo,EventRepo,ZoneRepo,PPolRepo,DPolRepo,OrderRepo,QueueRepo,LotteryRepo,PurchaseRepo repo
     class AuthController,MemberController,AdminController,AdminPlatformController,AdminStreamController,CompanyController,CompanyPolicyController,EventCatalogController,EventLotteryController,EventQueueController,OrdersRestController,CheckoutSagaController,NotificationsRestController,PurchaseHistoryController,GlobalExceptionHandler infra
-    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener infra
+    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener,NotificationPortImpl infra
     class PayAdapt,IssAdapt,NotifAdapt infra
 
     %% ============================================
@@ -503,11 +499,7 @@ flowchart LR
     style PurchaseFlow fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
     style Notifications fill:#BBDEFB,stroke:#42A5F5,stroke-width:1px
 
-    style AppRepositories fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
-    style CoreRepos fill:#EAF4FE,stroke:#1565C0,stroke-width:1px
-    style CatalogRepos fill:#EAF4FE,stroke:#1565C0,stroke-width:1px
-    style PolicyRepos fill:#EAF4FE,stroke:#1565C0,stroke-width:1px
-    style PurchaseRepos fill:#EAF4FE,stroke:#1565C0,stroke-width:1px
+    style AppPorts fill:#FFF3E0,stroke:#F5A623,stroke-width:2px
 
     style DomainRow1 fill:#E8F5E9,stroke:#81C784,stroke-width:1px
     style DomainRow2 fill:#E8F5E9,stroke:#81C784,stroke-width:1px
