@@ -22,6 +22,7 @@ public class NotificationBroadcasterBeanTest {
     @Mock
     private com.eventsystem.application.security.ITokenService tokenService;
 
+    @SuppressWarnings("null")
     @Test
     public void broadcaster_sendsToUserQueue() {
         NotificationsWebSocketConfig config = new NotificationsWebSocketConfig(tokenService);

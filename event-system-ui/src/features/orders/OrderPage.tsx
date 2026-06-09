@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { ordersApi } from '../../api/endpoints/orders';
 import { eventsApi } from '../../api/endpoints/events';
 import { formatDateTime, formatMoney } from '../../lib/format';
+import { InteractiveSeatMap } from '../../components/InteractiveSeatMap';
 import '../../components/common.css';
 
 export function OrderPage() {
@@ -32,7 +33,7 @@ export function OrderPage() {
   const refetchOrder = () => qc.invalidateQueries({ queryKey: ['order', orderId] });
 
   const addItem = useMutation({
-    mutationFn: () => ordersApi.addItem(orderId, { zoneId, seatId }),
+    mutationFn: (item: { zoneId: string; seatId: string }) => ordersApi.addItem(orderId, item),
     onSuccess: () => {
       toast.success('Added to cart');
       setSeatId('');
@@ -131,28 +132,12 @@ export function OrderPage() {
       </div>
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Add seat</h2>
-      <form
-        className="form-stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!zoneId || !seatId) return;
-          addItem.mutate();
-        }}
-      >
-        <label>
-          Zone
+      <label>
+        Select zone
           <select
             value={zoneId}
             onChange={(e) => setZoneId(e.target.value)}
-            required
-            style={{
-              background: '#0d1117',
-              color: '#e6edf3',
-              border: '1px solid #30363d',
-              borderRadius: 4,
-              padding: '0.45rem 0.6rem',
-              font: 'inherit',
-            }}
+            style={{ marginLeft: '10px', background: '#0d1117', color: '#e6edf3', padding: '0.45rem', borderRadius: '4px' }}
           >
             <option value="">Pick a zone…</option>
             {event?.zones.map((z) => (
@@ -161,20 +146,25 @@ export function OrderPage() {
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          Seat ID
-          <input
-            value={seatId}
-            onChange={(e) => setSeatId(e.target.value)}
-            required
-            placeholder="e.g. A-12"
-          />
-        </label>
-        <button className="btn" type="submit" disabled={addItem.isPending}>
-          {addItem.isPending ? 'Adding…' : 'Add to cart'}
-        </button>
-      </form>
+      </label>
+
+      {zoneId && event && (
+         <InteractiveSeatMap 
+            zoneId={zoneId}
+            zoneName={event.zones.find(z => z.zoneId === zoneId)?.zoneName || ''}
+            price={event.zones.find(z => z.zoneId === zoneId)?.price || 0}
+            currency={event.zones.find(z => z.zoneId === zoneId)?.currency || 'USD'}
+            capacity={event.zones.find(z => z.zoneId === zoneId)?.totalCapacity || 100}
+            isLoading={addItem.isPending || removeItem.isPending}
+            onSeatToggle={(seat, isSelected) => {
+                if (isSelected) {
+                    addItem.mutate({ zoneId, seatId: seat });
+                } else {
+                    removeItem.mutate({ zoneId, seatId: seat });
+                }
+            }}
+         />
+      )}
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Checkout</h2>
       <form

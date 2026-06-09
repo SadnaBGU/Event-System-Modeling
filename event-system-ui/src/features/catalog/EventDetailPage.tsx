@@ -3,17 +3,19 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { eventsApi } from '../../api/endpoints/events';
-import { ordersApi } from '../../api/endpoints/orders';
 import { lotteryApi } from '../../api/endpoints/lottery';
 import { useAuthStore } from '../../auth/authStore';
 import { formatDateTime, formatMoney } from '../../lib/format';
+import { getGuestSessionId } from '../../utils/sessionHelper';
 import '../../components/common.css';
 
 export function EventDetailPage() {
   const { eventId = '' } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const memberId = useAuthStore((s) => s.session?.memberId);
+  const session = useAuthStore((s) => s.session);
+  const memberId = session?.memberId;
+
   const ev = useQuery({
     queryKey: ['event', eventId],
     queryFn: () => eventsApi.get(eventId),
@@ -21,14 +23,42 @@ export function EventDetailPage() {
   });
 
   const openOrder = useMutation({
-    mutationFn: () => {
-      if (!memberId) throw new Error('Sign in to start an order');
-      return ordersApi.openOrCreate(eventId, memberId);
+    mutationFn: async () => {
+      const isMember = !!memberId;
+      const payload = {
+        eventId: eventId,
+        buyerType: isMember ? "MEMBER" : "GUEST",
+        sessionId: isMember ? null : getGuestSessionId(),
+        memberId: isMember ? memberId : null
+      };
+
+      const res = await fetch('/api/orders/active', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isMember ? { 'Authorization': `Bearer ${session.token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        if (res.status === 409) throw new Error('QUEUE');
+        throw new Error('Failed to open cart');
+      }
+      return res.json();
     },
-    onSuccess: ({ orderId }) => {
+    onSuccess: (data) => {
       toast.success('Cart opened');
-      navigate(`/orders/${orderId}`);
+      navigate(`/orders/${data.orderId}`);
     },
+    onError: (err: any) => {
+      if (err.message === 'QUEUE') {
+        toast.info('האירוע עמוס, מעביר אותך לתור הווירטואלי...');
+        navigate(`/events/${eventId}/queue`);
+      } else {
+        toast.error(err.message);
+      }
+    }
   });
 
   const enterLottery = useMutation({
