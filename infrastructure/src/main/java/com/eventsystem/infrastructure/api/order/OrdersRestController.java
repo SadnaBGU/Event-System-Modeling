@@ -49,18 +49,20 @@ public class OrdersRestController {
     }
 
     @PostMapping("/{orderId}/items")
-    public ResponseEntity<Void> reserveSeat(@PathVariable String orderId, @RequestBody ReserveSeatRequest req) {
-        if (req == null || req.zoneId == null || req.zoneId.isBlank() || req.seatId == null || req.seatId.isBlank())
-            throw new IllegalArgumentException("zoneId and seatId are required");
-        orderService.reserveSeat(orderId, req.zoneId, req.seatId);
+    public ResponseEntity<Void> addItemToOrder(@PathVariable String orderId, @RequestBody AddItemRequest req) {
+        if (req == null || req.zoneId == null || req.zoneId.isBlank())
+            throw new IllegalArgumentException("zoneId is required");
+        int quantity = (req.quantity != null && req.quantity > 0) ? req.quantity : 1;
+        orderService.addItemToOrder(orderId, req.zoneId, req.seatId, quantity);
         return ResponseEntity.accepted().build();
     }
 
     @DeleteMapping("/{orderId}/items")
-    public ResponseEntity<Void> releaseSeat(@PathVariable String orderId, @RequestBody ReleaseSeatRequest req) {
-        if (req == null || req.zoneId == null || req.zoneId.isBlank() || req.seatId == null || req.seatId.isBlank())
-            throw new IllegalArgumentException("zoneId and seatId are required");
-        orderService.releaseSeat(orderId, req.zoneId, req.seatId);
+    public ResponseEntity<Void> removeItemFromOrder(@PathVariable String orderId, @RequestBody RemoveItemRequest req) {
+        if (req == null || req.zoneId == null || req.zoneId.isBlank())
+            throw new IllegalArgumentException("zoneId is required");
+        int quantity = (req.quantity != null && req.quantity > 0) ? req.quantity : 1;
+        orderService.removeItemFromOrder(orderId, req.zoneId, req.seatId, quantity);
         return ResponseEntity.accepted().build();
     }
 

@@ -8,8 +8,8 @@ import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.infrastructure.api.order.CreateOrderRequest;
 import com.eventsystem.infrastructure.api.order.OrdersRestController;
-import com.eventsystem.infrastructure.api.order.ReleaseSeatRequest;
-import com.eventsystem.infrastructure.api.order.ReserveSeatRequest;
+import com.eventsystem.infrastructure.api.order.RemoveItemRequest;
+import com.eventsystem.infrastructure.api.order.AddItemRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -99,36 +99,36 @@ class OrdersRestControllerUnitTest {
 
     @Test
     void reserve_and_release_validateRequestBody() {
-        ReserveSeatRequest reserve = new ReserveSeatRequest();
+        AddItemRequest reserve = new AddItemRequest();
         reserve.zoneId = "zone-1";
 
-        assertThatThrownBy(() -> controller.reserveSeat("ORD-1", reserve))
+        assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", reserve))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("zoneId and seatId are required");
 
-        ReleaseSeatRequest release = new ReleaseSeatRequest();
+        RemoveItemRequest release = new RemoveItemRequest();
         release.seatId = "seat-1";
 
-        assertThatThrownBy(() -> controller.releaseSeat("ORD-1", release))
+        assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", release))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("zoneId and seatId are required");
     }
 
     @Test
     void reserve_and_release_delegate_and_returnAccepted() {
-        ReserveSeatRequest reserve = new ReserveSeatRequest();
+        AddItemRequest reserve = new AddItemRequest();
         reserve.zoneId = "zone-1";
         reserve.seatId = "seat-1";
 
-        ReleaseSeatRequest release = new ReleaseSeatRequest();
+        RemoveItemRequest release = new RemoveItemRequest();
         release.zoneId = "zone-1";
         release.seatId = "seat-1";
 
-        var reserveResponse = controller.reserveSeat("ORD-1", reserve);
-        var releaseResponse = controller.releaseSeat("ORD-1", release);
+        var reserveResponse = controller.addItemToOrder("ORD-1", reserve);
+        var releaseResponse = controller.removeItemFromOrder("ORD-1", release);
 
-        verify(orderService).reserveSeat("ORD-1", "zone-1", "seat-1");
-        verify(orderService).releaseSeat("ORD-1", "zone-1", "seat-1");
+        verify(orderService).addItemToOrder("ORD-1", "zone-1", "seat-1", 1);
+        verify(orderService).removeItemFromOrder("ORD-1", "zone-1", "seat-1", 1);
         assertThat(reserveResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     }

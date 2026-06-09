@@ -121,7 +121,7 @@ class OrderServiceTest {
 
         // Act & Assert
         assertThrows(OrderNotFoundException.class, () -> {
-            orderService.reserveSeat("INVALID_ORDER", "ZONE-A", "SEAT-1");
+            orderService.addItemToOrder("INVALID_ORDER", "ZONE-A", "SEAT-1", 1);
         });
     }
 
@@ -139,7 +139,7 @@ class OrderServiceTest {
         when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
 
         // Act
-        orderService.reserveSeat(ORDER_ID, "ZONE-A", "SEAT-1");
+        orderService.addItemToOrder(ORDER_ID, "ZONE-A", "SEAT-1", 1);
 
         // Assert
         verify(mockZone, times(1)).reserveSeat(new SeatId("SEAT-1"));
@@ -180,7 +180,7 @@ class OrderServiceTest {
         when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
 
         // Act
-        orderService.releaseSeat(ORDER_ID, "ZONE-A", "SEAT-1");
+        orderService.removeItemFromOrder(ORDER_ID, "ZONE-A", "SEAT-1", 1);
 
         // Assert
         verify(testOrder, times(1)).removeItem("ZONE-A", "SEAT-1");

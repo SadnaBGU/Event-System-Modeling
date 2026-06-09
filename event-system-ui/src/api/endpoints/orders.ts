@@ -1,6 +1,7 @@
 import { api } from '../client';
 import type {
   AddItemRequest,
+  RemoveItemRequest,
   CheckoutRequest,
   OrderDto,
 } from '../../types/api';
@@ -20,7 +21,7 @@ export const ordersApi = {
     api.post<void>(`/orders/${orderId}/items`, body).then(() => undefined),
 
   // Release seat — backend takes the body via DELETE.
-  removeItem: (orderId: string, body: AddItemRequest) =>
+  removeItem: (orderId: string, body: RemoveItemRequest) =>
     api.delete<void>(`/orders/${orderId}/items`, { data: body }).then(() => undefined),
 
   // Checkout lives on its own controller. Returns 202 with empty body; status is polled separately.

@@ -26,26 +26,31 @@ export function OrderPage() {
   });
 
   const [zoneId, setZoneId] = useState('');
-  const [seatId, setSeatId] = useState('');
+  const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState('');
   const [payment, setPayment] = useState('tok_visa_mock');
 
   const refetchOrder = () => qc.invalidateQueries({ queryKey: ['order', orderId] });
 
   const addItem = useMutation({
-    mutationFn: (item: { zoneId: string; seatId: string }) => ordersApi.addItem(orderId, item),
+    mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.addItem(orderId, item),
     onSuccess: () => {
       toast.success('Added to cart');
-      setSeatId('');
       refetchOrder();
     },
+    onError: (err) => {
+      toast.error(`Failed to add item: ${(err as Error).message}`);
+    }
   });
 
   const removeItem = useMutation({
-    mutationFn: (item: { zoneId: string; seatId: string }) => ordersApi.removeItem(orderId, item),
+    mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.removeItem(orderId, item),
     onSuccess: () => {
       refetchOrder();
     },
+    onError: (err) => {
+      toast.error(`Failed to remove item: ${(err as Error).message}`);
+    }
   });
 
   const checkout = useMutation({
@@ -77,6 +82,9 @@ export function OrderPage() {
   const order = orderQ.data;
   const event = eventQ.data;
   const firstDate = event?.dates[0];
+
+  const selectedZone = event?.zones.find((z) => z.zoneId === zoneId);
+  const isSeated = selectedZone?.zoneType === 'SEATED';
 
   return (
     <section>
@@ -113,7 +121,7 @@ export function OrderPage() {
                     <button
                       type="button"
                       className="btn ghost"
-                      onClick={() => removeItem.mutate({ zoneId: i.zoneId, seatId: i.seatId })}
+                      onClick={() => removeItem.mutate({ zoneId: i.zoneId, seatId: i.seatId, quantity: 1 })}
                       disabled={removeItem.isPending}
                     >
                       Remove
@@ -136,7 +144,11 @@ export function OrderPage() {
         Select zone
           <select
             value={zoneId}
-            onChange={(e) => setZoneId(e.target.value)}
+            onChange={(e) => { 
+              setZoneId(e.target.value);
+              setQuantity(1);
+            }}
+            required
             style={{ marginLeft: '10px', background: '#0d1117', color: '#e6edf3', padding: '0.45rem', borderRadius: '4px' }}
           >
             <option value="">Pick a zone…</option>
@@ -148,22 +160,46 @@ export function OrderPage() {
           </select>
       </label>
 
-      {zoneId && event && (
-         <InteractiveSeatMap 
+      {zoneId && selectedZone && (
+        isSeated ? (
+          <InteractiveSeatMap 
             zoneId={zoneId}
-            zoneName={event.zones.find(z => z.zoneId === zoneId)?.zoneName || ''}
-            price={event.zones.find(z => z.zoneId === zoneId)?.price || 0}
-            currency={event.zones.find(z => z.zoneId === zoneId)?.currency || 'USD'}
-            capacity={event.zones.find(z => z.zoneId === zoneId)?.totalCapacity || 100}
+            zoneName={selectedZone.zoneName}
+            price={selectedZone.price}
+            currency={selectedZone.currency}
+            capacity={selectedZone.totalCapacity}
             isLoading={addItem.isPending || removeItem.isPending}
             onSeatToggle={(seat, isSelected) => {
                 if (isSelected) {
-                    addItem.mutate({ zoneId, seatId: seat });
+                    addItem.mutate({ zoneId, seatId: seat, quantity: 1 });
                 } else {
-                    removeItem.mutate({ zoneId, seatId: seat });
+                    removeItem.mutate({ zoneId, seatId: seat, quantity: 1 });
                 }
             }}
          />
+        ) : (
+          <div className="form-stack" style={{ marginTop: '1.5rem', maxWidth: '300px' }}>
+             <p className="meta">Standing Zone choose tickets quantity (available: {selectedZone.availableCount}) </p>
+             <label>
+               Quantity
+               <input 
+                 type="number" 
+                 min="1" 
+                 max={selectedZone.availableCount} 
+                 value={quantity} 
+                 onChange={e => setQuantity(Number(e.target.value))} 
+               />
+             </label>
+             <button 
+               className="btn" 
+               type="button" 
+               onClick={() => addItem.mutate({ zoneId, quantity })}
+               disabled={addItem.isPending}
+             >
+               {addItem.isPending ? 'Adding…' : 'Add to cart'}
+             </button>
+          </div>
+        )
       )}
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Checkout</h2>

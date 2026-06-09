@@ -125,8 +125,16 @@ export interface OrderDto {
 
 export interface AddItemRequest {
   zoneId: string;
-  seatId: string;
+  seatId?: string;
+  quantity?: number;
 }
+
+export interface RemoveItemRequest {
+  zoneId: string;
+  seatId?: string;
+  quantity?: number;
+}
+
 
 // CheckoutSagaController expects orderId in the body.
 export interface CheckoutRequest {
