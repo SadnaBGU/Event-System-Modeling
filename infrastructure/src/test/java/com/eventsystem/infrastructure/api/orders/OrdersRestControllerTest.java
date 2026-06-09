@@ -143,13 +143,12 @@ class OrdersRestControllerTest {
     @DisplayName("POST /api/orders/{orderId}/items validates body and returns 400")
     void reserveSeat_MissingBodyFields_ReturnsBadRequest() throws Exception {
         AddItemRequest request = new AddItemRequest();
-        request.zoneId = "ZONE-1";
 
         mockMvc.perform(post("/api/orders/ORDER-1/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("zoneId and seatId are required"));
+                .andExpect(jsonPath("$.message").value("zoneId is required"));
     }
 
     @SuppressWarnings("null")

@@ -100,18 +100,17 @@ class OrdersRestControllerUnitTest {
     @Test
     void reserve_and_release_validateRequestBody() {
         AddItemRequest reserve = new AddItemRequest();
-        reserve.zoneId = "zone-1";
 
         assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", reserve))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("zoneId and seatId are required");
+                .hasMessageContaining("zoneId is required");
 
         RemoveItemRequest release = new RemoveItemRequest();
         release.seatId = "seat-1";
 
         assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", release))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("zoneId and seatId are required");
+                .hasMessageContaining("zoneId is required");
     }
 
     @Test
