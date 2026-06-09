@@ -29,13 +29,28 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
         String method = request.getMethod();
+        String path = request.getRequestURI();
+
         if ("OPTIONS".equalsIgnoreCase(method)) {
             return true;
         }
 
         // 1. Extract the Authorization header
+        boolean isGuestAllowed = false;
+
+        if (path.startsWith("/api/events") && !path.contains("/policies") && !path.contains("/lottery")){
+            isGuestAllowed = true;
+        }
+
+        if (path.startsWith("/api/orders") || path.startsWith("/api/checkout")) {
+            isGuestAllowed = true;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            if (isGuestAllowed) {
+                return true;
+            }
             throw new AuthenticationException("Missing or malformed Authorization header. Expected 'Bearer <token>'");
         }
 

@@ -8,8 +8,8 @@ export function HomePage() {
     return (
       <section>
         <h1>EventSystem</h1>
-        <p>Sign in to browse events, buy tickets, and manage your account.</p>
-        <p><Link to="/login">Sign in</Link> · <Link to="/register">Create account</Link></p>
+        <p>Browse events as a guest, or sign in to buy tickets and manage your account.</p>
+        <p><Link to="/events">Browse events</Link> · <Link to="/login">Sign in</Link> · <Link to="/register">Create account</Link></p>
       </section>
     );
   }

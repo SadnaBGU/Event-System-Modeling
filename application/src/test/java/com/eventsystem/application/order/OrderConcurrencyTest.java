@@ -97,7 +97,7 @@ class OrderConcurrencyTest {
             executor.submit(() -> {
                 try {
                     startSignal.await();
-                    orderService.reserveSeat(ORDER_ID, ZONE_ID, SEAT_ID);
+                    orderService.addItemToOrder(ORDER_ID, ZONE_ID, SEAT_ID, 1);
                     successCount.incrementAndGet();
                 } catch (RuntimeException e) {
                     failureCount.incrementAndGet();
@@ -155,7 +155,7 @@ class OrderConcurrencyTest {
             executor.submit(() -> {
                 try {
                     startSignal.await();
-                    orderService.reserveSeat(ORDER_ID, ZONE_ID, "SEAT-" + seatNum);
+                    orderService.addItemToOrder(ORDER_ID, ZONE_ID, "SEAT-" + seatNum, 1);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                 } finally {

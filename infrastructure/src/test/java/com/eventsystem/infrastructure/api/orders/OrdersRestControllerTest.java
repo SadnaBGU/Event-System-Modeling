@@ -11,8 +11,8 @@ import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.api.order.CreateOrderRequest;
 import com.eventsystem.infrastructure.api.order.OrdersRestController;
-import com.eventsystem.infrastructure.api.order.ReleaseSeatRequest;
-import com.eventsystem.infrastructure.api.order.ReserveSeatRequest;
+import com.eventsystem.infrastructure.api.order.RemoveItemRequest;
+import com.eventsystem.infrastructure.api.order.AddItemRequest;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -142,21 +142,20 @@ class OrdersRestControllerTest {
     @Test
     @DisplayName("POST /api/orders/{orderId}/items validates body and returns 400")
     void reserveSeat_MissingBodyFields_ReturnsBadRequest() throws Exception {
-        ReserveSeatRequest request = new ReserveSeatRequest();
-        request.zoneId = "ZONE-1";
+        AddItemRequest request = new AddItemRequest();
 
         mockMvc.perform(post("/api/orders/ORDER-1/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("zoneId and seatId are required"));
+                .andExpect(jsonPath("$.message").value("zoneId is required"));
     }
 
     @SuppressWarnings("null")
     @Test
     @DisplayName("DELETE /api/orders/{orderId}/items delegates release")
     void releaseSeat_ValidRequest_ReturnsAccepted() throws Exception {
-        ReleaseSeatRequest request = new ReleaseSeatRequest();
+        RemoveItemRequest request = new RemoveItemRequest();
         request.zoneId = "ZONE-1";
         request.seatId = "SEAT-1";
 

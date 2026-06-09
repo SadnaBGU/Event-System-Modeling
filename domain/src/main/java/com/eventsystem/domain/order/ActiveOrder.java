@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
@@ -38,8 +39,9 @@ public class ActiveOrder {
 
     public void removeItem(String zoneId, String seatId) {
         verifyActive();
-        items.removeIf(item -> item.getZoneId().equals(zoneId) && 
-                               (item.getSeatId() != null && item.getSeatId().equals(seatId)));
+        items.removeIf(item -> 
+            item.getZoneId().equals(zoneId) && 
+                               Objects.equals(item.getSeatId(), seatId));
     }
 
     public void checkout() {

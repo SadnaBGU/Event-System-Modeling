@@ -15,11 +15,6 @@
     <packaging>jar</packaging>
     <name>Event System :: Domain</name>
 
-    <!--
-      Domain module: pure POJOs, no framework dependencies.
-      ONLY allowed: JDK + JUnit/AssertJ in test scope.
-      Adding Spring/JPA/etc. here will make the build fail intentionally.
-    -->
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

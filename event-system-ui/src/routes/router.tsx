@@ -31,9 +31,10 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
 
-      { path: '/events', element: <RequireAuth><CatalogPage /></RequireAuth> },
-      { path: '/events/:eventId', element: <RequireAuth><EventDetailPage /></RequireAuth> },
-      { path: '/events/:eventId/queue', element: <RequireAuth><QueuePage /></RequireAuth> },
+      { path: '/events', element: <CatalogPage /> },
+      { path: '/events/:eventId', element: <EventDetailPage /> },
+      { path: '/events/:eventId/queue', element: <QueuePage /> },
+      { path: '/orders/:orderId', element: <OrderPage /> },
       {
         path: '/events/:eventId/policies',
         element: (
@@ -42,7 +43,6 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: '/orders/:orderId', element: <RequireAuth><OrderPage /></RequireAuth> },
       { path: '/history', element: <RequireAuth><HistoryPage /></RequireAuth> },
       { path: '/history/:recordId', element: <RequireAuth><ReceiptDetailPage /></RequireAuth> },
       { path: '/notifications', element: <RequireAuth><NotificationsPage /></RequireAuth> },

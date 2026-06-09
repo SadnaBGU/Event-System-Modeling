@@ -18,6 +18,7 @@ import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.ZoneType;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -107,8 +108,8 @@ public class OrderService {
      * For standing zones (no per-seat identity), the seatId is treated as a label only and
      * the zone is decremented by 1 via reserveStanding.
      */
-    public void reserveSeat(String orderId, String zoneId, String seatId) {
-        logger.info("Attempting to reserve seat {} in zone {} for order {}", seatId, zoneId, orderId);
+    public void addItemToOrder(String orderId, String zoneId, String seatId, int quantity) {
+        logger.info("Attempting to add item {} in zone {} for order {}", seatId, zoneId, orderId);
 
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
@@ -124,14 +125,14 @@ public class OrderService {
                 Zone zone = zoneRepository.findById(zId)
                         .orElseThrow(() -> new ZoneDomainException("Zone not found"));
 
-                if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
-                    zone.reserveStanding(1);
+                if (zone.zoneType() == ZoneType.STANDING) {
+                    zone.reserveStanding(quantity);
                 } else {
                     zone.reserveSeat(new SeatId(seatId));
                 }
                 zoneRepository.save(zone);
 
-                itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, 1, zone.pricePerTicket());
+                itemHolder[0] = new OrderItem(zone.zoneId().value(), seatId, quantity, zone.pricePerTicket());
             });
 
             // step 2: if the lock is successful, add the item to our order aggregate and save it
@@ -156,8 +157,8 @@ public class OrderService {
      *
      * For standing zones, increments the available count by 1 via releaseStanding.
      */
-    public void releaseSeat(String orderId, String zoneId, String seatId) {
-        logger.info("Attempting to release seat {} from order {}", seatId, orderId);
+    public void removeItemFromOrder(String orderId, String zoneId, String seatId, int quantity) {
+        logger.info("Attempting to remove item {} in zone {} from order {}", seatId, zoneId, orderId);
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> {
                     logger.warn("Failed to release seat: Order {} not found", orderId);
@@ -174,8 +175,8 @@ public class OrderService {
             Zone zone = zoneRepository.findById(zId)
                     .orElseThrow(() -> new ZoneDomainException("Zone not found"));
 
-            if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
-                zone.releaseStanding(1);
+            if (zone.zoneType() == ZoneType.STANDING) {
+                zone.releaseStanding(quantity);
             } else {
                 zone.releaseSeat(new SeatId(seatId));
             }

@@ -1,8 +1,9 @@
 package com.eventsystem.infrastructure.api.order;
 
-public class ReleaseSeatRequest {
+public class AddItemRequest {
     public String zoneId;
     public String seatId;
+    public Integer quantity;
 
-    public ReleaseSeatRequest() {}
+    public AddItemRequest() {}
 }

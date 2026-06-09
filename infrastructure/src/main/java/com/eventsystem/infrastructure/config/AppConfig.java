@@ -30,6 +30,7 @@ import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.application.policy.PurchasePolicyValidationService;
 import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
+import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.venue.VenueManagementService;
 import com.eventsystem.domain.company.CompanyId;
@@ -234,49 +235,20 @@ public class AppConfig {
         };
     }
 
-
-    /**
-     * Adapter from the member repository to the member-info port used by the policy services
-     * when creating a PurchaseContext from a BuyerReference.
-     */
-    @Bean
-    public IMemberInformationPort memberInformationPort(IMemberRepository memberRepository) {
-        return new IMemberInformationPort() {
-            @Override
-            public LocalDate getMemberBirthdate(MemberId memberId) {
-                Member member = loadMember(memberId);
-                if (member.getPersonalDetails() == null) {
-                    throw new IllegalStateException("member has no personal details: " + memberId);
-                }
-                return member.getPersonalDetails().dateOfBirth();
-            }
-
-            @Override
-            public MemberStatus getMemberStatus(MemberId memberId) {
-                return loadMember(memberId).getStatus();
-            }
-
-            private Member loadMember(MemberId memberId) {
-                Objects.requireNonNull(memberId, "memberId must not be null");
-                return memberRepository.findById(memberId)
-                        .orElseThrow(() -> new IllegalArgumentException("member not found: " + memberId));
-            }
-        };
-    }
-
     // ==========================================
     // 2. Application Services
     // ==========================================
     @Bean
-    public AuthService authService(IMemberRepository memberRepo,
-                                   BCryptPasswordHasher passwordHasher,
-                                   ITokenService tokenService) {
-        return new AuthService(memberRepo, passwordHasher, tokenService, tokenValidity);
+    public AuthService authService(ITokenService tokenService) {
+        return new AuthService(tokenService);
     }
 
     @Bean
-    public MemberService memberService(IMemberRepository memberRepo) {
-        return new MemberService(memberRepo);
+    public MemberService memberService(IMemberRepository memberRepo, 
+                                        IPasswordHasher passwordHasher,
+                                        ITokenService tokenService
+    ) {
+        return new MemberService(memberRepo, passwordHasher, tokenService, this.tokenValidity);
     }
 
     @Bean
@@ -357,15 +329,15 @@ public class AppConfig {
     @Bean
     public IPurchasePolicyValidationPort purchasePolicyValidationPort(IPurchasePolicyRepository purchasePolicyRepository,
                                                                       IEventManagementPort eventManagementPort,
-                                                                      IMemberInformationPort memberInformationPort) {
-        return new PurchasePolicyValidationService(purchasePolicyRepository, eventManagementPort, memberInformationPort);
+                                                                      MemberService memberService) {
+        return new PurchasePolicyValidationService(purchasePolicyRepository, eventManagementPort, memberService);
     }
 
     @Bean
     public IDiscountApplicationPort discountApplicationPort(IDiscountPolicyRepository discountPolicyRepository,
                                                             IEventManagementPort eventManagementPort,
-                                                            IMemberInformationPort memberInformationPort) {
-        return new DiscountApplicationService(discountPolicyRepository,eventManagementPort,memberInformationPort);
+                                                            MemberService memberService) {
+        return new DiscountApplicationService(discountPolicyRepository,eventManagementPort,memberService);
     }
 
     @Bean

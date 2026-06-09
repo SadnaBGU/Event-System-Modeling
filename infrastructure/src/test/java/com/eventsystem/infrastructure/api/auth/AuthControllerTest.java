@@ -4,6 +4,7 @@ import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
 import com.eventsystem.application.auth.RegisterMemberRequest;
+import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.application.appexceptions.AuthenticationException;
@@ -40,7 +41,7 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AuthService authService;
+    private MemberService memberService;
 
     @MockBean
     private ITokenService tokenService;
@@ -58,7 +59,7 @@ class AuthControllerTest {
         RegisterMemberRequest request = new RegisterMemberRequest(
                 "newuser", "pass123", "John", "Doe", "john@test.com", LocalDate.of(2000, 1, 1)
         );
-        when(authService.register(any(RegisterMemberRequest.class))).thenReturn(new MemberId("member-123"));
+        when(memberService.register(any(RegisterMemberRequest.class))).thenReturn(new MemberId("member-123"));
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -74,7 +75,7 @@ class AuthControllerTest {
                 "david", "pass123", "David", "E", "d@test.com", LocalDate.of(1990, 1, 1)
         );
         doThrow(new UsernameAlreadyTakenException("david"))
-                .when(authService).register(any(RegisterMemberRequest.class));
+                .when(memberService).register(any(RegisterMemberRequest.class));
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -89,7 +90,7 @@ class AuthControllerTest {
         LoginRequest request = new LoginRequest("david", "password123");
         LoginResponse fakeResponse = new LoginResponse("mock-jwt-token", new MemberId("member-123"), Instant.now().plusSeconds(3600));
         
-        when(authService.login(any(LoginRequest.class))).thenReturn(fakeResponse);
+        when(memberService.login(any(LoginRequest.class))).thenReturn(fakeResponse);
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -104,7 +105,7 @@ class AuthControllerTest {
     @DisplayName("Login - Invalid password - Returns 401 Unauthorized")
     void login_InvalidPassword_ReturnsUnauthorized() throws Exception {
         LoginRequest request = new LoginRequest("david", "wrong_password");
-        when(authService.login(any(LoginRequest.class)))
+        when(memberService.login(any(LoginRequest.class)))
                 .thenThrow(new AuthenticationException("Invalid credentials"));
 
         mockMvc.perform(post("/api/auth/login")
