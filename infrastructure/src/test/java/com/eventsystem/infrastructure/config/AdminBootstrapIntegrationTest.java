@@ -2,9 +2,9 @@ package com.eventsystem.infrastructure.config;
 
 import com.eventsystem.application.admin.AdminService;
 import com.eventsystem.application.admin.PlatformDto;
-import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
+import com.eventsystem.application.member.MemberService;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.PlatformStatus;
@@ -34,7 +34,7 @@ class AdminBootstrapIntegrationTest {
 
     private IPlatformRepository platformRepo;
     private IMemberRepository memberRepo;
-    private AuthService authService;
+    private MemberService memberService;
     private AdminService adminService;
 
     @BeforeEach
@@ -57,7 +57,7 @@ class AdminBootstrapIntegrationTest {
 
         this.platformRepo = platforms;
         this.memberRepo = members;
-        this.authService = new AuthService(members, hasher, tokens, Duration.ofMinutes(5));
+        this.memberService = new MemberService(members, hasher, tokens, Duration.ofMinutes(5));
         this.adminService = new AdminService(platforms, members);
     }
 
@@ -75,7 +75,7 @@ class AdminBootstrapIntegrationTest {
 
     @Test
     void initialAdminCanLogInAndIsRecognisedAsAdmin() {
-        LoginResponse resp = authService.login(new LoginRequest(ADMIN_USERNAME, ADMIN_PASSWORD));
+        LoginResponse resp = memberService.login(new LoginRequest(ADMIN_USERNAME, ADMIN_PASSWORD));
         assertThat(resp.token()).isNotBlank();
 
         PlatformDto dto = adminService.getPlatform(resp.memberId());

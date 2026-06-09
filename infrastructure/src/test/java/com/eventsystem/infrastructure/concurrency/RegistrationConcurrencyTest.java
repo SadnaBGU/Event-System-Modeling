@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.concurrency;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.RegisterMemberRequest;
+import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
@@ -35,14 +36,14 @@ class RegistrationConcurrencyTest {
     private static final String SECRET = "0123456789abcdef0123456789abcdef";
 
     private InMemoryMemberRepository repo;
-    private AuthService auth;
+    private MemberService memberService;
 
     @BeforeEach
     void setUp() {
         repo = new InMemoryMemberRepository();
         BCryptPasswordHasher hasher = new BCryptPasswordHasher(4); // low cost = fast tests
         ITokenService tokens = new JwtTokenService(SECRET);
-        auth = new AuthService(repo, hasher, tokens, Duration.ofHours(1));
+        memberService = new MemberService(repo, hasher, tokens, Duration.ofHours(1));
     }
 
     private RegisterMemberRequest req(String username) {
@@ -64,7 +65,7 @@ class RegistrationConcurrencyTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        auth.register(req("racer"));
+                        memberService.register(req("racer"));
                         successes.incrementAndGet();
                     } catch (UsernameAlreadyTakenException | IllegalStateException expected) {
                         // App-level dup detected, OR repo-level putIfAbsent race-loser
@@ -103,7 +104,7 @@ class RegistrationConcurrencyTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        MemberId id = auth.register(req(username));
+                        MemberId id = memberService.register(req(username));
                         synchronized (ids) {
                             ids.add(id);
                         }

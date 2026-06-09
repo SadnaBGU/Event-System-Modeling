@@ -28,86 +28,15 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    private final IMemberRepository members;
-    private final IPasswordHasher passwordHasher;
     private final ITokenService tokenService;
-    private final Duration tokenValidity;
 
-    public AuthService(IMemberRepository members,
-                       IPasswordHasher passwordHasher,
-                       ITokenService tokenService,
-                       Duration tokenValidity) {
-        this.members = members;
-        this.passwordHasher = passwordHasher;
+    public AuthService(ITokenService tokenService) {
         this.tokenService = tokenService;
-        this.tokenValidity = tokenValidity;
-    }
-
-    /** Register a new member. Throws {@link UsernameAlreadyTakenException} on collision. */
-    public MemberId register(RegisterMemberRequest req) {
-        Objects.requireNonNull(req, "request must not be null");
-        validateRegisterRequest(req);
-
-        if (members.findByUsername(req.username()).isPresent()) {
-            throw new UsernameAlreadyTakenException(req.username());
-        }
-
-        HashedCredentials creds = passwordHasher.hash(req.plaintextPassword());
-        PersonalDetails details = new PersonalDetails(
-                req.firstName(), req.lastName(), req.email(), req.dateOfBirth());
-        Member member = new Member(MemberId.generate(), req.username(), creds, details);
-
-        // save() rejects duplicate username atomically — wins the race if two threads register the same name
-        members.save(member);
-        log.info("Registered new member username={} memberId={}", member.getUsername(), member.getMemberId().value());
-        return member.getMemberId();
-    }
-
-    /** Authenticate by username + password and return a fresh bearer token. */
-    public LoginResponse login(LoginRequest req) {
-        Objects.requireNonNull(req, "request must not be null");
-        if (req.username() == null || req.username().isBlank()
-                || req.plaintextPassword() == null || req.plaintextPassword().isEmpty()) {
-            throw new AuthenticationException("Invalid credentials");
-        }
-
-        Member member = members.findByUsername(req.username())
-                .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
-
-        if (member.getStatus() == MemberStatus.CANCELLED) {
-            throw new AuthenticationException("Invalid credentials");
-        }
-        if (!passwordHasher.matches(req.plaintextPassword(), member.getHashedCredentials())) {
-            log.info("Failed login attempt username={}", req.username());
-            throw new AuthenticationException("Invalid credentials");
-        }
-        String token = tokenService.issueToken(member.getMemberId(), tokenValidity);
-        TokenClaims claims = tokenService.verifyToken(token);
-        log.info("Member logged in memberId={}", member.getMemberId().value());
-        return new LoginResponse(token, member.getMemberId(), claims.expiresAt());
     }
 
     /** Resolve a bearer token to its subject {@link MemberId}, validating signature + expiry. */
     public MemberId authenticate(String bearerToken) {
         TokenClaims claims = tokenService.verifyToken(bearerToken);
         return claims.subject();
-    }
-
-    private void validateRegisterRequest(RegisterMemberRequest req) {
-        requireNonBlank(req.username(), "username");
-        Objects.requireNonNull(req.plaintextPassword(), "plaintextPassword must not be null");
-        if (req.plaintextPassword().length() < 8) {
-            throw new IllegalArgumentException("password must be at least 8 characters");
-        }
-        requireNonBlank(req.firstName(), "firstName");
-        requireNonBlank(req.lastName(), "lastName");
-        requireNonBlank(req.email(), "email");
-        Objects.requireNonNull(req.dateOfBirth(), "dateOfBirth must not be null");
-    }
-
-    private static void requireNonBlank(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(field + " must not be blank");
-        }
     }
 }
