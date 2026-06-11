@@ -2,11 +2,27 @@ package com.eventsystem.domain.event;
 
 import java.util.List;
 import java.util.Objects;
+
+import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
+@Embeddable
+public record EventDetails(
+    @Column(name = "event_name")
+    String name,
 
-public record EventDetails( String name, List<LocalDateTime> dates, String category,
-                            String location, String description ) {
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "event_dates", joinColumns = @JoinColumn(name = "event_id"))
+    @Column(name = "event_date")
+    List<LocalDateTime> dates,
+    
+    String category,                          
+    String location,
+    
+    @Column(length = 1000)
+    String description 
+) {
     public EventDetails {
         if (!isValidStringArg(name)) {
             throw new IllegalArgumentException("event name must not be blank");
