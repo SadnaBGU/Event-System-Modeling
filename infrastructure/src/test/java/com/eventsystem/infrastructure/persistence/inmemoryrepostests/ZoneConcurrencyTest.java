@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepostests;
 
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.domain.event.EventId;

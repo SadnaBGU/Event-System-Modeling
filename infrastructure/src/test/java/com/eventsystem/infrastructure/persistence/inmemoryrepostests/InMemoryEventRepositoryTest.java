@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepostests;
 
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;

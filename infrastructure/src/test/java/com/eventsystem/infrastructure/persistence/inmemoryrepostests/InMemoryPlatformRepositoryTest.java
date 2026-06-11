@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepostests;
 
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.platform.Platform;

@@ -9,6 +9,9 @@ import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 public class Seat {
 
     @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "seat_id"))
+    })
     private final SeatId seatId;
 
     @Column(name = "row_label", nullable = false)

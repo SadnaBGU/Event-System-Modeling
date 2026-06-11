@@ -18,6 +18,9 @@ import jakarta.persistence.*;
 public class Zone {
 
     @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "id"))
+    })
     private ZoneId zoneId;
 
     @Embedded

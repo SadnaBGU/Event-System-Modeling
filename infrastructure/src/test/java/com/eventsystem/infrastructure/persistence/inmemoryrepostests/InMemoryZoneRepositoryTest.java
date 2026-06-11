@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepostests;
 
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
