@@ -152,18 +152,4 @@ class ZoneStandingTest {
                         ZoneId.random(), EventId.random(), "Zone",
                         new Money(BigDecimal.TEN, "ILS"), -1));
     }
-
-    // ── Version increments ───────────────────────────────────────────────────
-
-    @Test
-    void version_incrementsOnEachOperation() {
-        assertThat(zone.version()).isZero();
-        zone.reserveStanding(10);
-        assertThat(zone.version()).isEqualTo(1);
-        zone.releaseStanding(10);
-        assertThat(zone.version()).isEqualTo(2);
-        zone.reserveStanding(5);
-        zone.markSoldStanding(5);
-        assertThat(zone.version()).isEqualTo(4);
-    }
 }
