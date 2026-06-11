@@ -5,6 +5,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
@@ -16,7 +17,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "events")
-public class Event {
+public class Event implements Persistable<EventId> {
     
     @EmbeddedId
     @AttributeOverrides({
@@ -34,7 +35,7 @@ public class Event {
     private EventDetails details;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "venue_map", columnDefinition = "jsonb")
+    @Column(name = "venue_map")
     private VenueMap venueMap;
 
     @Enumerated(EnumType.STRING)
@@ -86,6 +87,18 @@ public class Event {
 
     public static Event createDraft( CompanyId companyId, EventDetails details, VenueMap venueMap) {
         return new Event( EventId.random(), companyId, details, venueMap );
+    }
+
+    @Transient
+    @Override
+    public boolean isNew() {
+        return this.version == 0L;
+    }
+
+    @Transient
+    @Override
+    public EventId getId() {
+        return this.eventId;
     }
 
     public EventId id() {

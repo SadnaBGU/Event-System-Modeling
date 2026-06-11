@@ -71,10 +71,14 @@ import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -83,6 +87,8 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 @Configuration
+@EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
+@EntityScan(basePackages = "com.eventsystem.domain")
 public class AppConfig {
 
     // --- Configuration constants ---
@@ -134,8 +140,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IEventRepository eventRepository() {
-        return new InMemoryEventRepository();
+    public IEventRepository eventRepository(SpringDataEventRepository springDataEventRepo) {
+        return new PostgresEventRepository(springDataEventRepo);
     }
 
     @Bean

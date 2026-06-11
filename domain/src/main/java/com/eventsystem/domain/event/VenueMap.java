@@ -6,28 +6,22 @@ import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 
-public final class VenueMap {
+public record VenueMap(List<MapElement> mapElements) {
 
-    private final List<MapElement> mapElements;
-
-    public VenueMap(List<MapElement> mapElements) {
+    public VenueMap {
         Objects.requireNonNull(mapElements, "map elements must not be null");
 
-        this.mapElements = List.copyOf(mapElements);
-
-        for (MapElement element : this.mapElements) {
+        for (MapElement element : mapElements) {
             Objects.requireNonNull(element, "map element must not be null");
         }
+        
+        mapElements = List.copyOf(mapElements);
     }
 
     public static VenueMap empty() {
         return new VenueMap(List.of());
     }
-
-    public List<MapElement> mapElements() {
-        return mapElements;
-    }
-
+    
     public VenueMap addElement(MapElement element) {
         Objects.requireNonNull(element, "map element must not be null");
 
@@ -50,4 +44,3 @@ public final class VenueMap {
         return new VenueMap(updatedElements);
     }
 }
-
