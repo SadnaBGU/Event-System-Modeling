@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepos;
 
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;

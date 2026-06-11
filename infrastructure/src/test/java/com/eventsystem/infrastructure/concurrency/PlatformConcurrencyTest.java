@@ -4,8 +4,9 @@ import com.eventsystem.application.admin.AdminService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.platform.Platform;
 import com.eventsystem.domain.shared.ProviderId;
-import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryPlatformRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPlatformRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

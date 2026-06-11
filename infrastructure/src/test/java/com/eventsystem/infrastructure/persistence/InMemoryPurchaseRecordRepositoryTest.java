@@ -2,6 +2,8 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchaseRecordRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

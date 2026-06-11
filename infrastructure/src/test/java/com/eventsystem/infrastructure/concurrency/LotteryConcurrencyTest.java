@@ -5,7 +5,8 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.infrastructure.persistence.InMemoryLotteryRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryLotteryRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

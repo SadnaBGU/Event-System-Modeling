@@ -1,6 +1,8 @@
 package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.queue.VirtualQueue;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQueueRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

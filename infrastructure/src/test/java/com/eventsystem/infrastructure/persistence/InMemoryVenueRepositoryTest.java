@@ -3,6 +3,8 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.venue.Venue;
 import com.eventsystem.domain.venue.VenueId;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVenueRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

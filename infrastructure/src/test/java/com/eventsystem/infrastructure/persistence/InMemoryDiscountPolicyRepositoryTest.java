@@ -6,6 +6,7 @@ import com.eventsystem.domain.policy.discount.Discount;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryDiscountPolicyRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

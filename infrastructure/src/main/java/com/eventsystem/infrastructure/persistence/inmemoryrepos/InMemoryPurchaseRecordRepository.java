@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepos;
 
 import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;

@@ -5,7 +5,7 @@ import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.zone.ZoneId;
-
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryEventRepository;
 import com.eventsystem.domain.event.VenueMap;
 import org.junit.jupiter.api.Test;
 

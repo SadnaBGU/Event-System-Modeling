@@ -4,6 +4,8 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepos;
 
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.zone.IZoneRepository;

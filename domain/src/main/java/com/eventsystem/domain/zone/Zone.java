@@ -7,19 +7,66 @@ import com.eventsystem.domain.shared.Money;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "zones")
 public class Zone {
 
-    private final ZoneId zoneId;
-    private final EventId eventId;
+    @EmbeddedId
+    private ZoneId zoneId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "event_id", nullable = false))
+    })
+    private EventId eventId;
+
+    @Column(name = "zone_name", nullable = false)
     private String zoneName;
-    private final ZoneType zoneType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "zone_type", nullable = false)
+    private ZoneType zoneType;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
     private Money pricePerTicket;
+
+    @Version
+    @Column(name = "version")
     private long version;
-    private final List<Row> rows;       // populated only for SEATED zones
-    private final int totalCapacity;
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "zone_id", nullable = false)
+    private List<Seat> seats = new ArrayList<>();      // populated only for SEATED zones
+
+    @Transient
+    private List<Row> rows = new ArrayList<>();       // populated only for SEATED zones
+
+    @Column(name = "total_capacity")
+    private int totalCapacity;
+
+    @Column(name = "available_count")
     private int availableCount;
+
+    protected Zone() {
+        this.zoneId = null;
+        this.eventId = null;
+        this.zoneName = "";
+        this.zoneType = null;
+        this.pricePerTicket = null;
+        this.rows = Collections.emptyList();
+        this.totalCapacity = 0;
+        this.availableCount = 0;
+    }
 
     private Zone(ZoneId zoneId, EventId eventId, String zoneName, ZoneType zoneType,
                  Money pricePerTicket, List<Row> rows, int totalCapacity) {
@@ -31,10 +78,32 @@ public class Zone {
         this.zoneName = zoneName;
         this.zoneType = Objects.requireNonNull(zoneType, "zoneType must not be null");
         this.pricePerTicket = Objects.requireNonNull(pricePerTicket, "pricePerTicket must not be null");
-        this.rows = rows;
+        this.rows = rows != null ? rows : new ArrayList<>();
         this.totalCapacity = totalCapacity;
         this.availableCount = totalCapacity;
         this.version = 0L;
+
+        if (this.rows != null) {
+            // For SEATED zones, populate the seats list from the rows
+            for (Row row : this.rows) {
+                this.seats.addAll(row.seats());
+            }
+        }
+    }
+
+    @PostLoad
+    private void reconstructRowsAfterLoad() {
+        if (this.zoneType == ZoneType.SEATED && this.seats != null) {
+            Map<String, List<Seat>> seatsByRow = this.seats.stream()
+                .collect(Collectors.groupingBy(Seat::rowLabel));
+
+            this.rows = new ArrayList<>();
+            for (Map.Entry<String, List<Seat>> entry : seatsByRow.entrySet()) {
+                this.rows.add(new Row(entry.getKey(), entry.getValue()));
+            }
+        } else {
+            this.rows = new ArrayList<>();
+        }
     }
 
     public static Zone createSeated(ZoneId zoneId, EventId eventId, String zoneName,
@@ -63,20 +132,17 @@ public class Zone {
         requireSeated();
         SeatedZoneHelper.reserveSeat(this::findSeat, seatId);
         availableCount--;
-        version++;
     }
 
     public void releaseSeat(SeatId seatId) {
         requireSeated();
         SeatedZoneHelper.releaseSeat(this::findSeat, seatId);
         availableCount++;
-        version++;
     }
 
     public void markSold(SeatId seatId) {
         requireSeated();
         SeatedZoneHelper.markSeatSold(this::findSeat, seatId);
-        version++;
     }
 
     // ── Standing operations ──────────────────────────────────────────────────
@@ -91,7 +157,6 @@ public class Zone {
                     "not enough capacity: requested " + quantity + ", available " + availableCount);
         }
         availableCount -= quantity;
-        version++;
     }
 
     public void releaseStanding(int quantity) {
@@ -105,7 +170,6 @@ public class Zone {
                     + (availableCount + quantity - totalCapacity) + ")");
         }
         availableCount += quantity;
-        version++;
     }
 
     // availableCount was already decremented on reserve; this records the completed sale
@@ -114,7 +178,6 @@ public class Zone {
         if (quantity < 1) {
             throw new ZoneDomainException("quantity must be at least 1");
         }
-        version++;
     }
 
     // ── Zone-level updates ───────────────────────────────────────────────────
@@ -124,12 +187,10 @@ public class Zone {
             throw new IllegalArgumentException("zoneName must not be blank");
         }
         this.zoneName = newName;
-        version++;
     }
 
     public void updatePrice(Money newPrice) {
         this.pricePerTicket = Objects.requireNonNull(newPrice, "pricePerTicket must not be null");
-        version++;
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -159,6 +220,6 @@ public class Zone {
     }
 
     private Seat findSeat(SeatId seatId) {
-        return SeatedZoneHelper.findSeatInRows(rows, seatId);
+        return SeatedZoneHelper.findSeatInList(this.seats, seatId);
     }
 }

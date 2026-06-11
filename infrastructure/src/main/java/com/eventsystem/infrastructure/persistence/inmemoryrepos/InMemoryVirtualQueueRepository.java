@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence;
+package com.eventsystem.infrastructure.persistence.inmemoryrepos;
 
 import com.eventsystem.domain.queue.IVirtualQueueRepository;
 import com.eventsystem.domain.queue.VirtualQueue;

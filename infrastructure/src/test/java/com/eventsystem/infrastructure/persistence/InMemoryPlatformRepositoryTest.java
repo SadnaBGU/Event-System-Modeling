@@ -2,6 +2,8 @@ package com.eventsystem.infrastructure.persistence;
 
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.platform.Platform;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPlatformRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

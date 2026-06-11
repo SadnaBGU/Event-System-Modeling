@@ -4,6 +4,8 @@ import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.PersonalDetails;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -5,6 +5,8 @@ import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryProductionCompanyRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

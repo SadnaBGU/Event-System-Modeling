@@ -3,6 +3,8 @@ package com.eventsystem.infrastructure.persistence;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryActiveOrderRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

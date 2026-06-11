@@ -2,8 +2,10 @@ package com.eventsystem.domain.lottery;
 
 import java.util.Objects;
 import java.util.UUID;
+import jakarta.persistence.Embeddable;
 
 /** Identifier for a Lottery. */
+@Embeddable
 public record LotteryId(String value) {
 
     public LotteryId {

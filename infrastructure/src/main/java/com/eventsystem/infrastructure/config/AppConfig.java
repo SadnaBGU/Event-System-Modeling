@@ -55,20 +55,22 @@ import com.eventsystem.domain.venue.IVenueRepository;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
-import com.eventsystem.infrastructure.persistence.InMemoryActiveOrderRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryDiscountPolicyRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryEventRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryLotteryRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryPlatformRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryProductionCompanyRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryPurchasePolicyRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryPurchaseRecordRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryVenueRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryVirtualQueueRepository;
-import com.eventsystem.infrastructure.persistence.InMemoryZoneRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryActiveOrderRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryDiscountPolicyRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryEventRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryLotteryRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPlatformRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryProductionCompanyRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchasePolicyRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchaseRecordRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVenueRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQueueRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -127,8 +129,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IZoneRepository zoneRepository() {
-        return new InMemoryZoneRepository();
+    public IZoneRepository zoneRepository(SpringDataZoneRepository springDataZoneRepo) {
+        return new PostgresZoneRepository(springDataZoneRepo);
     }
 
     @Bean
