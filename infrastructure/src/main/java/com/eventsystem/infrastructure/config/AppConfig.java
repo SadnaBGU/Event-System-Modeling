@@ -73,6 +73,8 @@ import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepo
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -125,8 +127,8 @@ public class AppConfig {
     }
 
     @Bean
-    public ILotteryRepository lotteryRepository() {
-        return new InMemoryLotteryRepository();
+    public ILotteryRepository lotteryRepository(SpringDataLotteryRepository springDataLotteryRepo) {
+        return new PostgresLotteryRepository(springDataLotteryRepo);
     }
 
     @Bean
