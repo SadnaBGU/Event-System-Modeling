@@ -6,6 +6,8 @@ import com.eventsystem.domain.queue.VirtualQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,5 +29,15 @@ public class InMemoryVirtualQueueRepository implements IVirtualQueueRepository {
     public void save(VirtualQueue queue) {
         store.put(queue.getQueueId(), queue);
         logger.info("Persisted VirtualQueue state for event {} to memory store", queue.getEventId());
+    }
+
+    @Override
+    public Optional<VirtualQueue> findById(String queueId) {
+        return Optional.ofNullable(store.get(queueId));
+    }
+
+    @Override
+    public List<VirtualQueue> findAll() {
+        return new ArrayList<>(store.values());
     }
 }
