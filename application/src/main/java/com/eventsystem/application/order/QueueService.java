@@ -2,6 +2,7 @@ package com.eventsystem.application.order;
 
 import com.eventsystem.domain.queue.IVirtualQueueRepository;
 import com.eventsystem.domain.queue.VirtualQueue;
+import com.eventsystem.domain.queue.AdmissionToken;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
 
@@ -25,11 +26,6 @@ public class QueueService {
         this.notificationPort = notificationPort;
     }
 
-    /**
-     * Enqueue a visitor when they attempt to access the event page. 
-     * this method will be called from the web layer when a user tries to access the event.
-     * it will either create a new queue for the event or add the user to the existing queue. 
-     */
     public void enqueueVisitor(String eventId, BuyerReference buyer) {
         logger.info("Attempting to enqueue visitor for event {}", eventId);
 
@@ -39,26 +35,21 @@ public class QueueService {
                     return createNewQueue(eventId);
                 });
 
-        queue.enqueue(buyer);
+        queue.joinQueue(buyer);
         queueRepository.save(queue);
 
         logger.info("Successfully enqueued visitor for event {}", eventId);
     }
 
-    /**
-     * Process the next batch of visitors in the queue. 
-     * this method will be called by a scheduled task that runs every minute.
-     */
     public void processNextBatch(String eventId) {
         logger.info("Processing next batch of visitors for event {}", eventId);
 
         queueRepository.findByEvent(eventId).ifPresentOrElse(queue -> {
-            List<BuyerReference> newlyAdmitted = queue.admitNext(TOKEN_VALIDITY_MINUTES);
+            List<AdmissionToken> newlyAdmitted = queue.admitNextGroup(TOKEN_VALIDITY_MINUTES);
             queueRepository.save(queue);
 
-            // send notifications to the newly admitted buyers
-            for (BuyerReference buyer : newlyAdmitted) {
-                notificationPort.sendQueueTurnArrived(buyer, eventId);
+            for (AdmissionToken token : newlyAdmitted) {
+                notificationPort.sendQueueTurnArrived(token.getBuyerRef(), eventId);
             }
             logger.info("Successfully admitted {} new visitors for event {}", newlyAdmitted.size(), eventId);
         }, () -> {
@@ -66,11 +57,6 @@ public class QueueService {
         });
     }
 
-    /**
-     * Revoke admission for a buyer. 
-     * this method can be called if, for example, the buyer fails
-     * to complete the purchase within the token validity period, or if they violate some rules.
-     */
     public void revokeAdmission(String eventId, BuyerReference buyer) {
         logger.info("Attempting to revoke admission for buyer in event {}", eventId);
         
@@ -85,9 +71,6 @@ public class QueueService {
         });
     }
 
-    /**
-     * Check the admission status of a buyer for a specific event.
-     */
     public boolean checkAdmissionStatus(String eventId, BuyerReference buyer) {
         logger.info("Checking admission status for buyer in event {}", eventId);
         
@@ -100,10 +83,6 @@ public class QueueService {
         return status;
     }
 
-    /**
-     * Returns admission status and position for a buyer in the queue.
-     * position = 0 when admitted, -1 when not in queue.
-     */
     public AdmissionStatus getAdmissionStatus(String eventId, BuyerReference buyer) {
         return queueRepository.findByEvent(eventId)
                 .map(queue -> new AdmissionStatus(queue.isAdmitted(buyer), queue.positionOf(buyer)))

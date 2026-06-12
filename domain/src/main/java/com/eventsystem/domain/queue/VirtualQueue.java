@@ -2,171 +2,197 @@ package com.eventsystem.domain.queue;
 
 import com.eventsystem.domain.domainexceptions.QueueIsNotActiveException;
 import com.eventsystem.domain.order.BuyerReference;
+import org.springframework.data.domain.Persistable;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import jakarta.persistence.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
-public class VirtualQueue {
-    private final String queueId;
-    private final String eventId;
+@Entity
+@Table(name = "virtual_queues")
+public class VirtualQueue implements Persistable<String> {
+
+    @Id
+    @Column(name = "queue_id")
+    private String queueId;
+
+    @Column(name = "event_id", nullable = false)
+    private String eventId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private QueueStatus status;
-    private final int loadThreshold;
-    private final int maxConcurrentAdmissions;
+
+    @Column(name = "load_threshold")
+    private int loadThreshold;
+
+    @Column(name = "max_concurrent_admissions")
+    private int maxConcurrentAdmissions;
+
+    @Version
+    @Column(name = "version")
     private long version;
 
-    private final LinkedList<QueueEntry> waitingEntries;
-    private final List<AdmissionToken> admittedSet;
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "queue_entries", joinColumns = @JoinColumn(name = "queue_id"))
+    @OrderBy("position ASC")
+    private List<QueueEntry> waitingEntries;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "queue_admissions", joinColumns = @JoinColumn(name = "queue_id"))
+    private List<AdmissionToken> admittedSet;
     
+    @Column(name = "next_position_counter")
     private int nextPositionCounter = 1;
 
+    protected VirtualQueue() {}
+
     public VirtualQueue(String queueId, String eventId, int loadThreshold, int maxConcurrentAdmissions) {
-        this.queueId = queueId;
-        this.eventId = eventId;
+        this.queueId = Objects.requireNonNull(queueId, "queueId must not be null");
+        this.eventId = Objects.requireNonNull(eventId, "eventId must not be null");
         this.status = QueueStatus.INACTIVE;
         this.loadThreshold = loadThreshold;
         this.maxConcurrentAdmissions = maxConcurrentAdmissions;
         this.version = 0L;
-        this.waitingEntries = new LinkedList<>();
+        this.waitingEntries = new ArrayList<>();
         this.admittedSet = new ArrayList<>();
     }
 
     public VirtualQueue(
-        String queueId,
+         String queueId,
          String eventId,
          QueueStatus status,
          int loadThreshold,
          int maxConcurrentAdmissions,
-         long version,
-         LinkedList<QueueEntry> waitingEntries,
-         List<AdmissionToken> admittedSet
-        ) {
+         List<QueueEntry> waitingEntries,
+         List<AdmissionToken> admittedSet,
+         int nextPositionCounter) {
+        
         this.queueId = queueId;
         this.eventId = eventId;
         this.status = status;
         this.loadThreshold = loadThreshold;
         this.maxConcurrentAdmissions = maxConcurrentAdmissions;
-        this.version = version;
-        this.waitingEntries = waitingEntries;
-        this.admittedSet = admittedSet;
+        this.waitingEntries = new ArrayList<>(waitingEntries);
+        this.admittedSet = new ArrayList<>(admittedSet);
+        this.nextPositionCounter = nextPositionCounter;
+        this.version = 0L;
     }
 
-    public void activate() {
+    public synchronized void activate() {
         this.status = QueueStatus.ACTIVE;
-        this.version++;
     }
 
-    public void enqueue(BuyerReference visitor) {
+    public synchronized void pause() {
+        this.status = QueueStatus.INACTIVE;
+    }
+
+    public synchronized int joinQueue(BuyerReference visitor) {
         if (status != QueueStatus.ACTIVE) {
-            throw new QueueIsNotActiveException(eventId);
+            throw new QueueIsNotActiveException("Queue is not active");
         }
         
-        boolean alreadyWaiting = waitingEntries.stream()
-                .anyMatch(e -> e.getVisitorRef().equals(visitor));
-        
-        if (!alreadyWaiting && !isAdmitted(visitor)) {
-            waitingEntries.add(new QueueEntry(visitor, nextPositionCounter++));
-            this.version++;
+        if (isAdmitted(visitor)) {
+            return 0;
         }
+
+        int existingPos = positionOf(visitor);
+        if (existingPos > 0) {
+            return existingPos;
+        }
+
+        int assignedPos = nextPositionCounter++;
+        waitingEntries.add(new QueueEntry(visitor, assignedPos));
+        return assignedPos;
     }
 
-    public List<BuyerReference> admitNext(int tokenValidityMinutes) {
-        expireTokens(); 
-        
-        int openSlots = getOpenSlots();
-        List<BuyerReference> newlyAdmitted = new ArrayList<>();
+    public synchronized List<AdmissionToken> admitNextGroup(int tokenValidityMinutes) {
+        if (status != QueueStatus.ACTIVE) {
+            return List.of();
+        }
 
-        while (openSlots > 0 && !waitingEntries.isEmpty()) {
-            QueueEntry nextInLine = waitingEntries.poll();
+        expireTokens();
+
+        int currentAdmittedCount = admittedSet.size();
+        int availableSlots = maxConcurrentAdmissions - currentAdmittedCount;
+        
+        List<AdmissionToken> newlyAdmitted = new ArrayList<>();
+        
+        while (availableSlots > 0 && !waitingEntries.isEmpty()) {
+            QueueEntry nextInLine = waitingEntries.remove(0);
             AdmissionToken token = new AdmissionToken(nextInLine.getVisitorRef(), tokenValidityMinutes);
             admittedSet.add(token);
-            newlyAdmitted.add(nextInLine.getVisitorRef());
-            openSlots--;
+            newlyAdmitted.add(token);
+            availableSlots--;
         }
-        if (!newlyAdmitted.isEmpty()) {
-            this.version++;
-        }
+        
         return newlyAdmitted;
     }
 
-    public void revokeAdmission(BuyerReference buyer) {
+    public synchronized void revokeAdmission(BuyerReference buyer) {
         admittedSet.removeIf(token -> token.getBuyerRef().equals(buyer));
-        this.version++;
     }
 
-    public boolean isAdmitted(BuyerReference visitor) {
+    public synchronized boolean isAdmitted(BuyerReference visitor) {
         expireTokens();
         return admittedSet.stream()
-                .anyMatch(token -> token.getBuyerRef().equals(visitor) && !token.isConsumed());
+                .anyMatch(t -> t.getBuyerRef().equals(visitor) && !t.isExpired());
     }
 
-    public void expireTokens() {
+    public synchronized void expireTokens() {
         admittedSet.removeIf(AdmissionToken::isExpired);
     }
 
-    public int getOpenSlots() {
+    public synchronized int getOpenSlots() {
+        expireTokens();
         int currentLoad = (int) admittedSet.stream()
-                .filter(token -> !token.isExpired() && !token.isConsumed())
+                .filter(token -> !token.isConsumed())
                 .count();
         return Math.max(0, maxConcurrentAdmissions - currentLoad);
     }
-    /**
-     * Returns the 1-based position of the visitor in the waiting queue.
-     * Returns 0 if the visitor is admitted, and -1 if the visitor is neither waiting nor admitted.
-     */
-    public int positionOf(BuyerReference visitor) {
+
+    public synchronized int positionOf(BuyerReference visitor) {
         if (isAdmitted(visitor)) return 0;
-        @SuppressWarnings("unused")
-        int pos = 1;
+        
         for (QueueEntry e : waitingEntries) {
             if (e.getVisitorRef().equals(visitor)) return e.getPosition();
-            pos++;
         }
         return -1;
     }
     
-    public void consumeTokenFor(BuyerReference buyer) {
+    public synchronized void consumeTokenFor(BuyerReference buyer) {
         admittedSet.stream()
                 .filter(t -> t.getBuyerRef().equals(buyer) && !t.isExpired())
                 .findFirst()
                 .ifPresent(AdmissionToken::markConsumed);
     }
 
-    public List<BuyerReference> clearQueue() {
+    public synchronized List<BuyerReference> clearQueue() {
         this.status = QueueStatus.INACTIVE;
         List<BuyerReference> waiting = waitingEntries.stream()
                 .map(QueueEntry::getVisitorRef)
                 .toList();
         waitingEntries.clear();
-        this.version++;
         return waiting;
     }
 
-    public String getQueueId() { 
-        return queueId; 
+    public String getQueueId() { return queueId; }
+    public String getEventId() { return eventId; }
+    public QueueStatus getStatus() { return status; }
+    public long getVersion() { return version; }
+    public int getLoadThreshold() { return loadThreshold; }
+    public int getMaxConcurrentAdmissions() { return maxConcurrentAdmissions; }
+
+    @Transient
+    @Override
+    public boolean isNew() {
+        return this.version == 0L;
     }
 
-    public String getEventId() { 
-        return eventId; 
-    }
-
-    public QueueStatus getStatus() { 
-        return status; 
-    }
-
-    public long getVersion() { 
-        return version; 
-    }
-
-    public int getLoadThreshold() { 
-        return loadThreshold; 
-    }
-
-    public int getMaxConcurrentAdmissions() { 
-        return maxConcurrentAdmissions; 
+    @Transient
+    @Override
+    public String getId() {
+        return this.queueId;
     }
 }
