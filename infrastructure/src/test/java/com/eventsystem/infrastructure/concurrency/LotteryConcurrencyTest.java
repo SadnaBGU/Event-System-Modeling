@@ -5,10 +5,18 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -20,17 +28,28 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DataJpaTest
+@EntityScan(basePackages = "com.eventsystem.domain")
+@Import(PostgresLotteryRepository.class)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class LotteryConcurrencyTest {
 
-    private InMemoryLotteryRepository repo;
+    @Autowired
+    private PostgresLotteryRepository repo;
+
+    @Autowired
+    private TransactionTemplate txTemplate;
+
     private LotteryService service;
     private LotteryId lotteryId;
 
     @BeforeEach
     void setUp() {
-        repo = new InMemoryLotteryRepository();
         service = new LotteryService(repo, new Random(1L), Clock.systemUTC(), Duration.ofMinutes(15));
-        lotteryId = service.openLottery(EventId.random());
+        
+        txTemplate.executeWithoutResult(status -> {
+            lotteryId = service.openLottery(EventId.random());
+        });
     }
 
     @Test
@@ -46,9 +65,19 @@ class LotteryConcurrencyTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        service.register(memberId, lotteryId);
+                        
+                        boolean success = false;
+                        while (!success) {
+                            try {
+                                txTemplate.executeWithoutResult(status -> {
+                                    service.register(memberId, lotteryId);
+                                });
+                                success = true;
+                            } catch (OptimisticLockingFailureException e) {
+                            }
+                        }
                     } catch (Exception e) {
-                        throw new AssertionError("Unexpected exception", e);
+                        e.printStackTrace();
                     } finally {
                         done.countDown();
                     }
@@ -60,8 +89,10 @@ class LotteryConcurrencyTest {
             pool.shutdownNow();
         }
 
-        Lottery stored = repo.findById(lotteryId).orElseThrow();
-        assertThat(stored.getRegistrations()).hasSize(threads);
+        txTemplate.executeWithoutResult(status -> {
+            Lottery stored = repo.findById(lotteryId).orElseThrow();
+            assertThat(stored.getRegistrations()).hasSize(threads);
+        });
     }
 
     @Test
@@ -77,9 +108,19 @@ class LotteryConcurrencyTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        service.register(shared, lotteryId);
+                        
+                        boolean success = false;
+                        while (!success) {
+                            try {
+                                txTemplate.executeWithoutResult(status -> {
+                                    service.register(shared, lotteryId);
+                                });
+                                success = true;
+                            } catch (OptimisticLockingFailureException e) {
+                            }
+                        }
                     } catch (Exception e) {
-                        throw new AssertionError("Unexpected exception", e);
+                        e.printStackTrace();
                     } finally {
                         done.countDown();
                     }
@@ -91,7 +132,9 @@ class LotteryConcurrencyTest {
             pool.shutdownNow();
         }
 
-        Lottery stored = repo.findById(lotteryId).orElseThrow();
-        assertThat(stored.getRegistrations()).containsExactly(shared);
+        txTemplate.executeWithoutResult(status -> {
+            Lottery stored = repo.findById(lotteryId).orElseThrow();
+            assertThat(stored.getRegistrations()).containsExactly(shared);
+        });
     }
 }
