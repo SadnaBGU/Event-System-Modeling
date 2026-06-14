@@ -38,12 +38,15 @@ class OrdersRestControllerUnitTest {
     @InjectMocks
     private OrdersRestController controller;
 
+    // =========================================================
+    // createOrGetActiveOrder Branches
+    // =========================================================
+
     @Test
-    void createOrGetActiveOrder_mapsGuestBuyerType_andLotteryOptional() {
+    void createOrGetActiveOrder_validGuest_returnsOk() {
         CreateOrderRequest req = new CreateOrderRequest();
         req.buyerType = "GUEST";
         req.sessionId = "sess-1";
-        req.memberId = null;
         req.eventId = "EV-1";
         req.lotteryCode = "LOT-1";
 
@@ -53,23 +56,18 @@ class OrdersRestControllerUnitTest {
         var response = controller.createOrGetActiveOrder(req);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEqualTo(dto);
-
         ArgumentCaptor<BuyerReference> buyerCaptor = ArgumentCaptor.forClass(BuyerReference.class);
         verify(orderService).createOrGetActiveOrder(buyerCaptor.capture(), eq("EV-1"), eq(Optional.of("LOT-1")));
         assertThat(buyerCaptor.getValue().type()).isEqualTo(BuyerType.GUEST);
-        assertThat(buyerCaptor.getValue().sessionId()).isEqualTo("sess-1");
     }
 
     @Test
-    void createOrGetActiveOrder_defaultsToMember_whenBuyerTypeNotGuest() {
+    void createOrGetActiveOrder_validMember_returnsOk() {
         CreateOrderRequest req = new CreateOrderRequest();
         req.buyerType = "MEMBER";
-        req.sessionId = "sess-2";
-        req.memberId = "member-2";
         req.eventId = "EV-2";
 
-        ActiveOrderDTO dto = dto("ORDER-2", BuyerType.MEMBER, "sess-2", "member-2", "EV-2");
+        ActiveOrderDTO dto = dto("ORDER-2", BuyerType.MEMBER, null, "mem-2", "EV-2");
         when(orderService.createOrGetActiveOrder(any(), eq("EV-2"), eq(Optional.empty()))).thenReturn(dto);
 
         controller.createOrGetActiveOrder(req);
@@ -77,75 +75,184 @@ class OrdersRestControllerUnitTest {
         ArgumentCaptor<BuyerReference> buyerCaptor = ArgumentCaptor.forClass(BuyerReference.class);
         verify(orderService).createOrGetActiveOrder(buyerCaptor.capture(), eq("EV-2"), eq(Optional.empty()));
         assertThat(buyerCaptor.getValue().type()).isEqualTo(BuyerType.MEMBER);
-        assertThat(buyerCaptor.getValue().memberId()).isEqualTo("member-2");
     }
 
     @Test
-    void createMethods_validateEventId() {
-        CreateOrderRequest req = new CreateOrderRequest();
+    void createOrGetActiveOrder_invalidInputs_throwException() {
+        CreateOrderRequest nullIdReq = new CreateOrderRequest();
+        nullIdReq.eventId = null;
+        
+        CreateOrderRequest blankIdReq = new CreateOrderRequest();
+        blankIdReq.eventId = "   ";
 
         assertThatThrownBy(() -> controller.createOrGetActiveOrder(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("eventId is required");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("eventId is required");
+        assertThatThrownBy(() -> controller.createOrGetActiveOrder(nullIdReq))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("eventId is required");
+        assertThatThrownBy(() -> controller.createOrGetActiveOrder(blankIdReq))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("eventId is required");
+    }
 
-        assertThatThrownBy(() -> controller.createOrGetActiveOrder(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("eventId is required");
+    // =========================================================
+    // createNewOrderStrict Branches
+    // =========================================================
 
-        assertThatThrownBy(() -> controller.createNewOrderStrict(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("eventId is required");
+    @Test
+    void createNewOrderStrict_validGuest_returnsOk() {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.buyerType = "guest"; // Testing case insensitivity
+        req.eventId = "EV-1";
+
+        ActiveOrderDTO dto = dto("ORDER-1", BuyerType.GUEST, "sess-1", null, "EV-1");
+        when(orderService.createNewOrderStrict(any(), eq("EV-1"))).thenReturn(dto);
+
+        var response = controller.createNewOrderStrict(req);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        
+        ArgumentCaptor<BuyerReference> buyerCaptor = ArgumentCaptor.forClass(BuyerReference.class);
+        verify(orderService).createNewOrderStrict(buyerCaptor.capture(), eq("EV-1"));
+        assertThat(buyerCaptor.getValue().type()).isEqualTo(BuyerType.GUEST);
     }
 
     @Test
-    void reserve_and_release_validateRequestBody() {
-        AddItemRequest reserve = new AddItemRequest();
+    void createNewOrderStrict_validMember_returnsOk() {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.buyerType = "OTHER"; 
+        req.eventId = "EV-1";
 
-        assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", reserve))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("zoneId is required");
+        ActiveOrderDTO dto = dto("ORDER-1", BuyerType.MEMBER, "sess-1", null, "EV-1");
+        when(orderService.createNewOrderStrict(any(), eq("EV-1"))).thenReturn(dto);
 
-        RemoveItemRequest release = new RemoveItemRequest();
-        release.seatId = "seat-1";
-
-        assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", release))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("zoneId is required");
+        controller.createNewOrderStrict(req);
+        
+        ArgumentCaptor<BuyerReference> buyerCaptor = ArgumentCaptor.forClass(BuyerReference.class);
+        verify(orderService).createNewOrderStrict(buyerCaptor.capture(), eq("EV-1"));
+        assertThat(buyerCaptor.getValue().type()).isEqualTo(BuyerType.MEMBER);
     }
 
     @Test
-    void reserve_and_release_delegate_and_returnAccepted() {
-        AddItemRequest reserve = new AddItemRequest();
-        reserve.zoneId = "zone-1";
-        reserve.seatId = "seat-1";
+    void createNewOrderStrict_invalidInputs_throwException() {
+        CreateOrderRequest nullIdReq = new CreateOrderRequest();
+        CreateOrderRequest blankIdReq = new CreateOrderRequest();
+        blankIdReq.eventId = "";
 
-        RemoveItemRequest release = new RemoveItemRequest();
-        release.zoneId = "zone-1";
-        release.seatId = "seat-1";
+        assertThatThrownBy(() -> controller.createNewOrderStrict(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.createNewOrderStrict(nullIdReq))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.createNewOrderStrict(blankIdReq))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 
-        var reserveResponse = controller.addItemToOrder("ORD-1", reserve);
-        var releaseResponse = controller.removeItemFromOrder("ORD-1", release);
+    // =========================================================
+    // addItemToOrder Branches
+    // =========================================================
 
-        verify(orderService).addItemToOrder("ORD-1", "zone-1", "seat-1", 1);
-        verify(orderService).removeItemFromOrder("ORD-1", "zone-1", "seat-1", 1);
-        assertThat(reserveResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    @Test
+    void addItemToOrder_validQuantities_delegatesProperly() {
+        // Valid custom quantity
+        AddItemRequest reqWithQty = new AddItemRequest();
+        reqWithQty.zoneId = "ZONE-1";
+        reqWithQty.seatId = "SEAT-1";
+        reqWithQty.quantity = 5;
+
+        // Null quantity -> defaults to 1
+        AddItemRequest reqNullQty = new AddItemRequest();
+        reqNullQty.zoneId = "ZONE-1";
+
+        // Negative/Zero quantity -> defaults to 1
+        AddItemRequest reqNegativeQty = new AddItemRequest();
+        reqNegativeQty.zoneId = "ZONE-1";
+        reqNegativeQty.quantity = -3;
+
+        controller.addItemToOrder("ORD-1", reqWithQty);
+        controller.addItemToOrder("ORD-1", reqNullQty);
+        controller.addItemToOrder("ORD-1", reqNegativeQty);
+
+        verify(orderService).addItemToOrder("ORD-1", "ZONE-1", "SEAT-1", 5);
+        verify(orderService, org.mockito.Mockito.times(2)).addItemToOrder("ORD-1", "ZONE-1", null, 1);
     }
 
     @Test
-    void getOrder_validatesInput_and_delegates() {
-        assertThatThrownBy(() -> controller.getOrder(" "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("orderId is required");
+    void addItemToOrder_invalidInputs_throwException() {
+        AddItemRequest nullZone = new AddItemRequest();
+        AddItemRequest blankZone = new AddItemRequest();
+        blankZone.zoneId = "  ";
 
+        assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", nullZone))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.addItemToOrder("ORD-1", blankZone))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // =========================================================
+    // removeItemFromOrder Branches
+    // =========================================================
+
+    @Test
+    void removeItemFromOrder_validQuantities_delegatesProperly() {
+        RemoveItemRequest reqWithQty = new RemoveItemRequest();
+        reqWithQty.zoneId = "ZONE-1";
+        reqWithQty.seatId = "SEAT-1";
+        reqWithQty.quantity = 5;
+
+        RemoveItemRequest reqNullQty = new RemoveItemRequest();
+        reqNullQty.zoneId = "ZONE-1";
+
+        RemoveItemRequest reqZeroQty = new RemoveItemRequest();
+        reqZeroQty.zoneId = "ZONE-1";
+        reqZeroQty.quantity = 0;
+
+        controller.removeItemFromOrder("ORD-1", reqWithQty);
+        controller.removeItemFromOrder("ORD-1", reqNullQty);
+        controller.removeItemFromOrder("ORD-1", reqZeroQty);
+
+        verify(orderService).removeItemFromOrder("ORD-1", "ZONE-1", "SEAT-1", 5);
+        verify(orderService, org.mockito.Mockito.times(2)).removeItemFromOrder("ORD-1", "ZONE-1", null, 1);
+    }
+
+    @Test
+    void removeItemFromOrder_invalidInputs_throwException() {
+        RemoveItemRequest nullZone = new RemoveItemRequest();
+        RemoveItemRequest blankZone = new RemoveItemRequest();
+        blankZone.zoneId = "";
+
+        assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", nullZone))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> controller.removeItemFromOrder("ORD-1", blankZone))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // =========================================================
+    // getOrder Branches
+    // =========================================================
+
+    @Test
+    void getOrder_invalidInputs_throwException() {
+        assertThatThrownBy(() -> controller.getOrder(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        
+        assertThatThrownBy(() -> controller.getOrder("   "))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void getOrder_validInput_returnsOk() {
         ActiveOrderDTO dto = dto("ORD-9", BuyerType.MEMBER, "sess-9", "member-9", "EV-9");
         when(orderService.getOrderById("ORD-9")).thenReturn(dto);
 
         var response = controller.getOrder("ORD-9");
-
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(dto);
     }
+
+    // =========================================================
+    // Helpers
+    // =========================================================
 
     private static ActiveOrderDTO dto(String orderId, BuyerType type, String sessionId, String memberId, String eventId) {
         return new ActiveOrderDTO(

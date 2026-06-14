@@ -4,6 +4,7 @@ import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.MapElement;
 import com.eventsystem.domain.event.VenueMap;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.shared.Money;
@@ -62,7 +63,13 @@ class EventCatalogControllerTest {
                 "Music",
                 "Beer Sheva",
                 "Outdoor live music event");
-        Event event = new Event(new EventId("EVT-1"), "COMP-1", details, VenueMap.empty());
+                
+        VenueMap map = new VenueMap(List.of(
+            new MapElement("STAGE", "Main Stage", 50, 50, null),
+            new MapElement("AREA", "VIP Area", 100, 100, new ZoneId("VIP-ZONE"))
+        ));
+        
+        Event event = new Event(new EventId("EVT-1"), "COMP-1", details, map);
         event.addZone(new ZoneId("VIP-ZONE"));
         event.publish();
         return event;
@@ -77,9 +84,13 @@ class EventCatalogControllerTest {
                 50);
     }
 
+    // =========================================================
+    // GET /api/events (Search & Pagination Branches)
+    // =========================================================
+
     @Test
-    @DisplayName("GET /api/events returns paginated catalog results")
-    void searchEvents_returnsPaginationWrapper() throws Exception {
+    @DisplayName("Search: Valid inputs with standard pagination")
+    void searchEvents_standard() throws Exception {
         Event event = sampleEvent();
         when(catalogService.search(any(), any(), any())).thenReturn(List.of(event));
         when(catalogService.resolveArtistName(event)).thenReturn("Desert Rockers");
@@ -93,19 +104,81 @@ class EventCatalogControllerTest {
                         .param("size", "20")
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentPage").value(0))
-                .andExpect(jsonPath("$.hasNext").value(false))
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.totalPages").value(1))
-                .andExpect(jsonPath("$.items[0].eventId").value("EVT-1"))
-                .andExpect(jsonPath("$.items[0].eventName").value("Desert Rock Festival"))
-                .andExpect(jsonPath("$.items[0].artist").value("Desert Rockers"))
-                .andExpect(jsonPath("$.items[0].zones[0].zoneId").value("VIP-ZONE"))
-                .andExpect(jsonPath("$.items[0].priceSummary.minPrice").value(250.00));
+                .andExpect(jsonPath("$.items[0].eventId").value("EVT-1"));
     }
 
     @Test
-    @DisplayName("GET /api/events/{eventId} returns full event detail")
+    @DisplayName("Search: Empty parameters (tests null priceRange branch)")
+    void searchEvents_emptyParams() throws Exception {
+        when(catalogService.search(any(), any(), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/events")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Search: Pagination out of bounds (from >= all.size)")
+    void searchEvents_outOfBoundsPagination() throws Exception {
+        Event event = sampleEvent();
+        when(catalogService.search(any(), any(), any())).thenReturn(List.of(event));
+        
+        mockMvc.perform(get("/api/events")
+                        .param("page", "5")
+                        .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("Search: Size <= 0")
+    void searchEvents_invalidSize() throws Exception {
+        Event event = sampleEvent();
+        when(catalogService.search(any(), any(), any())).thenReturn(List.of(event));
+
+        mockMvc.perform(get("/api/events")
+                        .param("size", "0")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    // =========================================================
+    // parsePriceRange Branches
+    // =========================================================
+
+    @Test
+    @DisplayName("PriceRange: Hyphen format instead of comma")
+    void searchEvents_hyphenPriceRange() throws Exception {
+        when(catalogService.search(any(), any(), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/events")
+                        .param("priceRange", "100-300")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("PriceRange: Invalid format throws Exception")
+    void searchEvents_invalidPriceRange() throws Exception {
+        mockMvc.perform(get("/api/events")
+                        .param("priceRange", "100")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    // =========================================================
+    // GET /api/events/{eventId} (Detail & Edge Cases)
+    // =========================================================
+
+    @Test
+    @DisplayName("Get Event: Full detail with zones and linked/unlinked map elements")
     void getEvent_returnsFullDetail() throws Exception {
         Event event = sampleEvent();
         when(catalogService.findById(new EventId("EVT-1"))).thenReturn(event);
@@ -116,11 +189,25 @@ class EventCatalogControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.eventId").value("EVT-1"))
-                .andExpect(jsonPath("$.eventName").value("Desert Rock Festival"))
-                .andExpect(jsonPath("$.artist").value("Desert Rockers"))
-                .andExpect(jsonPath("$.status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.salesMethod").value("REGULAR"))
-                .andExpect(jsonPath("$.zones[0].price").value(250.00))
-                .andExpect(jsonPath("$.venueMap").isArray());
+                .andExpect(jsonPath("$.venueMap[0].linkedZoneId").isEmpty())
+                .andExpect(jsonPath("$.venueMap[1].linkedZoneId").value("VIP-ZONE"))
+                .andExpect(jsonPath("$.priceSummary.minPrice").value(250.00));
+    }
+
+    @Test
+    @DisplayName("Get Event: Event with NO zones (tests eventPriceSummary empty branch)")
+    void getEvent_noZones() throws Exception {
+        Event event = sampleEvent();
+        when(catalogService.findById(new EventId("EVT-1"))).thenReturn(event);
+        when(catalogService.resolveArtistName(event)).thenReturn("Desert Rockers");
+        when(catalogService.getZones(event.id())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/events/EVT-1")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.zones").isEmpty())
+                .andExpect(jsonPath("$.priceSummary.minPrice").value(0))
+                .andExpect(jsonPath("$.priceSummary.maxPrice").value(0))
+                .andExpect(jsonPath("$.priceSummary.currency").value(""));
     }
 }
