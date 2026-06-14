@@ -3,6 +3,9 @@ package com.eventsystem.domain.company;
 import java.util.Objects;
 import java.util.UUID;
 
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public record CompanyId(String value) {
 
     public CompanyId {

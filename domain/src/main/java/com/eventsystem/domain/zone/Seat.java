@@ -1,15 +1,35 @@
 package com.eventsystem.domain.zone;
 
 import java.util.Objects;
-
+import jakarta.persistence.*;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 
+@Entity
+@Table(name = "seats")
 public class Seat {
 
+    @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "seat_id"))
+    })
     private final SeatId seatId;
+
+    @Column(name = "row_label", nullable = false)
     private final String rowLabel;
+
+    @Column(name = "seat_number", nullable = false)
     private final int seatNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private SeatStatus status;
+
+    protected Seat() {
+        this.seatId = null;
+        this.rowLabel = "";
+        this.seatNumber = 0;
+        this.status = null;
+    }
 
     public Seat(SeatId seatId, String rowLabel, int seatNumber) {
         this.seatId = Objects.requireNonNull(seatId, "seatId must not be null");

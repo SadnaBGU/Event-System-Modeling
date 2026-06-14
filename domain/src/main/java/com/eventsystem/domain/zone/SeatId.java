@@ -2,7 +2,9 @@ package com.eventsystem.domain.zone;
 
 import java.util.Objects;
 import java.util.UUID;
+import jakarta.persistence.Embeddable;
 
+@Embeddable
 public record SeatId(String value) {
 
     public SeatId {

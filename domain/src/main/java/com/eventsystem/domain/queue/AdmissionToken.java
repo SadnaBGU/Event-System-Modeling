@@ -2,13 +2,26 @@ package com.eventsystem.domain.queue;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-
+import java.util.Objects;
+import jakarta.persistence.*;
 import com.eventsystem.domain.order.BuyerReference;
 
+@Embeddable
 public class AdmissionToken {
-    private final BuyerReference buyerRef;
-    private final Instant expiresAt;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "buyer_ref_id", nullable = false))
+    })
+    private BuyerReference buyerRef;
+
+    @Column(name = "expires_at", nullable = false)
+    private Instant expiresAt;
+
+    @Column(name = "consumed", nullable = false)
     private boolean consumed;
+
+    protected AdmissionToken() {}
 
     public AdmissionToken(BuyerReference buyerRef, int validityMinutes) {
         this.buyerRef = buyerRef;

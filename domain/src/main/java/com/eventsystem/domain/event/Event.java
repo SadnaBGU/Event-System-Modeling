@@ -1,6 +1,12 @@
 package com.eventsystem.domain.event;
 
 import com.eventsystem.domain.zone.ZoneId;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
+
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
 
@@ -9,19 +15,51 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-public class Event {
+@Entity
+@Table(name = "events")
+public class Event implements Persistable<EventId> {
     
-    private final EventId eventId;
-    private final CompanyId companyId;
-    private EventDetails details;
-    private VenueMap venueMap;
-    private EventStatus status;
-    private final Set<ZoneId> zones;
+    @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "id"))
+    })
+    private EventId eventId;
 
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+    })
+    private CompanyId companyId;
+
+    @Embedded
+    private EventDetails details;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "venue_map")
+    private VenueMap venueMap;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private EventStatus status;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "event_zones", joinColumns = @JoinColumn(name = "event_id"))
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "zone_id"))
+    })
+    private Set<ZoneId> zones;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sales_method", nullable = false)
     private SalesMethod salesMethod;
 
+    @Version
+    @Column(name = "version")
+    private long version;
 
-     public Event( EventId id, CompanyId companyId, EventDetails details, VenueMap venueMap) {
+    public Event() {}
+
+    public Event(EventId id, CompanyId companyId, EventDetails details, VenueMap venueMap) {
         this.eventId= Objects.requireNonNull(id, "event id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
         this.details = Objects.requireNonNull(details, "event details must not be null");
@@ -29,9 +67,10 @@ public class Event {
         this.status = EventStatus.DRAFT;
         this.zones = new LinkedHashSet<>();
         this.salesMethod = SalesMethod.REGULAR;
+        this.version = 0L;
     }
 
-    public Event( EventId id, String companyId, EventDetails details, VenueMap venueMap) {
+    public Event(EventId id, String companyId, EventDetails details, VenueMap venueMap) {
         this.eventId= Objects.requireNonNull(id, "event id must not be null");
         this.companyId = Objects.requireNonNull(new CompanyId(companyId), "company id must not be null");
         this.details = Objects.requireNonNull(details, "event details must not be null");
@@ -39,14 +78,27 @@ public class Event {
         this.status = EventStatus.DRAFT;
         this.zones = new LinkedHashSet<>();
         this.salesMethod = SalesMethod.REGULAR;
+        this.version = 0L;
     }
 
-    public Event( String id, String companyId, EventDetails details, VenueMap venueMap) {
+    public Event(String id, String companyId, EventDetails details, VenueMap venueMap) {
         this(new EventId(id), companyId, details, venueMap);
     }
 
     public static Event createDraft( CompanyId companyId, EventDetails details, VenueMap venueMap) {
         return new Event( EventId.random(), companyId, details, venueMap );
+    }
+
+    @Transient
+    @Override
+    public boolean isNew() {
+        return this.version == 0L;
+    }
+
+    @Transient
+    @Override
+    public EventId getId() {
+        return this.eventId;
     }
 
     public EventId id() {

@@ -2,42 +2,61 @@ package com.eventsystem.domain.lottery;
 
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.member.MemberId;
+import org.springframework.data.domain.Persistable;
 
+import jakarta.persistence.*;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.random.RandomGenerator;
 
-/**
- * Per-event lottery for purchase rights.
- * Status flow: REGISTRATION_OPEN -> CLOSED -> DRAWN.
- */
-public class Lottery {
+@Entity
+@Table(name = "lotteries")
+public class Lottery implements Persistable<LotteryId> {
 
-    private final LotteryId lotteryId;
-    private final EventId eventId;
-    private final Set<MemberId> registrations;
-    private final Set<LotteryWinner> winners;
+    @EmbeddedId
+    private LotteryId lotteryId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "event_id", nullable = false))
+    })
+    private EventId eventId;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "lottery_registrations", joinColumns = @JoinColumn(name = "lottery_id"))
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "member_id"))
+    })
+    private Set<MemberId> registrations;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "lottery_winners", joinColumns = @JoinColumn(name = "lottery_id"))
+    private Set<LotteryWinner> winners;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private LotteryStatus status;
+
+    @Column(name = "draw_timestamp")
     private Instant drawTimestamp;
+
+    @Version
+    @Column(name = "version")
+    private long version;
+
+    protected Lottery() {}
 
     public Lottery(LotteryId lotteryId, EventId eventId) {
         this.lotteryId = Objects.requireNonNull(lotteryId, "lotteryId must not be null");
         this.eventId = Objects.requireNonNull(eventId, "eventId must not be null");
-        this.registrations = ConcurrentHashMap.newKeySet();
-        this.winners = ConcurrentHashMap.newKeySet();
+        this.registrations = new HashSet<>();
+        this.winners = new HashSet<>();
         this.status = LotteryStatus.REGISTRATION_OPEN;
+        this.version = 0L;
     }
 
-    /** Returns true if added, false if the member was already registered. */
-    public boolean register(MemberId memberId) {
+    public synchronized boolean register(MemberId memberId) {
         Objects.requireNonNull(memberId, "memberId must not be null");
         if (status != LotteryStatus.REGISTRATION_OPEN) {
             throw new IllegalStateException("Lottery registration is " + status);
@@ -72,11 +91,9 @@ public class Lottery {
             throw new IllegalStateException("Lottery must be CLOSED before drawing (was " + status + ")");
         }
 
-        // Sort first so the same rng + same registrations always give the same winners.
         List<MemberId> pool = new ArrayList<>(registrations);
         pool.sort((a, b) -> a.value().compareTo(b.value()));
 
-        // Fisher-Yates shuffle.
         for (int i = pool.size() - 1; i > 0; i--) {
             int j = rng.nextInt(i + 1);
             Collections.swap(pool, i, j);
@@ -124,5 +141,17 @@ public class Lottery {
                 return hex.toUpperCase();
             }
         }
+    }
+
+    @Transient
+    @Override
+    public boolean isNew() {
+        return this.version == 0L;
+    }
+
+    @Transient
+    @Override
+    public LotteryId getId() {
+        return this.lotteryId;
     }
 }

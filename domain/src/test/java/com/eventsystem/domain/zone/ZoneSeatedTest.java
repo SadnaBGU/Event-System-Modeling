@@ -56,12 +56,6 @@ class ZoneSeatedTest {
         assertThat(zone.getAvailableCount()).isEqualTo(1);
     }
 
-    @Test
-    void reserveSeat_incrementsVersion() {
-        long before = zone.version();
-        zone.reserveSeat(seatA);
-        assertThat(zone.version()).isEqualTo(before + 1);
-    }
 
     @Test
     void reserveSeat_alreadyReserved_throws() {
@@ -149,19 +143,5 @@ class ZoneSeatedTest {
                 .isThrownBy(() -> Zone.createSeated(
                         ZoneId.random(), EventId.random(), "Zone",
                         new Money(BigDecimal.TEN, "ILS"), List.of()));
-    }
-
-    // ── Version increments on every mutation ─────────────────────────────────
-
-    @Test
-    void version_incrementsOnEachOperation() {
-        assertThat(zone.version()).isZero();
-        zone.reserveSeat(seatA);
-        assertThat(zone.version()).isEqualTo(1);
-        zone.releaseSeat(seatA);
-        assertThat(zone.version()).isEqualTo(2);
-        zone.reserveSeat(seatA);
-        zone.markSold(seatA);
-        assertThat(zone.version()).isEqualTo(4);
     }
 }

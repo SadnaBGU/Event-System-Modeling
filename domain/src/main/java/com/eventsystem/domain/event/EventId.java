@@ -2,7 +2,9 @@ package com.eventsystem.domain.event;
 
 import java.util.Objects;
 import java.util.UUID;
+import jakarta.persistence.Embeddable;
 
+@Embeddable
 public record EventId(String value) {
 
     public EventId {

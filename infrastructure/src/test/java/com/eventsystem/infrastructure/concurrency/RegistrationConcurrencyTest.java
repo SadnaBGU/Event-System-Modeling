@@ -7,7 +7,7 @@ import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.infrastructure.persistence.InMemoryMemberRepository;
+import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import org.junit.jupiter.api.BeforeEach;
