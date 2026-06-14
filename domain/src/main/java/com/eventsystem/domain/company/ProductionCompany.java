@@ -2,17 +2,63 @@ package com.eventsystem.domain.company;
 
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public final class ProductionCompany {
-    private final CompanyId companyId;
-    private final MemberId founderId;
+@Entity
+@Table(name = "production_companies")
+public final class ProductionCompany implements Persistable<CompanyId> {
+    @EmbeddedId
+    private CompanyId companyId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "founder_id"))
+    })
+    private MemberId founderId;
+
+    @Embedded
     private CompanyDetails companyDetails;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CompanyStatus status;
-    private final AppointmentTree appointmentTree;
+
+    // כאן הקסם קורה! כל העץ נשמר כ-JSONB בתוך עמודה אחת בפוסטגרס
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "appointment_tree", columnDefinition = "jsonb")
+    private AppointmentTree appointmentTree;
+
+    @Transient
+    private boolean isNew = true;
+
+    // --- מימוש פונקציות הממשק Persistable ---
+
+    @Override
+    public CompanyId getId() {
+        return this.companyId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.isNew;
+    }
+
+    // פונקציות קסם של JPA שמכבות את הדגל ברגע שהאובייקט נטען מה-DB או נשמר אליו
+    @PostPersist
+    @PostLoad
+    protected void markNotNew() {
+        this.isNew = false;
+    }
+
+    protected ProductionCompany() {
+    }
 
     private ProductionCompany(CompanyId companyId, MemberId founderId, CompanyDetails companyDetails) {
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");

@@ -1,12 +1,13 @@
 package com.eventsystem.domain.member;
-
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
-
+import jakarta.persistence.Embeddable;
 /**
  * Value Object — opaque identifier for a Member aggregate root.
  */
-public record MemberId(String value) {
+@Embeddable
+public record MemberId(String value) implements Serializable{
 
     public MemberId {
         Objects.requireNonNull(value, "MemberId value must not be null");
