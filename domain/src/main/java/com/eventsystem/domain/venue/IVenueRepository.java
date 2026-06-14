@@ -13,4 +13,6 @@ public interface IVenueRepository {
     void save(Venue venue);
 
     void delete(VenueId venueId);
+
+    List<Venue> findAll();
 }

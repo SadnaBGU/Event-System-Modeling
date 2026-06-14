@@ -7,15 +7,41 @@ import com.eventsystem.domain.zone.SeatStatus;
 import com.eventsystem.domain.zone.ZoneType;
 import com.eventsystem.domain.zone.SeatedZoneHelper;
 import com.eventsystem.domain.shared.Money;
+import jakarta.persistence.*;
 import java.util.*;
 
+@Entity
+@Table(name = "venue_zone")
 public class VenueZone {
-    private final ZoneId zoneId;
-    private final String zoneName;
-    private final ZoneType zoneType;
-    private final Money pricePerTicket;
-    private final List<Seat> seats;
-    private final int totalCapacity;
+
+    @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "zone_id"))
+    })
+    private ZoneId zoneId;
+
+    @Column(name = "zone_name", nullable = false)
+    private String zoneName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "zone_type", nullable = false)
+    private ZoneType zoneType;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
+    private Money pricePerTicket;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "venue_zone_seats", joinColumns = @JoinColumn(name = "venue_zone_id"))
+    private List<Seat> seats;
+
+    @Column(name = "total_capacity", nullable = false)
+    private int totalCapacity;
+
+    protected VenueZone() {}
 
     public VenueZone(ZoneId zoneId, String zoneName, ZoneType zoneType, Money pricePerTicket, int totalCapacity) {
         if (zoneId == null || zoneName == null || zoneType == null || pricePerTicket == null) {
@@ -34,24 +60,11 @@ public class VenueZone {
         this.pricePerTicket = pricePerTicket;
         this.totalCapacity = totalCapacity;
         this.seats = new ArrayList<>();
-
-        // Initialize seats for SEATED zones
-        if (zoneType == ZoneType.SEATED) {
-            initializeSeatedZone(totalCapacity);
-        }
     }
 
-    private void initializeSeatedZone(int capacity) {
-        int seatsPerRow = 10;
-        int currentSeat = 0;
-
-        for (char row = 'A'; row < 'Z' && currentSeat < capacity; row++) {
-            String rowLabel = String.valueOf(row);
-            for (int seatNum = 1; seatNum <= seatsPerRow && currentSeat < capacity; seatNum++) {
-                seats.add(new Seat(SeatId.random(), rowLabel, seatNum));
-                currentSeat++;
-            }
-        }
+    public VenueZone(ZoneId zoneId, String zoneName, ZoneType zoneType, Money pricePerTicket, List<Seat> seats) {
+        this(zoneId, zoneName, zoneType, pricePerTicket, seats.size());
+        this.seats.addAll(seats);
     }
 
     public ZoneId getZoneId() {
@@ -79,6 +92,10 @@ public class VenueZone {
     }
 
     public int getAvailableCount() {
+        if (zoneType == ZoneType.STANDING) {
+            return totalCapacity - getReservedCount() - getSoldCount();
+        }
+        
         return (int) seats.stream()
                 .filter(seat -> seat.status() == SeatStatus.AVAILABLE)
                 .count();

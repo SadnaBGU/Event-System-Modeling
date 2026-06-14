@@ -77,6 +77,8 @@ import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryR
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQueueRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -159,8 +161,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IVenueRepository venueRepository() {
-        return new InMemoryVenueRepository();
+    public IVenueRepository venueRepository(SpringDataVenueRepository springDataVenueRepo) {
+        return new PostgresVenueRepository(springDataVenueRepo);
     }
 
     @Bean

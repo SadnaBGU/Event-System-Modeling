@@ -2,14 +2,37 @@ package com.eventsystem.domain.venue;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
+import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
+import org.springframework.data.domain.Persistable;
+import jakarta.persistence.*;
 import java.util.*;
 
-public class Venue {
-    private final VenueId venueId;
-    private final CompanyId companyId;
-    private final String venueName;
-    private final List<VenueZone> zones;
+@Entity
+@Table(name = "venues")
+public class Venue implements Persistable<VenueId> {
+
+    @EmbeddedId
+    private VenueId venueId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+    })
+    private CompanyId companyId;
+
+    @Column(name = "venue_name", nullable = false)
+    private String venueName;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "venue_id", nullable = false)
+    private List<VenueZone> zones;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    protected Venue() {}
 
     public Venue(VenueId venueId, CompanyId companyId, String venueName) {
         if (venueId == null || companyId == null || venueName == null) {
@@ -22,7 +45,8 @@ public class Venue {
         this.venueId = venueId;
         this.companyId = companyId;
         this.venueName = venueName;
-        this.zones = Collections.synchronizedList(new ArrayList<>());
+        this.zones = new ArrayList<>();
+        this.version = 0L;
     }
 
     public VenueId getVenueId() {
@@ -37,10 +61,16 @@ public class Venue {
         return venueName;
     }
 
+    public long getVersion() {
+        return version;
+    }
+
     public List<VenueZone> getZones() {
-        synchronized (zones) {
-            return Collections.unmodifiableList(new ArrayList<>(zones));
-        }
+        return Collections.unmodifiableList(new ArrayList<>(zones));
+    }
+
+    public VenueZone getZone(ZoneId zoneId) {
+        return findZone(zoneId);
     }
 
     public synchronized void addZone(VenueZone zone) {
@@ -49,24 +79,33 @@ public class Venue {
         }
 
         // Check if zone with same name exists
-        if (zones.stream().anyMatch(z -> z.getZoneName().equalsIgnoreCase(zone.getZoneName()))) {
-            throw new VenueException("Zone with name '" + zone.getZoneName() + "' already exists in venue");
+        if (zones.stream().anyMatch(z -> z.getZoneId().equals(zone.getZoneId()))) {
+            throw new VenueException("Zone with ID '" + zone.getZoneId() + "' already exists in venue");
         }
 
         zones.add(zone);
     }
 
     public synchronized void removeZone(ZoneId zoneId) {
-        if (zoneId == null) {
-            throw new IllegalArgumentException("ZoneId cannot be null");
+        boolean removed = zones.removeIf(z -> z.getZoneId().equals(zoneId));
+        if (!removed) {
+            throw new VenueException("Zone not found: " + zoneId);
         }
-
-        VenueZone zone = findZone(zoneId);
-        zones.remove(zone);
     }
 
-    public synchronized VenueZone getZone(ZoneId zoneId) {
-        return findZone(zoneId);
+    public synchronized void reserveSeat(ZoneId zoneId, SeatId seatId) {
+        VenueZone zone = findZone(zoneId);
+        zone.reserveSeat(seatId);
+    }
+
+    public synchronized void releaseSeat(ZoneId zoneId, SeatId seatId) {
+        VenueZone zone = findZone(zoneId);
+        zone.releaseSeat(seatId);
+    }
+
+    public synchronized void markSeatSold(ZoneId zoneId, SeatId seatId) {
+        VenueZone zone = findZone(zoneId);
+        zone.markSeatSold(seatId);
     }
 
     public synchronized int getTotalCapacity() {
@@ -100,12 +139,24 @@ public class Venue {
                 .orElseThrow(() -> new VenueException("Zone not found: " + zoneId));
     }
 
+    @Transient
+    @Override
+    public boolean isNew() {
+        return this.version == 0L;
+    }
+
+    @Transient
+    @Override
+    public VenueId getId() {
+        return this.venueId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Venue venue = (Venue) o;
-        return venueId.equals(venue.venueId);
+        return Objects.equals(venueId, venue.venueId);
     }
 
     @Override
@@ -119,8 +170,6 @@ public class Venue {
                 "venueId=" + venueId +
                 ", companyId=" + companyId +
                 ", venueName='" + venueName + '\'' +
-                ", zones=" + zones.size() +
-                ", totalCapacity=" + getTotalCapacity() +
                 '}';
     }
 }
