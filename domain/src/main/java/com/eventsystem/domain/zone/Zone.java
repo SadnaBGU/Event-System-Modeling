@@ -48,7 +48,7 @@ public class Zone {
     private long version;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumn(name = "zone_id", nullable = false)
+    @JoinColumn(name = "zone_id")
     private List<Seat> seats = new ArrayList<>();      // populated only for SEATED zones
 
     @Transient

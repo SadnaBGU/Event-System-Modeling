@@ -63,4 +63,9 @@ public class InMemoryVenueRepository implements IVenueRepository {
             }
         }
     }
+
+    @Override
+    public List<Venue> findAll() {
+        return new ArrayList<>(venues.values());
+    }
 }
