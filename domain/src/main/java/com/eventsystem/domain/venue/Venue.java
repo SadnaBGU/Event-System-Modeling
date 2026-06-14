@@ -46,7 +46,6 @@ public class Venue implements Persistable<VenueId> {
         this.companyId = companyId;
         this.venueName = venueName;
         this.zones = new ArrayList<>();
-        this.version = 0L;
     }
 
     public VenueId getVenueId() {
@@ -79,8 +78,10 @@ public class Venue implements Persistable<VenueId> {
         }
 
         // Check if zone with same name exists
-        if (zones.stream().anyMatch(z -> z.getZoneId().equals(zone.getZoneId()))) {
-            throw new VenueException("Zone with ID '" + zone.getZoneId() + "' already exists in venue");
+        if (zones.stream().anyMatch(z -> 
+                z.getZoneId().equals(zone.getZoneId()) || 
+                z.getZoneName().equalsIgnoreCase(zone.getZoneName()))) {
+            throw new VenueException("Zone already exists or name is duplicated: " + zone.getZoneName());
         }
 
         zones.add(zone);
@@ -142,7 +143,7 @@ public class Venue implements Persistable<VenueId> {
     @Transient
     @Override
     public boolean isNew() {
-        return this.version == 0L;
+        return this.version == null;
     }
 
     @Transient

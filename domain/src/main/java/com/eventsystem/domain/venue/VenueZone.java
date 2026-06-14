@@ -8,6 +8,8 @@ import com.eventsystem.domain.zone.ZoneType;
 import com.eventsystem.domain.zone.SeatedZoneHelper;
 import com.eventsystem.domain.shared.Money;
 import jakarta.persistence.*;
+
+import java.lang.reflect.Field;
 import java.util.*;
 
 @Entity
@@ -34,8 +36,8 @@ public class VenueZone {
     })
     private Money pricePerTicket;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "venue_zone_seats", joinColumns = @JoinColumn(name = "venue_zone_id"))
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "venue_zone_id")
     private List<Seat> seats;
 
     @Column(name = "total_capacity", nullable = false)
@@ -60,11 +62,36 @@ public class VenueZone {
         this.pricePerTicket = pricePerTicket;
         this.totalCapacity = totalCapacity;
         this.seats = new ArrayList<>();
+
+        if (zoneType == ZoneType.SEATED) {
+            for (int i = 1; i <= totalCapacity; i++) {
+                Seat newSeat = new Seat(SeatId.random(), "GEN", i);
+                this.seats.add(newSeat);
+            }
+        }
     }
 
     public VenueZone(ZoneId zoneId, String zoneName, ZoneType zoneType, Money pricePerTicket, List<Seat> seats) {
-        this(zoneId, zoneName, zoneType, pricePerTicket, seats.size());
-        this.seats.addAll(seats);
+        if (zoneId == null || zoneName == null || zoneType == null || pricePerTicket == null) {
+            throw new IllegalArgumentException("ZoneId, zoneName, zoneType, and pricePerTicket cannot be null");
+        }
+        if (zoneName.isBlank()) {
+            throw new IllegalArgumentException("Zone name cannot be blank");
+        }
+        if (seats == null) {
+            throw new IllegalArgumentException("Seats cannot be null");
+        }
+
+        this.zoneId = zoneId;
+        this.zoneName = zoneName;
+        this.zoneType = zoneType;
+        this.pricePerTicket = pricePerTicket;
+        this.totalCapacity = seats.size();
+        this.seats = new ArrayList<>();
+        
+        if (zoneType == ZoneType.SEATED) {
+            this.seats.addAll(seats);
+        }
     }
 
     public ZoneId getZoneId() {
@@ -88,26 +115,34 @@ public class VenueZone {
     }
 
     public List<Seat> getSeats() {
-        return Collections.unmodifiableList(seats);
+        if (this.zoneType == ZoneType.STANDING) {
+            return Collections.emptyList();
+        }
+
+        return Collections.unmodifiableList(new ArrayList<>(seats));
     }
 
     public int getAvailableCount() {
-        if (zoneType == ZoneType.STANDING) {
-            return totalCapacity - getReservedCount() - getSoldCount();
-        }
-        
         return (int) seats.stream()
                 .filter(seat -> seat.status() == SeatStatus.AVAILABLE)
                 .count();
     }
 
     public int getReservedCount() {
+        if (zoneType == ZoneType.STANDING) {
+            return 0;
+        }
+
         return (int) seats.stream()
                 .filter(seat -> seat.status() == SeatStatus.RESERVED)
                 .count();
     }
 
     public int getSoldCount() {
+        if (zoneType == ZoneType.STANDING) {
+            return 0;
+        }
+
         return (int) seats.stream()
                 .filter(seat -> seat.status() == SeatStatus.SOLD)
                 .count();
