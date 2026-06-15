@@ -44,7 +44,6 @@ class ZoneConcurrencyTest {
 
     private ZoneService service;
     private EventId eventId;
-    @Embedded
     private Money price;
 
     @BeforeEach

@@ -9,7 +9,6 @@ public record OrderItemDTO(
     String zoneId,
     String seatId,
     int quantity,
-    @Embedded
     Money unitPrice
 ) {
 

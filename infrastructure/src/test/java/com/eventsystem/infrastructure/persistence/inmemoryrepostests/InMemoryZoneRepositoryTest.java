@@ -21,7 +21,6 @@ class InMemoryZoneRepositoryTest {
 
     private InMemoryZoneRepository repository;
     private EventId eventId;
-    @Embedded
     private Money price;
 
     @BeforeEach

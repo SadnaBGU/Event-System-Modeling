@@ -10,7 +10,6 @@ public class OrderItem {
     private String zoneId;
     private String seatId;
     private int quantity;
-    @Embedded
     private Money unitPrice;
 
     public OrderItem(String zoneId, String seatId, int quantity, Money unitPrice) {

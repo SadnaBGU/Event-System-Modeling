@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import jakarta.persistence.Embeddable;
 
-@Embeddable
 public record Money(BigDecimal amount, String currency) {
 
     public Money {

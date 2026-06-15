@@ -16,7 +16,6 @@ public record PurchaseRecordDTO(
     String buyerDisplayName,
     EventSnapshotDTO eventSnapshot,
     List<PurchasedItemDTO> items,
-    @Embedded
     Money totalPaid,
     List<DiscountSnapshotDTO> discountsApplied,
     Instant purchaseTimestamp,
