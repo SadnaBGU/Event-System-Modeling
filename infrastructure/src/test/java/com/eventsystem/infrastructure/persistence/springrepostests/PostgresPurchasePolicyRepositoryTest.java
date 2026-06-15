@@ -24,17 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EntityScan(basePackages = "com.eventsystem.domain")
 // ודא שזה אכן השם של מחלקת ה-Repository שלך בתשתית:
 @Import(PostgresPurchasePolicyRepository.class) 
-class PostgresPurchasePolicyRepositoryTest {
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:postgresql://localhost:5432/eventsystem_db");
-        registry.add("spring.datasource.username", () -> "myuser");
-        registry.add("spring.datasource.password", () -> "mypassword");
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "update"); 
-    }
+class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresPurchasePolicyRepository policyRepository;

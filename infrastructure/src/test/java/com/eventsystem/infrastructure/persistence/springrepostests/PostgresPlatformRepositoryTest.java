@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(PostgresPlatformRepository.class)
-class PostgresPlatformRepositoryTest {
+class PostgresPlatformRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresPlatformRepository platformRepository;

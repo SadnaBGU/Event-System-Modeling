@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @EntityScan(basePackages = "com.eventsystem.domain")
 @Import(PostgresLotteryRepository.class)
-class PostgresLotteryRepositoryTest {
+class PostgresLotteryRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresLotteryRepository lotteryRepository;

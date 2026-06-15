@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @EntityScan(basePackages = "com.eventsystem.domain")
 @Import(PostgresVirtualQueueRepository.class)
-class PostgresVirtualQueueRepositoryTest {
+class PostgresVirtualQueueRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresVirtualQueueRepository repository;
