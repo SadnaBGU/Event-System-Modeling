@@ -67,6 +67,11 @@ import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchase
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVenueRepository;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
+import com.eventsystem.infrastructure.persistence.mapper.ActiveOrderMapper;
+import com.eventsystem.infrastructure.persistence.mapper.MemberMapper;
+import com.eventsystem.infrastructure.persistence.mapper.PurchaseRecordMapper;
+import com.eventsystem.infrastructure.persistence.repositories.ActiveOrderRepositoryImpl;
+import com.eventsystem.infrastructure.persistence.repositories.MemberRepositoryImpl;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
@@ -79,6 +84,13 @@ import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVirtualQ
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
+import com.eventsystem.infrastructure.persistence.mapper.MemberMapper;
+import com.eventsystem.infrastructure.persistence.mapper.ActiveOrderMapper;
+import com.eventsystem.infrastructure.persistence.mapper.PurchaseRecordMapper;
+
+import com.eventsystem.infrastructure.persistence.repositories.MemberRepositoryImpl;
+import com.eventsystem.infrastructure.persistence.repositories.ActiveOrderRepositoryImpl;
+import com.eventsystem.infrastructure.persistence.repositories.PurchaseRecordRepositoryImpl;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -121,8 +133,9 @@ public class AppConfig {
     // 1. Adapters (Repositories & Security)
     // ==========================================
     @Bean
-    public IMemberRepository memberRepository() {
-        return new InMemoryMemberRepository();
+    public IMemberRepository memberRepository(
+            MemberRepositoryImpl repository) {
+        return repository;
     }
 
     @Bean
@@ -136,8 +149,9 @@ public class AppConfig {
     }
 
     @Bean
-    public IActiveOrderRepository activeOrderRepository() {
-        return new InMemoryActiveOrderRepository();
+    public IActiveOrderRepository activeOrderRepository(
+            ActiveOrderRepositoryImpl repository) {
+        return repository;
     }
 
     @Bean
@@ -198,6 +212,23 @@ public class AppConfig {
     @Bean
     public PolicyCommandAssembler policyCommandAssembler() {
         return new PolicyCommandAssembler();
+    }
+
+
+    // mappers
+    @Bean
+    public MemberMapper memberMapper() {
+        return new MemberMapper();
+    }
+
+    @Bean
+    public ActiveOrderMapper activeOrderMapper() {
+        return new ActiveOrderMapper();
+    }
+
+    @Bean
+    public PurchaseRecordMapper purchaseRecordMapper() {
+        return new PurchaseRecordMapper();
     }
 
     /**
