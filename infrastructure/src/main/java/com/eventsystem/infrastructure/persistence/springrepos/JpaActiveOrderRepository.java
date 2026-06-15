@@ -1,4 +1,4 @@
-package com.eventsystem.infrastructure.persistence.repositories;
+package com.eventsystem.infrastructure.persistence.springrepos;
 
 import java.time.Instant;
 import java.util.List;

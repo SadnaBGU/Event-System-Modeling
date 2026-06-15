@@ -117,6 +117,7 @@ public class CheckoutSaga {
         }
 
         // 3. Calculating the total price and applying discounts
+        
         Money finalAmount;
         DiscountSnapshot discount;
         try {

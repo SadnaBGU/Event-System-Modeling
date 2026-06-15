@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.persistence.entities;
 import java.time.Instant;
 import java.util.List;
 
+import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.domain.shared.Money;
 
@@ -25,7 +26,7 @@ public class ActiveOrderEntity {
         name = "active_order_items",
         joinColumns = @JoinColumn(name = "order_id")
     )
-    private List<OrderItemEmbeddable> items;
+    private List<OrderItem> items;
 
     private Instant reservationExpiry;
 
@@ -62,11 +63,11 @@ public class ActiveOrderEntity {
         this.eventId = eventId;
     }
 
-    public List<OrderItemEmbeddable> getItems() {
+    public List<OrderItem> getItems() {
         return items;
     }
 
-    public void setItems(List<OrderItemEmbeddable> items) {
+    public void setItems(List<OrderItem> items) {
         this.items = items;
     }
 

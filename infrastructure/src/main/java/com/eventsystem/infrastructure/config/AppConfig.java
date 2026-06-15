@@ -77,6 +77,9 @@ import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaActiveOrderRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaMemberRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaPurchaseRecordRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
@@ -106,7 +109,10 @@ import java.util.Objects;
 
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
-@EntityScan(basePackages = "com.eventsystem.domain")
+@EntityScan(basePackages = {
+    "com.eventsystem.domain",
+    "com.eventsystem.infrastructure.persistence.entities"
+})
 public class AppConfig {
 
     // --- Configuration constants ---
@@ -134,8 +140,10 @@ public class AppConfig {
     // ==========================================
     @Bean
     public IMemberRepository memberRepository(
-            MemberRepositoryImpl repository) {
-        return repository;
+            JpaMemberRepository jpaRepo,
+            MemberMapper mapper) {
+
+        return new MemberRepositoryImpl(jpaRepo, mapper);
     }
 
     @Bean
@@ -150,8 +158,10 @@ public class AppConfig {
 
     @Bean
     public IActiveOrderRepository activeOrderRepository(
-            ActiveOrderRepositoryImpl repository) {
-        return repository;
+            JpaActiveOrderRepository jpaRepo,
+            ActiveOrderMapper mapper) {
+
+        return new ActiveOrderRepositoryImpl(jpaRepo, mapper);
     }
 
     @Bean
@@ -170,8 +180,11 @@ public class AppConfig {
     }
 
     @Bean
-    public IPurchaseRecordRepository purchaseRecordRepository() {
-        return new InMemoryPurchaseRecordRepository();
+    public IPurchaseRecordRepository purchaseRecordRepository(
+            JpaPurchaseRecordRepository jpaRepo,
+            PurchaseRecordMapper mapper) {
+
+        return new PurchaseRecordRepositoryImpl(jpaRepo, mapper);
     }
 
     @Bean

@@ -59,8 +59,8 @@ public class ActiveOrderMapper {
         return order;
     }
 
-    private static OrderItemEmbeddable toEmbeddable(OrderItem item) {
-        return new OrderItemEmbeddable(
+    private static OrderItem toEmbeddable(OrderItem item) {
+        return new OrderItem(
                 item.getZoneId(),
                 item.getSeatId(),
                 item.getQuantity(),

@@ -11,8 +11,9 @@ import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.persistence.entities.MemberEntity;
 import com.eventsystem.infrastructure.persistence.mapper.MemberMapper;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaMemberRepository;
 
-@Repository
+
 public class MemberRepositoryImpl implements IMemberRepository {
 
     private final JpaMemberRepository jpaRepo;

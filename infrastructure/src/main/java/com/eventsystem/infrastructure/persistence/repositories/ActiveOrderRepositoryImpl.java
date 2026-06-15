@@ -12,8 +12,9 @@ import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.infrastructure.persistence.mapper.ActiveOrderMapper;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaActiveOrderRepository;
 
-@Repository
+
 public class ActiveOrderRepositoryImpl implements IActiveOrderRepository {
 
     private final JpaActiveOrderRepository jpaRepo;

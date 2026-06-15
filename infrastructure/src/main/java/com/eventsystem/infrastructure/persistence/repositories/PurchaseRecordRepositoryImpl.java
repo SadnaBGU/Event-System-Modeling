@@ -9,8 +9,9 @@ import org.springframework.stereotype.Repository;
 import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.infrastructure.persistence.mapper.PurchaseRecordMapper;
+import com.eventsystem.infrastructure.persistence.springrepos.JpaPurchaseRecordRepository;
 
-@Repository
+
 public class PurchaseRecordRepositoryImpl implements IPurchaseRecordRepository {
 
     private final JpaPurchaseRecordRepository jpaRepo;

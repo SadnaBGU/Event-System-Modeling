@@ -9,6 +9,8 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.PurchasedItem;
 import com.eventsystem.domain.shared.Money;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -38,9 +40,18 @@ public class PurchaseRecordEntity {
         name = "purchase_record_items",
         joinColumns = @JoinColumn(name = "record_id")
     )
+    @AttributeOverrides({
+        // Since Money is nested inside PurchasedItem, map its inner fields cleanly
+        @AttributeOverride(name = "priceAtPurchase.amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "priceAtPurchase.currency", column = @Column(name = "price_currency"))
+    })
     private List<PurchasedItem> items;
 
     @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
     private Money totalPaid;
 
     @ElementCollection

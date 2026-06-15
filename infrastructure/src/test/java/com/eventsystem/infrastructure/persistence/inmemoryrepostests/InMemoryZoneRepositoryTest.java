@@ -6,6 +6,9 @@ import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +24,11 @@ class InMemoryZoneRepositoryTest {
 
     private InMemoryZoneRepository repository;
     private EventId eventId;
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
     private Money price;
 
     @BeforeEach
