@@ -4,10 +4,13 @@ import java.math.BigDecimal;
 
 import com.eventsystem.domain.shared.Money;
 
+import jakarta.persistence.Embedded;
+
 public class OrderItem {
     private String zoneId;
     private String seatId;
     private int quantity;
+    @Embedded
     private Money unitPrice;
 
     public OrderItem(String zoneId, String seatId, int quantity, Money unitPrice) {

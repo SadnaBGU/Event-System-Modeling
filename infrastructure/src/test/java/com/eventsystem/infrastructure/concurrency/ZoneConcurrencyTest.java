@@ -6,6 +6,8 @@ import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 
+import jakarta.persistence.Embedded;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,7 @@ class ZoneConcurrencyTest {
 
     private ZoneService service;
     private EventId eventId;
+    @Embedded
     private Money price;
 
     @BeforeEach

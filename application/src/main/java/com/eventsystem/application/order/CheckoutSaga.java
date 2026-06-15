@@ -28,6 +28,8 @@ import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 
+import jakarta.persistence.Embedded;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;

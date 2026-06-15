@@ -7,6 +7,8 @@ import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.application.purchaserecorddto.EventSnapshotDTO;
 import com.eventsystem.domain.shared.Money;
 
+import jakarta.persistence.Embedded;
+
 
 public record PurchaseRecordDTO(
     String recordId,
@@ -14,6 +16,7 @@ public record PurchaseRecordDTO(
     String buyerDisplayName,
     EventSnapshotDTO eventSnapshot,
     List<PurchasedItemDTO> items,
+    @Embedded
     Money totalPaid,
     List<DiscountSnapshotDTO> discountsApplied,
     Instant purchaseTimestamp,

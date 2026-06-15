@@ -3,6 +3,9 @@ package com.eventsystem.domain.shared;
 import java.math.BigDecimal;
 import java.util.Objects;
 
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public record Money(BigDecimal amount, String currency) {
 
     public Money {

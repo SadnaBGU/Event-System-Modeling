@@ -6,6 +6,8 @@ import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
 
+import jakarta.persistence.Embedded;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +21,7 @@ class InMemoryZoneRepositoryTest {
 
     private InMemoryZoneRepository repository;
     private EventId eventId;
+    @Embedded
     private Money price;
 
     @BeforeEach
