@@ -56,7 +56,7 @@ public class AuthenticationInterceptorIntegrationTest {
         MemberId id = new MemberId("member-test-1");
         // ensure member exists with personal details (MemberDto serialization expects them)
         var hashed = new com.eventsystem.domain.member.HashedCredentials("h","s","bcrypt");
-        var details = new com.eventsystem.domain.member.PersonalDetails("Test","User","test@example.local", java.time.LocalDate.of(1990,1,1));
+        var details = new com.eventsystem.domain.member.PersonalDetails(java.time.LocalDate.of(1990,1,1), "test@example.local", "Test", "User");
         memberRepository.save(new Member(id, id.value(), hashed, details));
 
         String token = tokenService.issueToken(id, Duration.ofMinutes(10));

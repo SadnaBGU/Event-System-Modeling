@@ -51,7 +51,7 @@ public class NotificationsPendingConcurrencyTest {
     public void concurrent_markAsRead_requests_are_atomic() throws Exception {
         MemberId id = new MemberId("concurrent-member-1");
         HashedCredentials hashed = new HashedCredentials("h","s","bcrypt");
-        PersonalDetails details = new PersonalDetails("C","Tester","c@test.local", LocalDate.of(1990,1,1));
+        PersonalDetails details = new PersonalDetails(LocalDate.of(1990,1,1),"c@test.local", "C","Tester");
         Member m = new Member(id, id.value(), hashed, details);
 
         int notifications = 20;

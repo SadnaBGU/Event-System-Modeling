@@ -3,9 +3,13 @@ package com.eventsystem.domain.member;
 import java.util.Objects;
 import java.util.UUID;
 
+import jakarta.persistence.Embeddable;
+
 /**
  * Value Object — opaque identifier for a Member aggregate root.
  */
+
+@Embeddable
 public record MemberId(String value) {
 
     public MemberId {

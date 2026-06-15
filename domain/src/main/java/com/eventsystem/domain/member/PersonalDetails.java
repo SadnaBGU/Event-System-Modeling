@@ -12,10 +12,10 @@ import jakarta.persistence.Embeddable;
 
 @Embeddable
 public record PersonalDetails(
-        String firstName,
-        String lastName,
+        LocalDate dateOfBirth,
         String email,
-        LocalDate dateOfBirth) {
+        String firstName,
+        String lastName) {
 
     public PersonalDetails {
         Objects.requireNonNull(firstName, "firstName must not be null");

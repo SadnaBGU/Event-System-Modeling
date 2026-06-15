@@ -76,7 +76,7 @@ class MemberSuspensionTest {
         member.suspend(Instant.now(), Duration.ofDays(1), "Violation of terms");
         assertThatIllegalStateException()
                 .isThrownBy(() -> member.updateDetails(
-                        new PersonalDetails("New", "Name", "new@example.com", LocalDate.of(1990, 1, 1))));
+                        new PersonalDetails(LocalDate.of(1990, 1, 1), "new@example.com", "New", "Name")));
     }
 
     @Test

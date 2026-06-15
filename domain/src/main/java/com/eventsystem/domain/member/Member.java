@@ -8,15 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Table;
+
+import jakarta.persistence.*;
 
 /**
  * Aggregate Root — a registered platform user.
@@ -34,7 +27,10 @@ import jakarta.persistence.Table;
 @Table(name = "members")
 public class Member {
 
-    @Id
+    @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "id"))
+    })
     private MemberId memberId;
     
     private String username;
@@ -43,6 +39,12 @@ public class Member {
     private HashedCredentials hashedCredentials;
     
     @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "firstName", column = @Column(name = "first_name")),
+        @AttributeOverride(name = "lastName", column = @Column(name = "last_name")),
+        @AttributeOverride(name = "email", column = @Column(name = "email")),
+        @AttributeOverride(name = "dateOfBirth", column = @Column(name = "date_of_birth"))
+    })
     private PersonalDetails personalDetails;
 
     @Enumerated(EnumType.STRING)
@@ -51,11 +53,8 @@ public class Member {
     @Embedded
     private Suspension suspension;
 
-    @ElementCollection
-    @CollectionTable(
-        name = "member_notifications",
-        joinColumns = @JoinColumn(name = "member_id")
-    )
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "member_id")
     private List<Notification> notificationInbox;
 
 
