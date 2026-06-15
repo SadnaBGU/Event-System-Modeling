@@ -22,7 +22,7 @@ public class ActiveOrder {
     private OrderStatus status;
     private long version;
 
-    ActiveOrder(String orderId, BuyerReference buyerRef, String eventId, Instant reservationExpiry) {
+    public ActiveOrder(String orderId, BuyerReference buyerRef, String eventId, Instant reservationExpiry) {
         this.orderId = orderId;
         this.buyerRef = buyerRef;
         this.eventId = eventId;
