@@ -1,7 +1,11 @@
 package com.eventsystem.domain.purchaserecord;
 
-import java.math.BigDecimal;
-
 import com.eventsystem.domain.shared.Money;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 
-public record DiscountSnapshot(String discountName, Money discountAmount) {}
+@Embeddable
+public record DiscountSnapshot(
+    String discountName,
+    Money discountAmount
+) {}

@@ -1,5 +1,13 @@
 package com.eventsystem.domain.purchaserecord;
 
 import java.time.LocalDate;
+import jakarta.persistence.Embeddable;
 
-public record EventSnapshot(String eventId, String eventName, String companyName, LocalDate eventDate, String location) {}
+@Embeddable
+public record EventSnapshot(
+    String eventId,
+    String eventName,
+    String companyName,
+    LocalDate eventDate,
+    String location
+) {}
