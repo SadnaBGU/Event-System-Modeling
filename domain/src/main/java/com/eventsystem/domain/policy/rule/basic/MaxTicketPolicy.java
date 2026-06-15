@@ -4,12 +4,13 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 public final class MaxTicketPolicy implements IBasicPolicy {
-
+    @JsonProperty("maxTickets")
     private final int maxTickets;
-
-    public MaxTicketPolicy(int maxAllowed) {
+    @JsonCreator
+    public MaxTicketPolicy(@JsonProperty("maxTickets")int maxAllowed) {
         if (maxAllowed < 1) {
             throw new PolicyException("Max allowed tickets must be at least 1");
         }

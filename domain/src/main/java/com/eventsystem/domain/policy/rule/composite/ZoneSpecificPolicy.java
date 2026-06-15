@@ -6,6 +6,7 @@ import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.zone.ZoneId;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Set;
@@ -13,12 +14,16 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class ZoneSpecificPolicy implements ICompositePolicy {
-
+    @JsonProperty("policy")
     private final IPolicy policy;
+    @JsonProperty("affectedZones")
     private final Set<ZoneId> affectedZones;
+    @JsonProperty("noAffectedTicketsPass")
     private final boolean noAffectedTicketsPass;
 
-    public ZoneSpecificPolicy(Set<ZoneId> affectedZones, IPolicy policy, boolean passWhenNoAffectedTickets) {
+    public ZoneSpecificPolicy(@JsonProperty("affectedZones") Set<ZoneId> affectedZones,
+            @JsonProperty("policy") IPolicy policy,
+            @JsonProperty("noAffectedTicketsPass") boolean passWhenNoAffectedTickets) {
         Objects.requireNonNull(affectedZones, "affectedZones must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 

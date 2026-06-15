@@ -4,9 +4,11 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class MinTicketPolicy implements IBasicPolicy {
-
+    @JsonProperty("minTickets")
     private final int minTickets;
 
     @Override
@@ -14,7 +16,8 @@ public final class MinTicketPolicy implements IBasicPolicy {
         return PolicyType.MIN_TICKETS;
     }
 
-    public MinTicketPolicy(int minAllowed) {
+    @JsonCreator
+    public MinTicketPolicy(@JsonProperty("minTickets") int minAllowed) {
         if (minAllowed < 1) {
             throw new PolicyException("Minimum allowed tickets must be at least 1");
         }

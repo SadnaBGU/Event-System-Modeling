@@ -47,6 +47,7 @@ public class PurchasePolicy{
     @Column(name = "policy_tree", columnDefinition = "jsonb")
     private IPolicy policy;
 
+    
     @Version
     private Long version;
 

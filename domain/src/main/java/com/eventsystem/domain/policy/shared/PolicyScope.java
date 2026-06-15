@@ -1,10 +1,12 @@
 package com.eventsystem.domain.policy.shared;
 
 import com.eventsystem.domain.event.EventId;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Objects;
 import java.util.Set;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
 
     public PolicyScope {
@@ -22,7 +24,7 @@ public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
 
         eventIds = Set.copyOf(eventIds);
     }
-
+    @JsonIgnore
     public Set<EventId> getEventsInScope() {
         return Set.copyOf(eventIds);
     }
@@ -52,11 +54,11 @@ public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
     public boolean isCompanyWide() {
         return companyWide;
     }
-
+    @JsonIgnore
     public boolean isRelatedToEvents() {
         return !eventIds.isEmpty();
     }
-
+    @JsonIgnore
     public boolean isScopedToEventsOrCompany() {
         return  companyWide || !eventIds.isEmpty();
     }

@@ -6,9 +6,11 @@ import java.util.Objects;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class UntilDatePolicy implements IBasicPolicy {
-
+    @JsonProperty("deadlineDate")
     private final LocalDate deadlineDate;
 
     @Override
@@ -16,7 +18,8 @@ public final class UntilDatePolicy implements IBasicPolicy {
         return PolicyType.UNTIL_DATE;
     }
 
-    public UntilDatePolicy(LocalDate deadlineDate) {
+    @JsonCreator
+    public UntilDatePolicy(@JsonProperty("deadlineDate") LocalDate deadlineDate) {
         this.deadlineDate = Objects.requireNonNull(deadlineDate, "Chosen date cannot be null");
     }
 

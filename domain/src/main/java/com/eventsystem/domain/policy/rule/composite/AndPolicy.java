@@ -8,9 +8,11 @@ import com.eventsystem.domain.policy.rule.IPolicy;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class AndPolicy implements ICompositePolicy {
-
+    @JsonProperty("children")
     private final List<IPolicy> policies;
 
     @Override
@@ -18,7 +20,8 @@ public final class AndPolicy implements ICompositePolicy {
         return PolicyType.AND;
     }
 
-    public AndPolicy(List<IPolicy> policies) {
+    @JsonCreator
+    public AndPolicy(@JsonProperty("children") List<IPolicy> policies) {
         if (policies == null || policies.isEmpty()) {
             throw new PolicyException("Policies cannot be null or empty");
         }

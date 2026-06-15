@@ -24,6 +24,11 @@ public final class ProductionCompany implements Persistable<CompanyId> {
     private MemberId founderId;
 
     @Embedded
+    @AttributeOverrides({
+    @AttributeOverride(name = "name", column = @Column(name = "name", insertable = false, updatable = false)),
+    @AttributeOverride(name = "description", column = @Column(name = "description")),
+    @AttributeOverride(name = "rating", column = @Column(name = "rating"))
+})
     private CompanyDetails companyDetails;
 
     @Enumerated(EnumType.STRING)

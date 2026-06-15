@@ -2,7 +2,9 @@ package com.eventsystem.domain.company;
 
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -13,10 +15,16 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class AppointmentTree {
+    @JsonProperty("root")
     private final OwnerNode root;
+
 
     public AppointmentTree(MemberId founderId) {
         this.root = new OwnerNode(Objects.requireNonNull(founderId, "founderId must not be null"), null);
+    }
+    @JsonCreator
+    private AppointmentTree(@JsonProperty("root") OwnerNode root) {
+        this.root = root;
     }
 
     public OwnerNode root() {
@@ -132,7 +140,7 @@ public final class AppointmentTree {
         collectIds(ownerNode, result);
         return List.copyOf(result);
     }
-
+    @JsonIgnore
     public Set<MemberId> getAllMemberIds() {
         Set<MemberId> ids = new LinkedHashSet<>();
         collectIds(root, new ArrayList<>()).forEach(ids::add);
