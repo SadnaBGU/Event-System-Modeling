@@ -71,10 +71,18 @@ import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPlatformRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataProductionCompanyRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchasePolicyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresPlatformRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresProductionCompanyRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresPurchasePolicyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
@@ -126,8 +134,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IPlatformRepository platformRepository() {
-        return new InMemoryPlatformRepository();
+    public IPlatformRepository platformRepository(SpringDataPlatformRepository jpaRepo) {
+        return new PostgresPlatformRepository(jpaRepo);
     }
 
     @Bean
@@ -151,8 +159,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IProductionCompanyRepository productionCompanyRepository() {
-        return new InMemoryProductionCompanyRepository();
+    public IProductionCompanyRepository productionCompanyRepository(SpringDataProductionCompanyRepository jpaRepo) {
+        return new PostgresProductionCompanyRepository(jpaRepo);
     }
 
     @Bean
@@ -171,13 +179,13 @@ public class AppConfig {
     }
 
     @Bean
-    public IPurchasePolicyRepository purchasePolicyRepository() {
-        return new InMemoryPurchasePolicyRepository();
+    public IDiscountPolicyRepository discountPolicyRepository(SpringDataDiscountPolicyRepository springDataRepo) {
+        return new PostgresDiscountPolicyRepository(springDataRepo);
     }
 
     @Bean
-    public IDiscountPolicyRepository discountPolicyRepository() {
-        return new InMemoryDiscountPolicyRepository();
+    public IPurchasePolicyRepository purchasePolicyRepository(SpringDataPurchasePolicyRepository springDataRepo) {
+        return new PostgresPurchasePolicyRepository(springDataRepo);
     }
 
     @Bean

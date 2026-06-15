@@ -35,6 +35,9 @@ public final class ProductionCompany implements Persistable<CompanyId> {
     @Column(name = "appointment_tree", columnDefinition = "jsonb")
     private AppointmentTree appointmentTree;
 
+    @Column(name = "name", unique = true, nullable = false)
+    private String name;
+
     @Transient
     private boolean isNew = true;
 
@@ -65,12 +68,22 @@ public final class ProductionCompany implements Persistable<CompanyId> {
         this.founderId = Objects.requireNonNull(founderId, "founderId must not be null");
         this.companyDetails = Objects.requireNonNull(companyDetails, "companyDetails must not be null");
         this.status = CompanyStatus.ACTIVE;
+        this.name = companyDetails.name();
         this.appointmentTree = new AppointmentTree(founderId);
     }
 
     public static ProductionCompany create(MemberId founderId, String name, String description, double rating) {
         return new ProductionCompany(CompanyId.random(), founderId, new CompanyDetails(name, description, rating));
     }
+
+    public synchronized void updateName(String newName) {
+    requireActive();
+    if (newName == null || newName.isBlank()) {
+        throw new IllegalArgumentException("name must not be blank");
+    }
+    this.companyDetails = new CompanyDetails(newName, companyDetails.description(), companyDetails.rating());
+    this.name = newName; // חובה כדי לסנכרן עם ה-DB!
+}
 
     public synchronized void appointOwner(MemberId appointerId, MemberId targetId) {
         requireActive();
@@ -167,14 +180,6 @@ public final class ProductionCompany implements Persistable<CompanyId> {
         appointmentTree.acceptAppointment(targetId);
     }
 
-
-    public synchronized void updateName(String newName) {
-        requireActive();
-        if (newName == null || newName.isBlank()) {
-            throw new IllegalArgumentException("name must not be blank");
-        }
-        this.companyDetails = new CompanyDetails(newName, companyDetails.description(), companyDetails.rating());
-    }
 
     public synchronized void updateDescription(String newDescription) {
         requireActive();
