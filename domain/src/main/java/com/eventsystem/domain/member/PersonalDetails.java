@@ -28,4 +28,24 @@ public record PersonalDetails(
             throw new IllegalArgumentException("email must not be blank");
         }
     }
+
+    // ---------------- GETTERS ----------------
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+
 }
