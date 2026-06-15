@@ -197,8 +197,8 @@ public class CheckoutSaga {
         order.checkout();
         orderRepository.save(order); 
         
-        notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.recordId());
-        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.recordId());
+        notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.getRecordId());
+        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.getRecordId());
     }
 
     private void releaseReservedSeats(List<OrderItem> items) {

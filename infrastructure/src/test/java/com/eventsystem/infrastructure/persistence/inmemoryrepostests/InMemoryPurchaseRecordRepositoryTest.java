@@ -29,10 +29,10 @@ class InMemoryPurchaseRecordRepositoryTest {
         String sharedRecordId = "REC-111";
         
         PurchaseRecord originalRecord = mock(PurchaseRecord.class);
-        when(originalRecord.recordId()).thenReturn(sharedRecordId);
+        when(originalRecord.getRecordId()).thenReturn(sharedRecordId);
         
         PurchaseRecord fakeDuplicateRecord = mock(PurchaseRecord.class);
-        when(fakeDuplicateRecord.recordId()).thenReturn(sharedRecordId);
+        when(fakeDuplicateRecord.getRecordId()).thenReturn(sharedRecordId);
 
         // Act
         repository.append(originalRecord);
@@ -48,12 +48,12 @@ class InMemoryPurchaseRecordRepositoryTest {
     void findByBuyer_ReturnsOnlyBuyersRecords() {
         // Arrange
         PurchaseRecord myRecord = mock(PurchaseRecord.class);
-        when(myRecord.recordId()).thenReturn("REC-1");
-        when(myRecord.buyerId()).thenReturn("DAVID");
+        when(myRecord.getRecordId()).thenReturn("REC-1");
+        when(myRecord.getBuyerId()).thenReturn("DAVID");
 
         PurchaseRecord otherRecord = mock(PurchaseRecord.class);
-        when(otherRecord.recordId()).thenReturn("REC-2");
-        when(otherRecord.buyerId()).thenReturn("MOSHE");
+        when(otherRecord.getRecordId()).thenReturn("REC-2");
+        when(otherRecord.getBuyerId()).thenReturn("MOSHE");
 
         repository.append(myRecord);
         repository.append(otherRecord);
@@ -63,7 +63,7 @@ class InMemoryPurchaseRecordRepositoryTest {
 
         // Assert
         assertEquals(1, results.size());
-        assertEquals("REC-1", results.get(0).recordId());
+        assertEquals("REC-1", results.get(0).getRecordId());
     }
 
     @Test
@@ -73,12 +73,12 @@ class InMemoryPurchaseRecordRepositoryTest {
         EventSnapshot eventB = new EventSnapshot("EVENT-B", "Jazz Fest", "LiveNation", null, "Club");
 
         PurchaseRecord recordEventA = mock(PurchaseRecord.class);
-        when(recordEventA.recordId()).thenReturn("REC-A");
-        when(recordEventA.eventSnapshot()).thenReturn(eventA);
+        when(recordEventA.getRecordId()).thenReturn("REC-A");
+        when(recordEventA.getEventSnapshot()).thenReturn(eventA);
 
         PurchaseRecord recordEventB = mock(PurchaseRecord.class);
-        when(recordEventB.recordId()).thenReturn("REC-B");
-        when(recordEventB.eventSnapshot()).thenReturn(eventB);
+        when(recordEventB.getRecordId()).thenReturn("REC-B");
+        when(recordEventB.getEventSnapshot()).thenReturn(eventB);
 
         repository.append(recordEventA);
         repository.append(recordEventB);
@@ -88,6 +88,6 @@ class InMemoryPurchaseRecordRepositoryTest {
 
         // Assert
         assertEquals(1, results.size());
-        assertEquals("REC-A", results.get(0).recordId());
+        assertEquals("REC-A", results.get(0).getRecordId());
     }
 }

@@ -49,18 +49,18 @@ public class ReportService {
         }
 
         int totalTickets = eventRecords.stream()
-                .flatMap(record -> record.items().stream())
+                .flatMap(record -> record.getItems().stream())
                 .mapToInt(PurchasedItem::quantity)
                 .sum();
         
         String currency = eventRecords.stream()
-                .flatMap(record -> record.items().stream())
+                .flatMap(record -> record.getItems().stream())
                 .map(item -> item.priceAtPurchase().currency())
                 .findFirst()
                 .orElse("USD"); // Default to USD if no records found
 
         Money totalRevenue = eventRecords.stream()
-                .map(PurchaseRecord::totalPaid)
+                .map(PurchaseRecord::getTotalPaid)
                 .reduce(Money.of(BigDecimal.ZERO, currency), Money::add);
 
         SalesSummaryDTO summary = new SalesSummaryDTO(eventId, totalTickets, totalRevenue);
@@ -81,10 +81,10 @@ public class ReportService {
         for (Event event : events) {
             List<PurchaseRecord> eventRecords = purchaseRecordRepository.findByEvent(event.id().value());
             BigDecimal eventRevenue = eventRecords.stream()
-                    .map(record -> record.totalPaid().amount())
+                    .map(record -> record.getTotalPaid().amount())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             int ticketsSold = eventRecords.stream()
-                    .flatMap(record -> record.items().stream())
+                    .flatMap(record -> record.getItems().stream())
                     .mapToInt(PurchasedItem::quantity)
                     .sum();
 

@@ -11,14 +11,36 @@ import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
 import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
 import com.eventsystem.domain.shared.Money;
 
+import java.time.Instant;
+import java.util.List;
+
+import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.domain.shared.Money;
+
+import jakarta.persistence.*;
 
 
+@Entity
+@Table(name = "active_orders")
 public class ActiveOrder {
-    private final String orderId;
-    private final BuyerReference buyerRef;
-    private final String eventId;
-    private final List<OrderItem> items;
-    private final Instant reservationExpiry;
+    
+    @Id
+    private String orderId;
+
+    @Embedded
+    private BuyerReference buyerRef;
+    private String eventId;
+
+    @ElementCollection
+    @CollectionTable(
+        name = "active_order_items",
+        joinColumns = @JoinColumn(name = "order_id")
+    )
+    private List<OrderItem> items;
+    private Instant reservationExpiry;
+    
+    @Enumerated(EnumType.STRING)
     private OrderStatus status;
     private long version;
 

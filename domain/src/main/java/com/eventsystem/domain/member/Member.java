@@ -8,6 +8,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+
 /**
  * Aggregate Root — a registered platform user.
  * Boundary: {@link Member} root + its {@link Notification} inbox.
@@ -19,16 +29,38 @@ import java.util.Optional;
  * - A {@link MemberStatus#SUSPENDED} member cannot modify profile or credentials, but can receive
  *   notifications and perform read-only operations.
  */
+
+@Entity
+@Table(name = "members")
 public class Member {
 
-    private final MemberId memberId;
-    private final String username;
+    @Id
+    private MemberId memberId;
+    
+    private String username;
+    
+    @Embedded
     private HashedCredentials hashedCredentials;
+    
+    @Embedded
     private PersonalDetails personalDetails;
-    private MemberStatus status;
-    private Suspension suspension;
-    private final List<Notification> notificationInbox;
 
+    @Enumerated(EnumType.STRING)
+    private MemberStatus status;
+
+    @Embedded
+    private Suspension suspension;
+
+    @ElementCollection
+    @CollectionTable(
+        name = "member_notifications",
+        joinColumns = @JoinColumn(name = "member_id")
+    )
+    private List<Notification> notificationInbox;
+
+
+    public Member() { }
+    
     public Member(MemberId memberId,
                   String username,
                   HashedCredentials hashedCredentials,

@@ -2,10 +2,13 @@ package com.eventsystem.domain.member;
 
 import java.util.Objects;
 
+import jakarta.persistence.Embeddable;
+
 /**
  * Value Object — opaque hashed-password material for a member.
  * The domain layer never sees the plaintext; hashing is performed by the infrastructure layer.
  */
+@Embeddable
 public record HashedCredentials(String hash, String salt, String algorithm) {
 
     public HashedCredentials {

@@ -34,16 +34,16 @@ public record PurchaseRecordDTO(
             PurchaseRecord purchaseRecord) {
         
         return new PurchaseRecordDTO(
-            purchaseRecord.recordId(),
-            purchaseRecord.buyerId(),
-            purchaseRecord.buyerSnapshot().displayName(),
-            EventSnapshotDTO.fromDomain(purchaseRecord.eventSnapshot()),
-            purchaseRecord.items().stream().map(PurchasedItemDTO::fromDomain).toList(),
-            purchaseRecord.totalPaid(),
-            purchaseRecord.discountsApplied().stream().map(DiscountSnapshotDTO::fromDomain).toList(),
+            purchaseRecord.getRecordId(),
+            purchaseRecord.getBuyerId(),
+            purchaseRecord.getBuyerSnapshot().displayName(),
+            EventSnapshotDTO.fromDomain(purchaseRecord.getEventSnapshot()),
+            purchaseRecord.getItems().stream().map(PurchasedItemDTO::fromDomain).toList(),
+            purchaseRecord.getTotalPaid(),
+            purchaseRecord.getDiscountsApplied().stream().map(DiscountSnapshotDTO::fromDomain).toList(),
             Instant.now(),
-            purchaseRecord.paymentConfirmationId(),
-            purchaseRecord.ticketIssuanceConfirmationId()
+            purchaseRecord.getPaymentConfirmationId(),
+            purchaseRecord.getTicketIssuanceConfirmationId()
         );
     }
 }

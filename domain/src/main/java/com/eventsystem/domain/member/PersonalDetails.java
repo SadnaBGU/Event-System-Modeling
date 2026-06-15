@@ -3,10 +3,14 @@ package com.eventsystem.domain.member;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import jakarta.persistence.Embeddable;
+
 /**
  * Value Object — a member's personal/contact details.
  * Immutable; replaced wholesale via {@link Member#updateDetails(PersonalDetails)}.
  */
+
+@Embeddable
 public record PersonalDetails(
         String firstName,
         String lastName,

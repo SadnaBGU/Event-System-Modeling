@@ -21,11 +21,11 @@ public class InMemoryPurchaseRecordRepository implements IPurchaseRecordReposito
 
     @Override
     public void append(PurchaseRecord record) {
-        PurchaseRecord existing = store.putIfAbsent(record.recordId(), record);
+        PurchaseRecord existing = store.putIfAbsent(record.getRecordId(), record);
         if (existing != null) {
-            logger.warn("Data anomaly: Attempted to append duplicate PurchaseRecord with ID: {}", record.recordId());
+            logger.warn("Data anomaly: Attempted to append duplicate PurchaseRecord with ID: {}", record.getRecordId());
         } else {
-            logger.info("Appended new PurchaseRecord to memory store: {}", record.recordId());
+            logger.info("Appended new PurchaseRecord to memory store: {}", record.getRecordId());
         }
     }
 
@@ -37,14 +37,14 @@ public class InMemoryPurchaseRecordRepository implements IPurchaseRecordReposito
     @Override
     public List<PurchaseRecord> findByBuyer(String buyerId) {
         return store.values().stream()
-                .filter(record -> record.buyerId().equals(buyerId))
+                .filter(record -> record.getBuyerId().equals(buyerId))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<PurchaseRecord> findByEvent(String eventId) {
         return store.values().stream()
-                .filter(record -> record.eventSnapshot().eventId().equals(eventId))
+                .filter(record -> record.getEventSnapshot().eventId().equals(eventId))
                 .collect(Collectors.toList());
     }
 

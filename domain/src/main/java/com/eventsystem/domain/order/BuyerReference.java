@@ -1,3 +1,8 @@
 package com.eventsystem.domain.order;
 
-public record BuyerReference(BuyerType type, String sessionId, String memberId) {}
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+
+@Embeddable
+public record BuyerReference(@Enumerated(EnumType.STRING) BuyerType type, String sessionId, String memberId) {}

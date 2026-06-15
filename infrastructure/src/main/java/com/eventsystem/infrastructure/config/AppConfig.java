@@ -67,33 +67,25 @@ import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchase
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVenueRepository;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
-import com.eventsystem.infrastructure.persistence.mapper.ActiveOrderMapper;
-import com.eventsystem.infrastructure.persistence.mapper.MemberMapper;
-import com.eventsystem.infrastructure.persistence.mapper.PurchaseRecordMapper;
-import com.eventsystem.infrastructure.persistence.repositories.ActiveOrderRepositoryImpl;
-import com.eventsystem.infrastructure.persistence.repositories.MemberRepositoryImpl;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataActiveOrderRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.JpaActiveOrderRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.JpaMemberRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.JpaPurchaseRecordRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresMemberRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresPurchaseRecordRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresActiveOrderRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataMemberRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchaseRecordRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQueueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
-import com.eventsystem.infrastructure.persistence.mapper.MemberMapper;
-import com.eventsystem.infrastructure.persistence.mapper.ActiveOrderMapper;
-import com.eventsystem.infrastructure.persistence.mapper.PurchaseRecordMapper;
 
-import com.eventsystem.infrastructure.persistence.repositories.MemberRepositoryImpl;
-import com.eventsystem.infrastructure.persistence.repositories.ActiveOrderRepositoryImpl;
-import com.eventsystem.infrastructure.persistence.repositories.PurchaseRecordRepositoryImpl;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -138,13 +130,6 @@ public class AppConfig {
     // ==========================================
     // 1. Adapters (Repositories & Security)
     // ==========================================
-    @Bean
-    public IMemberRepository memberRepository(
-            JpaMemberRepository jpaRepo,
-            MemberMapper mapper) {
-
-        return new MemberRepositoryImpl(jpaRepo, mapper);
-    }
 
     @Bean
     public IPlatformRepository platformRepository() {
@@ -157,11 +142,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IActiveOrderRepository activeOrderRepository(
-            JpaActiveOrderRepository jpaRepo,
-            ActiveOrderMapper mapper) {
-
-        return new ActiveOrderRepositoryImpl(jpaRepo, mapper);
+    public IActiveOrderRepository activeOrderRepository(SpringDataActiveOrderRepository springDataActiveOrderRepo) {
+        return new PostgresActiveOrderRepository(springDataActiveOrderRepo);
     }
 
     @Bean
@@ -180,16 +162,18 @@ public class AppConfig {
     }
 
     @Bean
-    public IPurchaseRecordRepository purchaseRecordRepository(
-            JpaPurchaseRecordRepository jpaRepo,
-            PurchaseRecordMapper mapper) {
-
-        return new PurchaseRecordRepositoryImpl(jpaRepo, mapper);
+    public IPurchaseRecordRepository purchaseRecordRepository(SpringDataPurchaseRecordRepository springDataPurchaseRecordRepo) {
+        return new PostgresPurchaseRecordRepository(springDataPurchaseRecordRepo);
     }
 
     @Bean
     public IVenueRepository venueRepository(SpringDataVenueRepository springDataVenueRepo) {
         return new PostgresVenueRepository(springDataVenueRepo);
+    }
+
+    @Bean
+    public IMemberRepository memberRepository(SpringDataMemberRepository springDataMemberRepo) {
+        return new PostgresMemberRepository(springDataMemberRepo);
     }
 
     @Bean
@@ -228,21 +212,6 @@ public class AppConfig {
     }
 
 
-    // mappers
-    @Bean
-    public MemberMapper memberMapper() {
-        return new MemberMapper();
-    }
-
-    @Bean
-    public ActiveOrderMapper activeOrderMapper() {
-        return new ActiveOrderMapper();
-    }
-
-    @Bean
-    public PurchaseRecordMapper purchaseRecordMapper() {
-        return new PurchaseRecordMapper();
-    }
 
     /**
      * Adapter from the company aggregate/repository to the permission port used by

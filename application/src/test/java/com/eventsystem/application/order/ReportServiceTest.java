@@ -57,8 +57,8 @@ class ReportServiceTest {
         when(item1.priceAtPurchase()).thenReturn(Money.of(new BigDecimal("50.25"), "USD"));
         
         PurchaseRecord record1 = mock(PurchaseRecord.class);
-        when(record1.items()).thenReturn(List.of(item1));
-        when(record1.totalPaid()).thenReturn(Money.of(new BigDecimal("100.50"), "USD"));
+        when(record1.getItems()).thenReturn(List.of(item1));
+        when(record1.getTotalPaid()).thenReturn(Money.of(new BigDecimal("100.50"), "USD"));
 
         PurchasedItem item2a = mock(PurchasedItem.class);
         when(item2a.quantity()).thenReturn(3);
@@ -66,8 +66,8 @@ class ReportServiceTest {
         when(item2b.quantity()).thenReturn(1);
         
         PurchaseRecord record2 = mock(PurchaseRecord.class);
-        when(record2.items()).thenReturn(List.of(item2a, item2b));
-        when(record2.totalPaid()).thenReturn(Money.of(new BigDecimal("200.25"), "USD"));
+        when(record2.getItems()).thenReturn(List.of(item2a, item2b));
+        when(record2.getTotalPaid()).thenReturn(Money.of(new BigDecimal("200.25"), "USD"));
 
         when(purchaseRecordRepository.findByEvent(EVENT_ID)).thenReturn(List.of(record1, record2));
 
@@ -115,14 +115,14 @@ class ReportServiceTest {
         PurchasedItem firstItem = mock(PurchasedItem.class);
         when(firstItem.quantity()).thenReturn(2);
         PurchaseRecord firstRecord = mock(PurchaseRecord.class);
-        when(firstRecord.items()).thenReturn(List.of(firstItem));
-        when(firstRecord.totalPaid()).thenReturn(Money.of(new BigDecimal("120.00"), "USD"));
+        when(firstRecord.getItems()).thenReturn(List.of(firstItem));
+        when(firstRecord.getTotalPaid()).thenReturn(Money.of(new BigDecimal("120.00"), "USD"));
 
         PurchasedItem secondItem = mock(PurchasedItem.class);
         when(secondItem.quantity()).thenReturn(3);
         PurchaseRecord secondRecord = mock(PurchaseRecord.class);
-        when(secondRecord.items()).thenReturn(List.of(secondItem));
-        when(secondRecord.totalPaid()).thenReturn(Money.of(new BigDecimal("180.00"), "USD"));
+        when(secondRecord.getItems()).thenReturn(List.of(secondItem));
+        when(secondRecord.getTotalPaid()).thenReturn(Money.of(new BigDecimal("180.00"), "USD"));
 
         when(purchaseRecordRepository.findByEvent("EVENT-1")).thenReturn(List.of(firstRecord));
         when(purchaseRecordRepository.findByEvent("EVENT-2")).thenReturn(List.of(secondRecord));
