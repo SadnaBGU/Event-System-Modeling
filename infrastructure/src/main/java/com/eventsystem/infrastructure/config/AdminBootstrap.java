@@ -48,8 +48,8 @@ public class AdminBootstrap {
         // Reuse existing admin member if username already present (e.g. after a reset that kept members)
         Member admin = memberRepo.findByUsername(a.username()).orElseGet(() -> {
             HashedCredentials creds = passwordHasher.hash(a.password());
-            PersonalDetails details = new PersonalDetails(
-                    a.firstName(), a.lastName(), a.email(), a.dateOfBirth());
+            PersonalDetails details = new PersonalDetails(a.dateOfBirth(), a.email(), 
+                    a.firstName(), a.lastName());
             Member m = new Member(MemberId.generate(), a.username(), creds, details);
             memberRepo.save(m);
             log.info("Bootstrap: created initial admin member username={} memberId={}",

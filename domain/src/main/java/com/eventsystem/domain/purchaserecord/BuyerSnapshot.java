@@ -1,3 +1,8 @@
 package com.eventsystem.domain.purchaserecord;
 
-public record BuyerSnapshot(String displayName) {}
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public record BuyerSnapshot(
+    String displayName
+) {}

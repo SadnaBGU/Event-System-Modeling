@@ -41,22 +41,22 @@ class PurchaseHistoryServiceTest {
         EventSnapshot dummyEventSnapshot = mock(EventSnapshot.class);
         lenient().when(dummyEventSnapshot.eventId()).thenReturn("EVENT-999");
 
-        lenient().when(record.buyerSnapshot()).thenReturn(dummyBuyerSnapshot);
-        lenient().when(record.eventSnapshot()).thenReturn(dummyEventSnapshot);
+        lenient().when(record.getBuyerSnapshot()).thenReturn(dummyBuyerSnapshot);
+        lenient().when(record.getEventSnapshot()).thenReturn(dummyEventSnapshot);
     }
 
     @Test
     void getHistoryForBuyer_ReturnsSortedRecordsNewestFirst() {
         // Arrange
         PurchaseRecord oldRecord = mock(PurchaseRecord.class);
-        lenient().when(oldRecord.recordId()).thenReturn("REC-OLD");
+        lenient().when(oldRecord.getRecordId()).thenReturn("REC-OLD");
         setupSnapshotsForRecord(oldRecord);
-        when(oldRecord.purchaseTimestamp()).thenReturn(Instant.now().minus(5, ChronoUnit.DAYS));
+        when(oldRecord.getPurchaseTimestamp()).thenReturn(Instant.now().minus(5, ChronoUnit.DAYS));
         
         PurchaseRecord newRecord = mock(PurchaseRecord.class);
-        lenient().when(newRecord.recordId()).thenReturn("REC-NEW");
+        lenient().when(newRecord.getRecordId()).thenReturn("REC-NEW");
         setupSnapshotsForRecord(newRecord);
-        when(newRecord.purchaseTimestamp()).thenReturn(Instant.now());
+        when(newRecord.getPurchaseTimestamp()).thenReturn(Instant.now());
 
         when(purchaseRecordRepository.findByBuyer(BUYER_ID)).thenReturn(List.of(oldRecord, newRecord));
 
@@ -75,7 +75,7 @@ class PurchaseHistoryServiceTest {
         // Arrange
         String recordId = "REC-999";
         PurchaseRecord mockRecord = mock(PurchaseRecord.class);
-        lenient().when(mockRecord.recordId()).thenReturn(recordId);
+        lenient().when(mockRecord.getRecordId()).thenReturn(recordId);
         setupSnapshotsForRecord(mockRecord);
         
         when(purchaseRecordRepository.findById(recordId)).thenReturn(Optional.of(mockRecord));

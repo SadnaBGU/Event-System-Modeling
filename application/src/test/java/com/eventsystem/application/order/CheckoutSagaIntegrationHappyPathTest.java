@@ -88,10 +88,10 @@ public class CheckoutSagaIntegrationHappyPathTest {
         ArgumentCaptor<PurchaseRecord> captor = ArgumentCaptor.forClass(PurchaseRecord.class);
         verify(purchaseRepo).append(captor.capture());
         PurchaseRecord rec = captor.getValue();
-        assertNotNull(rec.recordId());
+        assertNotNull(rec.getRecordId());
 
         verify(orderRepo).save(order);
-        verify(notificationPort).sendPurchaseSuccess(order.getBuyerRef(), rec.recordId());
+        verify(notificationPort).sendPurchaseSuccess(order.getBuyerRef(), rec.getRecordId());
         assertEquals(OrderStatus.CHECKED_OUT, order.getStatus());
     }
 }

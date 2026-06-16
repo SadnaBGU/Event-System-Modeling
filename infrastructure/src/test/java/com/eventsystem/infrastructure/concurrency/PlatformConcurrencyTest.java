@@ -88,8 +88,8 @@ class PlatformConcurrencyTest {
                     candidates[i],
                     "u" + i,
                     new com.eventsystem.domain.member.HashedCredentials("h", "s", "BCrypt"),
-                    new com.eventsystem.domain.member.PersonalDetails(
-                            "F", "L", "e" + i + "@x", java.time.LocalDate.of(1990, 1, 1))));
+                    new com.eventsystem.domain.member.PersonalDetails(java.time.LocalDate.of(1990, 1, 1), "e" + i + "@x", 
+                            "F", "L")));
         }
 
         try {
@@ -130,8 +130,7 @@ class PlatformConcurrencyTest {
                     admins[i],
                     "u" + i,
                     new com.eventsystem.domain.member.HashedCredentials("h", "s", "BCrypt"),
-                    new com.eventsystem.domain.member.PersonalDetails(
-                            "F", "L", "e" + i + "@x", java.time.LocalDate.of(1990, 1, 1))));
+                    new com.eventsystem.domain.member.PersonalDetails(java.time.LocalDate.of(1990, 1, 1), "e" + i + "@x", "F", "L")));
             admin.addAdmin(rootAdmin, admins[i]);
         }
 

@@ -9,5 +9,6 @@ import java.util.Optional;
 @Repository
 public interface SpringDataVirtualQueueRepository extends JpaRepository<VirtualQueue, String> {
     
+    
     Optional<VirtualQueue> findByEventId(String eventId);
 }

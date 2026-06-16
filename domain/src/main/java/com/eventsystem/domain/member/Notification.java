@@ -4,17 +4,36 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import java.time.Instant;
+
 /**
  * Entity — a single notification queued in a member's inbox.
  * Identity is the {@code notificationId}. Mutable only via {@link #markDelivered()}.
  */
+
+@Entity
+@Table(name = "notifications")
 public class Notification {
 
-    private final String notificationId;
-    private final NotificationType type;
-    private final String content;
-    private final Instant createdAt;
+    @Id
+    private String notificationId;
+
+    @Enumerated(EnumType.STRING)
+    private NotificationType type;
+
+    private String content;
+    private Instant createdAt;
     private boolean delivered;
+
+    protected Notification() {}
 
     public Notification(String notificationId,
                         NotificationType type,

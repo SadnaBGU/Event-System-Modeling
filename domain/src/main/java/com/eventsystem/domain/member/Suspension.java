@@ -4,10 +4,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import jakarta.persistence.Embeddable;
+
 /**
  * Immutable record of a member suspension.
  * {@code duration} is null for permanent suspensions.
  */
+
+@Embeddable
 public record Suspension(Instant suspendedAt, Duration duration, String reason) {
 
     public Suspension {

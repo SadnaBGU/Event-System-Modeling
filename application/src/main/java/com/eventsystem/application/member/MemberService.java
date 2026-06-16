@@ -61,8 +61,8 @@ public class MemberService implements IMemberInformationPort{
         requireSelf(actor, target);
 
         Member m = load(target);
-        PersonalDetails newDetails = new PersonalDetails(
-                req.firstName(), req.lastName(), req.email(), req.dateOfBirth());
+        PersonalDetails newDetails = new PersonalDetails(req.dateOfBirth(), req.email(), 
+                req.firstName(), req.lastName());
         m.updateDetails(newDetails); // domain enforces non-null + cancelled-guard
         members.save(m);
         log.info("Member updated own details memberId={}", target.value());
@@ -112,8 +112,8 @@ public class MemberService implements IMemberInformationPort{
         }
 
         HashedCredentials creds = passwordHasher.hash(req.plaintextPassword());
-        PersonalDetails details = new PersonalDetails(
-                req.firstName(), req.lastName(), req.email(), req.dateOfBirth());
+        PersonalDetails details = new PersonalDetails(req.dateOfBirth(), req.email(), 
+                req.firstName(), req.lastName());
         Member member = new Member(MemberId.generate(), req.username(), creds, details);
 
         // save() rejects duplicate username atomically — wins the race if two threads register the same name

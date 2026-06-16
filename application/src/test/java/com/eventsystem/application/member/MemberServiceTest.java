@@ -31,8 +31,8 @@ class MemberServiceTest {
     @InjectMocks private MemberService service;
 
     private static final HashedCredentials CREDS = new HashedCredentials("h", "s", "BCrypt");
-    private static final PersonalDetails DETAILS = new PersonalDetails(
-            "Jon", "Snow", "jon@x", LocalDate.of(1990, 1, 1));
+    private static final PersonalDetails DETAILS = new PersonalDetails(LocalDate.of(1990, 1, 1), "jon@x",
+            "Jon", "Snow");
 
     private Member member(MemberId id) {
         return new Member(id, "jon", CREDS, DETAILS);

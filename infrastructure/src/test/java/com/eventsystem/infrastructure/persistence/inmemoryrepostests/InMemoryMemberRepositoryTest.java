@@ -28,7 +28,7 @@ class InMemoryMemberRepositoryTest {
                 MemberId.generate(),
                 username,
                 new HashedCredentials("h", "s", "BCrypt"),
-                new PersonalDetails("F", "L", "e@x.com", LocalDate.of(1990, 1, 1)));
+                new PersonalDetails(LocalDate.of(1990, 1, 1), "e@x.com", "F", "L"));
     }
 
     @Test
