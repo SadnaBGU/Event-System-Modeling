@@ -13,12 +13,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Testcontainers;
+
 
 import jakarta.persistence.EntityManager;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+
 
 import java.util.Optional;
 
@@ -173,5 +171,71 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
         // Assert
         ProductionCompany updated = companyRepository.findById(testCompany.companyId()).get();
         assertThat(updated.isManager(newManagerId)).isTrue();
+    }
+    @Test
+    void findByName_returnsCompanyWhenNameMatches() {
+        // Arrange
+        companyRepository.save(testCompany);
+        em.flush(); em.clear();
+
+        // Act
+        Optional<ProductionCompany> foundOpt = companyRepository.findByName("Epic Productions");
+
+        // Assert
+        assertThat(foundOpt).isPresent();
+        assertThat(foundOpt.get().companyId()).isEqualTo(testCompany.companyId());
+    }
+
+    @Test
+    void findByName_returnsEmptyWhenNotFound() {
+        // Act
+        Optional<ProductionCompany> foundOpt = companyRepository.findByName("Non Existent Co.");
+
+        // Assert
+        assertThat(foundOpt).isEmpty();
+    }
+
+    @Test
+    void hasPermission_returnsTrueWhenManagerHasPermission() {
+        // Arrange
+        companyRepository.save(testCompany);
+        em.flush(); em.clear();
+
+        ProductionCompany found = companyRepository.findById(testCompany.companyId()).get();
+        MemberId managerId = new MemberId("MEM-MANAGER-456");
+        
+        // ממנים מנהל עם הרשאה ספציפית ומאשרים
+        found.appointManager(founderId, managerId, java.util.Set.of(com.eventsystem.domain.company.Permission.EVENT_INVENTORY_MANAGEMENT));
+        found.acceptAppointment(managerId);
+        
+        companyRepository.save(found);
+        em.flush(); em.clear();
+
+        // Act - בדיקת השאילתה המיוחדת של ה-Repository
+        boolean hasPerm = companyRepository.hasPermission(
+            managerId, 
+            testCompany.companyId(), 
+            com.eventsystem.domain.company.Permission.EVENT_INVENTORY_MANAGEMENT
+        );
+
+        // Assert
+        assertThat(hasPerm).isTrue();
+    }
+
+    @Test
+    void hasPermission_returnsFalseWhenUserDoesNotHavePermission() {
+        // Arrange
+        companyRepository.save(testCompany);
+        em.flush(); em.clear();
+
+        // Act - משתמש רנדומלי שלא קשור לחברה
+        boolean hasPerm = companyRepository.hasPermission(
+            new MemberId("MEM-RANDOM"), 
+            testCompany.companyId(), 
+            com.eventsystem.domain.company.Permission.EVENT_INVENTORY_MANAGEMENT
+        );
+
+        // Assert
+        assertThat(hasPerm).isFalse();
     }
 }
