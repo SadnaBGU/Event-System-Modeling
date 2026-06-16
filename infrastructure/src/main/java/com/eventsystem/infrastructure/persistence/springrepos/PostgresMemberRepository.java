@@ -6,7 +6,6 @@ import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 public class PostgresMemberRepository implements IMemberRepository {
@@ -21,6 +20,11 @@ public class PostgresMemberRepository implements IMemberRepository {
     @Override
     public Optional<Member> findById(MemberId id) {
         return jpaRepo.findById(id);
+    }
+
+    @Override
+    public Optional<Member> findByIdForUpdate(MemberId id) {
+        return jpaRepo.findByIdForUpdate(id);
     }
 
     @Override
