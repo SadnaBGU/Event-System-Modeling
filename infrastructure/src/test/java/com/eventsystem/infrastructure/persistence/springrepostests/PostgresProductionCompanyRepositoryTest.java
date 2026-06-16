@@ -41,7 +41,7 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
     void setUp() {
         founderId = new MemberId("MEM-001");
         
-        // יצירת חברה ראשית לטסטים בעזרת ה-Factory Method שסידרנו קודם
+        
         testCompany = ProductionCompany.create(
                 founderId,
                 "Epic Productions",
@@ -92,9 +92,6 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
         em.flush();
         em.clear();
 
-        // הערה: אם הוספת שאילתה מותאמת אישית ל-Repository, אפשר לפתוח את השורות הבאות:
-        // List<ProductionCompany> activeCompanies = companyRepository.findActiveCompanies();
-        // assertThat(activeCompanies).hasSize(1);
     }
 
     @Test
@@ -122,9 +119,6 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
         em.flush();
         em.clear();
         
-        // הערה: אם הוספת שאילתה ל-Repository, אפשר לפתוח:
-        // List<ProductionCompany> founderCompanies = companyRepository.findByFounderId(founderId);
-        // assertThat(founderCompanies).hasSize(2);
     }
 
     @Test
@@ -160,9 +154,9 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
         
         found.appointManager(founderId, newManagerId, java.util.Set.of()); 
         
-        // --- התיקון: נאשר את המינוי כדי שה-isManager יחזיר true ---
+        
         found.acceptAppointment(newManagerId);
-        // --------------------------------------------------------
+       
 
         companyRepository.save(found);
         em.flush();
@@ -211,7 +205,7 @@ class PostgresProductionCompanyRepositoryTest extends BasePostgresTest {
         companyRepository.save(found);
         em.flush(); em.clear();
 
-        // Act - בדיקת השאילתה המיוחדת של ה-Repository
+        // Act 
         boolean hasPerm = companyRepository.hasPermission(
             managerId, 
             testCompany.companyId(), 

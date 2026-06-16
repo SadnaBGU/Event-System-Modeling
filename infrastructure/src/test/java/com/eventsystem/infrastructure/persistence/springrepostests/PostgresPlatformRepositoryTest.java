@@ -24,7 +24,7 @@ class PostgresPlatformRepositoryTest extends BasePostgresTest {
 
     @Test
     void saveAndFindInstance_persistsChanges() {
-        // Arrange: יצירת פלטפורמה חדשה
+        // Arrange: 
         MemberId admin = new MemberId("ADMIN-1");
         Platform platform = new Platform(admin, Duration.ofMinutes(10), 100);
         platform.activate();

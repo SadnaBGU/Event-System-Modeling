@@ -72,7 +72,7 @@ class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
         purchasePolicyRepository.save(policy);
         em.flush(); em.clear();
 
-        // Act - שליפה, שינוי ה-Scope לעדכון סטטוס והפעלה
+        // Act 
         PurchasePolicy savedPolicy = purchasePolicyRepository.findById(policy.id()).orElseThrow();
         savedPolicy.setNameTo("Updated Policy");
         savedPolicy.setCompanyWide(); // הופך את isActive ל-true
@@ -95,10 +95,10 @@ class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
 
         PurchasePolicyId policyId = policy.id();
 
-        // Assert - בדיקה שהפוליסה קיימת
+        // Assert - 
         assertThat(purchasePolicyRepository.existsById(policyId)).isTrue();
 
-        // Act - מחיקה
+        // Act - 
         purchasePolicyRepository.deleteById(policyId);
         em.flush(); em.clear();
 
@@ -157,7 +157,7 @@ class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
         // Arrange
         EventId eventId = new EventId("EVT-111");
         PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "Event Policy");
-        policy.activateForEvent(eventId); // מפעיל את הפוליסה ספציפית לאירוע הזה
+        policy.activateForEvent(eventId); 
         purchasePolicyRepository.save(policy);
 
         em.flush(); em.clear();

@@ -51,10 +51,10 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
         DiscountPolicy policy = DiscountPolicy.clearScope(companyId);
         policy.addDiscount(discount);
         
-        // --- התיקון: הגדרת הפוליסה כחלה על כל החברה לפני ה-activate ---
+        
         policy.setCompanyWide(); 
         policy.activate();
-        // -----------------------------------------------------------
+        
 
         discountPolicyRepository.save(policy);
         em.flush();
@@ -77,16 +77,16 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
         assertThat(foundOpt).isEmpty();
     }
 
-    // 3. עדכון נתונים קיימים
+     
     @Test
     void update_modifiesExistingPolicyInDatabase() {
-        // יצירה ראשונית (לא פעיל)
+        
         DiscountPolicy policy = DiscountPolicy.clearScope(companyId);
         policy.addDiscount(Discount.GeneralDiscount("D1", BigDecimal.TEN, null));
         discountPolicyRepository.save(policy);
         em.flush(); em.clear();
 
-        // עדכון
+        
         DiscountPolicy savedPolicy = discountPolicyRepository.findById(policy.id()).orElseThrow();
         savedPolicy.setCompanyWide();
         savedPolicy.activate(); // משנה סטטוס לפעיל
@@ -116,12 +116,12 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
     // 5. שאילתת חיפוש לפי CompanyId
     @Test
     void findByCompanyId_returnsOnlyMatchingCompany() {
-        // פוליסה לחברה שלנו
+        
         DiscountPolicy policy1 = DiscountPolicy.clearScope(companyId);
         policy1.addDiscount(Discount.GeneralDiscount("D1", BigDecimal.TEN, null));
         discountPolicyRepository.save(policy1);
 
-        // פוליסה לחברה אחרת
+        
         CompanyId otherCompany = new CompanyId("COMP-999");
         DiscountPolicy policy2 = DiscountPolicy.clearScope(otherCompany);
         policy2.addDiscount(Discount.GeneralDiscount("D2", BigDecimal.TEN, null));
@@ -137,17 +137,17 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
     // 6. שאילתת מציאת פוליסות פעילות בלבד
     @Test
     void findActive_returnsOnlyActivePolicies() {
-        // פוליסה פעילה
+        
         DiscountPolicy activePolicy = DiscountPolicy.clearScope(companyId);
         activePolicy.addDiscount(Discount.GeneralDiscount("Active", BigDecimal.TEN, null));
         activePolicy.setCompanyWide();
         activePolicy.activate();
         discountPolicyRepository.save(activePolicy);
 
-        // פוליסה לא פעילה
+        
         DiscountPolicy inactivePolicy = DiscountPolicy.clearScope(companyId);
         inactivePolicy.addDiscount(Discount.GeneralDiscount("Inactive", BigDecimal.TEN, null));
-        // לא קוראים ל-activate()
+        
         discountPolicyRepository.save(inactivePolicy);
         em.flush(); em.clear();
 
@@ -182,7 +182,7 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
         Discount discount = Discount.GeneralDiscount("Visible Discount", BigDecimal.valueOf(15), null);
         policy.addDiscount(discount);
         
-        // התיקון: הגדרה שהפוליסה חלה על כל החברה לפני ההפעלה
+        
         policy.setCompanyWide(); 
         policy.activate();
         
@@ -199,27 +199,27 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
 
     @Test
     void findActiveByCompanyId_returnsOnlyActiveForSpecificCompany() {
-        // Arrange - פוליסה פעילה של החברה שלנו
+        // Arrange 
         DiscountPolicy activeMine = DiscountPolicy.clearScope(companyId);
         activeMine.addDiscount(Discount.GeneralDiscount("Active Mine", BigDecimal.TEN, null));
         
-        // התיקון: הגדרה שהפוליסה חלה על כל החברה לפני ההפעלה
+        
         activeMine.setCompanyWide(); 
         activeMine.activate();
         
         discountPolicyRepository.save(activeMine);
 
-        // Arrange - פוליסה לא פעילה של החברה שלנו
+        // Arrange - 
         DiscountPolicy inactiveMine = DiscountPolicy.clearScope(companyId);
         inactiveMine.addDiscount(Discount.GeneralDiscount("Inactive Mine", BigDecimal.TEN, null));
         discountPolicyRepository.save(inactiveMine);
 
-        // Arrange - פוליסה פעילה של חברה אחרת
+        // Arrange - 
         CompanyId otherCompany = new CompanyId("COMP-OTHER");
         DiscountPolicy activeOther = DiscountPolicy.clearScope(otherCompany);
         activeOther.addDiscount(Discount.GeneralDiscount("Active Other", BigDecimal.TEN, null));
         
-        // התיקון: הגדרה שהפוליסה חלה על כל החברה לפני ההפעלה
+        // 
         activeOther.setCompanyWide(); 
         activeOther.activate();
         
@@ -242,14 +242,14 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
 
         DiscountPolicy policy = DiscountPolicy.clearScope(companyId);
         policy.addDiscount(Discount.GeneralDiscount("Purchase Match", BigDecimal.valueOf(25), null));
-        // מקשרים את הפוליסה ספציפית לאירוע הזה כדי שה-Lambda של הסינון תתפוס אותו
+        // 
         policy.activateForEvent(eventId); 
         policy.activate();
         discountPolicyRepository.save(policy);
 
         em.flush(); em.clear();
 
-        // Act - קריאה לפונקציה שמכילה את פונקציית הלמבדה
+        // Act 
         List<DiscountPolicy> results = discountPolicyRepository.findApplicableToPurchase(companyId, eventId);
 
         // Assert
