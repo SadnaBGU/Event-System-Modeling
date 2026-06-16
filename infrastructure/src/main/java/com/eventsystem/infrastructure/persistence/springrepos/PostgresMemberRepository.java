@@ -22,7 +22,6 @@ public class PostgresMemberRepository implements IMemberRepository {
         return jpaRepo.findById(id);
     }
 
-    @Override
     public Optional<Member> findByIdForUpdate(MemberId id) {
         return jpaRepo.findByIdForUpdate(id);
     }

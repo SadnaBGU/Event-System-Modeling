@@ -11,10 +11,6 @@ public interface IMemberRepository {
 
     Optional<Member> findById(MemberId memberId);
 
-    default Optional<Member> findByIdForUpdate(MemberId memberId) {
-        return findById(memberId);
-    }
-
     Optional<Member> findByUsername(String username);
 
     Collection<Member> findAll();
