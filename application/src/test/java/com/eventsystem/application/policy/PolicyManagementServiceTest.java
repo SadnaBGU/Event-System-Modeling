@@ -1363,4 +1363,325 @@ class PolicyManagementServiceTest {
                 verify(discountPolicyRepository, never()).save(any());
         }
 
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Manager with event-management permission may create an event-scoped purchase
+        // policy,
+        // even without direct purchase-policy permission.
+        @Test
+        void createPurchasePolicy_eventScoped_whenActorCanManageEventsButNotPurchasePolicies_shouldSave() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                PurchasePolicyCommand command = new PurchasePolicyCommand(
+                                ACTOR_ID.value(),
+                                COMPANY_ID.value(),
+                                "Max 4 tickets",
+                                eventScope(EVENT_ID),
+                                valueRule("MAX_TICKETS", 4),
+                                true);
+
+                PurchasePolicyId id = service.createPurchasePolicy(command);
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.policyName()).isEqualTo("Max 4 tickets");
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+                assertThat(saved.isActiveForEvent(EVENT_ID)).isTrue();
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Manager with event-management permission may create an event-scoped discount
+        // policy,
+        // even without direct discount-policy permission.
+        @Test
+        void createDiscountPolicy_eventScoped_whenActorCanManageEventsButNotDiscountPolicies_shouldSave() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                DiscountPolicyCommand command = new DiscountPolicyCommand(
+                                ACTOR_ID.value(),
+                                COMPANY_ID.value(),
+                                "Event discount policy",
+                                eventScope(EVENT_ID),
+                                List.of(discountCommand("Buy two discount", 20, valueRule("MIN_TICKETS", 2))),
+                                false,
+                                true);
+
+                DiscountPolicyId id = service.createDiscountPolicy(command);
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+                assertThat(saved.isActive()).isTrue();
+                assertThat(saved.discounts()).hasSize(1);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may use the direct event-scoped purchase helper.
+        @Test
+        void createEventScopedPurchasePolicy_whenActorCanManageEventsButNotPurchasePolicies_shouldSave() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                PurchasePolicyId id = service.createEventScopedPurchasePolicy(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                "Event max tickets",
+                                new MaxTicketPolicy(4));
+
+                ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
+                verify(purchasePolicyRepository).save(captor.capture());
+
+                PurchasePolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.policyName()).isEqualTo("Event max tickets");
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+                assertThat(saved.isActiveForEvent(EVENT_ID)).isTrue();
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may use the direct event-scoped discount helper.
+        @Test
+        void createEventScopedDiscountPolicy_whenActorCanManageEventsButNotDiscountPolicies_shouldSave() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+                when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+
+                DiscountPolicyId id = service.createEventScopedDiscountPolicy(
+                                ACTOR_ID,
+                                EVENT_ID,
+                                "Event discount",
+                                BigDecimal.valueOf(20),
+                                new MinTicketPolicy(2),
+                                true,
+                                LocalDate.now().plusDays(10),
+                                false);
+
+                ArgumentCaptor<DiscountPolicy> captor = ArgumentCaptor.forClass(DiscountPolicy.class);
+                verify(discountPolicyRepository).save(captor.capture());
+
+                DiscountPolicy saved = captor.getValue();
+
+                assertThat(id).isEqualTo(saved.id());
+                assertThat(saved.companyId()).isEqualTo(COMPANY_ID);
+                assertThat(saved.scope().eventIds()).containsExactly(EVENT_ID);
+                assertThat(saved.discounts()).hasSize(1);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may rename an event-scoped purchase policy.
+        @Test
+        void renamePurchasePolicy_eventScoped_whenActorCanManageEventsButNotPurchasePolicies_shouldSave() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                service.renamePurchasePolicy(ACTOR_ID, COMPANY_ID, policy.id(), "Updated event policy");
+
+                assertThat(policy.policyName()).isEqualTo("Updated event policy");
+                verify(purchasePolicyRepository).save(policy);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may delete an event-scoped purchase policy.
+        @Test
+        void deletePurchasePolicy_eventScoped_whenActorCanManageEventsButNotPurchasePolicies_shouldDelete() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                service.deletePurchasePolicy(ACTOR_ID, COMPANY_ID, policy.id());
+
+                verify(purchasePolicyRepository).deleteById(policy.id());
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may activate/deactivate event-scoped discount policy.
+        @Test
+        void activateDiscountPolicy_eventScoped_whenActorCanManageEventsButNotDiscountPolicies_shouldSave() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                DiscountPolicy policy = new DiscountPolicy(
+                                DiscountPolicyId.random(),
+                                COMPANY_ID,
+                                PolicyScope.forSingleEvent(EVENT_ID));
+                policy.addDiscount(new Discount("Buy two", BigDecimal.valueOf(20), new MinTicketPolicy(2)));
+
+                when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                service.activateDiscountPolicy(ACTOR_ID, COMPANY_ID, policy.id());
+
+                assertThat(policy.isActive()).isTrue();
+                verify(discountPolicyRepository).save(policy);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may add a discount to an event-scoped discount policy.
+        @Test
+        void addDiscountToPolicy_eventScoped_whenActorCanManageEventsButNotDiscountPolicies_shouldSave() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                DiscountPolicy policy = new DiscountPolicy(
+                                DiscountPolicyId.random(),
+                                COMPANY_ID,
+                                PolicyScope.forSingleEvent(EVENT_ID));
+                policy.addDiscount(new Discount("Existing", BigDecimal.TEN, new MinTicketPolicy(1)));
+
+                when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                Discount added = new Discount("Added", BigDecimal.valueOf(15), new MinTicketPolicy(2));
+
+                service.addDiscountToPolicy(ACTOR_ID, COMPANY_ID, policy.id(), added);
+
+                assertThat(policy.discounts())
+                                .extracting(Discount::getDiscountName)
+                                .contains("Existing", "Added");
+
+                verify(discountPolicyRepository).save(policy);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may move an event-scoped purchase policy from one event to
+        // another event.
+        @Test
+        void modifyPurchasePolicyScope_eventToEvent_whenActorCanManageEventsButNotPurchasePolicies_shouldSave() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                PolicyScope newScope = PolicyScope.forSingleEvent(OTHER_EVENT_ID);
+
+                when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                service.modifyPurchasePolicyScope(ACTOR_ID, COMPANY_ID, policy.id(), newScope);
+
+                assertThat(policy.scope()).isEqualTo(newScope);
+                verify(purchasePolicyRepository).save(policy);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-61:
+        // Event manager may move an event-scoped discount policy from one event to
+        // another event.
+        @Test
+        void modifyDiscountPolicyScope_eventToEvent_whenActorCanManageEventsButNotDiscountPolicies_shouldSave() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+                when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
+
+                DiscountPolicy policy = activeDiscountPolicy(
+                                EVENT_ID,
+                                new Discount("Buy two", BigDecimal.valueOf(20), new MinTicketPolicy(2)));
+                PolicyScope newScope = PolicyScope.forSingleEvent(OTHER_EVENT_ID);
+
+                when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                service.modifyDiscountPolicyScope(ACTOR_ID, COMPANY_ID, policy.id(), newScope);
+
+                assertThat(policy.scope()).isEqualTo(newScope);
+                verify(discountPolicyRepository).save(policy);
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-62:
+        // Event-management permission alone is not enough for company-wide purchase
+        // policy creation.
+        @Test
+        void createCompanyWidePurchasePolicy_whenActorCanManageEventsButNotPurchasePolicies_shouldThrowSecurityException() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+                assertThatThrownBy(() -> service.createCompanyWidePurchasePolicy(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                "Company max tickets",
+                                new MaxTicketPolicy(4)))
+                                .isInstanceOf(SecurityException.class)
+                                .hasMessageContaining("purchase policies");
+
+                verify(purchasePolicyRepository, never()).save(any());
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-62:
+        // Event-management permission alone is not enough for company-wide discount
+        // policy creation.
+        @Test
+        void createCompanyWideDiscountPolicy_whenActorCanManageEventsButNotDiscountPolicies_shouldThrowSecurityException() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+                assertThatThrownBy(() -> service.createCompanyWideDiscountPolicy(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                "Company discount",
+                                false,
+                                BigDecimal.valueOf(20),
+                                new MinTicketPolicy(2),
+                                true,
+                                LocalDate.now().plusDays(10)))
+                                .isInstanceOf(SecurityException.class)
+                                .hasMessageContaining("discount policies");
+
+                verify(discountPolicyRepository, never()).save(any());
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-62:
+        // Event manager cannot change an event-scoped purchase policy into
+        // company-wide.
+        @Test
+        void modifyPurchasePolicyScope_eventToCompanyWide_whenActorCanManageEventsButNotPurchasePolicies_shouldThrowSecurityException() {
+                when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                assertThatThrownBy(() -> service.modifyPurchasePolicyScope(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                policy.id(),
+                                PolicyScope.companyWideScope()))
+                                .isInstanceOf(SecurityException.class)
+                                .hasMessageContaining("purchase policies");
+
+                verify(purchasePolicyRepository, never()).save(any());
+        }
+
+        // PRD-03 / PRD-15 / UC20 / UAT-62:
+        // Event manager cannot change an event-scoped discount policy into
+        // company-wide.
+        @Test
+        void modifyDiscountPolicyScope_eventToCompanyWide_whenActorCanManageEventsButNotDiscountPolicies_shouldThrowSecurityException() {
+                when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
+
+                DiscountPolicy policy = activeDiscountPolicy(
+                                EVENT_ID,
+                                new Discount("Buy two", BigDecimal.valueOf(20), new MinTicketPolicy(2)));
+
+                when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
+
+                assertThatThrownBy(() -> service.modifyDiscountPolicyScope(
+                                ACTOR_ID,
+                                COMPANY_ID,
+                                policy.id(),
+                                PolicyScope.companyWideScope()))
+                                .isInstanceOf(SecurityException.class)
+                                .hasMessageContaining("discount policies");
+
+                verify(discountPolicyRepository, never()).save(any());
+        }
+
 }
