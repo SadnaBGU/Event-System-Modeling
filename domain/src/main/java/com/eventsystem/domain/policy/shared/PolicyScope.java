@@ -60,4 +60,9 @@ public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
     public boolean isScopedToEventsOrCompany() {
         return  companyWide || !eventIds.isEmpty();
     }
+
+    public boolean isForSingleEvent() {
+        return !companyWide && eventIds.size() == 1;
+    }
+    
 }

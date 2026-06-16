@@ -4,6 +4,8 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchasePolicyRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +15,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Set;
 
 class InMemoryPurchasePolicyRepositoryTest {
 
@@ -123,17 +127,77 @@ class InMemoryPurchasePolicyRepositoryTest {
         assertThat(repository.existsById(policy.id())).isFalse();
     }
 
+    // PP-02 / PRD-03 / UC16:
+    // Repository can query policies scoped exactly to one event for a company,
+    // excluding company-wide and multi-event policies.
+    @Test
+    void findSingleEventPolicies_returnsOnlySingleEventPoliciesOfCompany() {
+        EventId secondEventId = EventId.random();
+
+        PurchasePolicy singleEvent = eventScopedPolicy(companyId, eventId);
+        PurchasePolicy anotherSingleEvent = eventScopedPolicy(companyId, secondEventId);
+        PurchasePolicy multiEvent = multiEventPolicy(companyId, eventId, secondEventId);
+        PurchasePolicy companyWide = companyWidePolicy(companyId);
+        PurchasePolicy otherCompanySingleEvent = eventScopedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy inactive = inactivePolicy(companyId);
+
+        repository.save(singleEvent);
+        repository.save(anotherSingleEvent);
+        repository.save(multiEvent);
+        repository.save(companyWide);
+        repository.save(otherCompanySingleEvent);
+        repository.save(inactive);
+
+        List<PurchasePolicy> found = repository.findSingleEventPolicies(companyId);
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(singleEvent, anotherSingleEvent)
+                .doesNotContain(multiEvent, companyWide, otherCompanySingleEvent, inactive);
+    }
+
+    // PP-02 / PRD-03 / UC16:
+    // Repository can query policies scoped specifically and only to one event,
+    // excluding company-wide and multi-event policies that also apply to the event.
+    @Test
+    void findSpecificForEvent_returnsOnlyPoliciesScopedExactlyToThatEvent() {
+        EventId secondEventId = EventId.random();
+
+        PurchasePolicy singleEvent = eventScopedPolicy(companyId, eventId);
+        PurchasePolicy otherCompanySingleEvent = eventScopedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy multiEvent = multiEventPolicy(companyId, eventId, secondEventId);
+        PurchasePolicy companyWide = companyWidePolicy(companyId);
+        PurchasePolicy wrongSingleEvent = eventScopedPolicy(companyId, secondEventId);
+        PurchasePolicy inactive = inactivePolicy(companyId);
+
+        repository.save(singleEvent);
+        repository.save(otherCompanySingleEvent);
+        repository.save(multiEvent);
+        repository.save(companyWide);
+        repository.save(wrongSingleEvent);
+        repository.save(inactive);
+
+        List<PurchasePolicy> found = repository.findSpecificForEvent(eventId);
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(singleEvent, otherCompanySingleEvent)
+                .doesNotContain(multiEvent, companyWide, wrongSingleEvent, inactive);
+    }
+
     @Test
     void nullArguments_areRejected() {
         assertThatThrownBy(() -> repository.findById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findByCompanyId(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findActiveByCompanyId(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findApplicableToEvent(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null))
+                .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.save(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.deleteById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.existsById(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findSingleEventPolicies(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findSpecificForEvent(null)).isInstanceOf(NullPointerException.class);
     }
 
     private static PurchasePolicy inactivePolicy(CompanyId companyId) {
@@ -151,4 +215,17 @@ class InMemoryPurchasePolicyRepositoryTest {
         policy.setCompanyWide();
         return policy;
     }
+
+    private static PurchasePolicy multiEventPolicy(
+            CompanyId companyId,
+            EventId firstEventId,
+            EventId secondEventId) {
+        return new PurchasePolicy(
+                PurchasePolicyId.random(),
+                companyId,
+                "Multi event max tickets",
+                PolicyScope.forEvents(Set.of(firstEventId, secondEventId)),
+                new MaxTicketPolicy(4));
+    }
+
 }

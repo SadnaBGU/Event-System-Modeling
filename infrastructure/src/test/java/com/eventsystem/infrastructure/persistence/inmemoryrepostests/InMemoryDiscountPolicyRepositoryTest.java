@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -178,8 +179,7 @@ class InMemoryDiscountPolicyRepositoryTest {
                 BigDecimal.TEN,
                 AlwaysTruePolicy.INSTANCE,
                 true,
-                LocalDate.now().plusDays(1)
-        ));
+                LocalDate.now().plusDays(1)));
         activeVisible.activate();
 
         DiscountPolicy inactiveVisible = DiscountPolicy.inactiveCompanyWide(companyId);
@@ -188,8 +188,7 @@ class InMemoryDiscountPolicyRepositoryTest {
                 BigDecimal.TEN,
                 AlwaysTruePolicy.INSTANCE,
                 true,
-                LocalDate.now().plusDays(1)
-        ));
+                LocalDate.now().plusDays(1)));
 
         DiscountPolicy activeHidden = DiscountPolicy.inactiveCompanyWide(companyId);
         activeHidden.addDiscount(new Discount(
@@ -197,8 +196,7 @@ class InMemoryDiscountPolicyRepositoryTest {
                 BigDecimal.TEN,
                 AlwaysTruePolicy.INSTANCE,
                 false,
-                LocalDate.now().plusDays(1)
-        ));
+                LocalDate.now().plusDays(1)));
         activeHidden.activate();
 
         DiscountPolicy activeExpiredVisible = DiscountPolicy.inactiveCompanyWide(companyId);
@@ -207,8 +205,7 @@ class InMemoryDiscountPolicyRepositoryTest {
                 BigDecimal.TEN,
                 AlwaysTruePolicy.INSTANCE,
                 true,
-                LocalDate.now().minusDays(1)
-        ));
+                LocalDate.now().minusDays(1)));
         activeExpiredVisible.activate();
 
         repository.save(activeVisible);
@@ -220,16 +217,74 @@ class InMemoryDiscountPolicyRepositoryTest {
                 .containsExactly(activeVisible);
     }
 
+    // DP-02 / PRD-03 / UC16:
+    // Repository can query discount policies scoped exactly to one event for a
+    // company,
+    // excluding company-wide and multi-event policies.
+    @Test
+    void findSingleEventPolicies_returnsOnlySingleEventPoliciesOfCompany() {
+        EventId secondEventId = EventId.random();
+
+        DiscountPolicy singleEvent = activePolicyForEvent(companyId, eventId);
+        DiscountPolicy anotherSingleEvent = inactivePolicyForEvent(companyId, secondEventId);
+        DiscountPolicy multiEvent = activePolicyForEvents(companyId, eventId, secondEventId);
+        DiscountPolicy companyWide = activeCompanyWidePolicy(companyId);
+        DiscountPolicy otherCompanySingleEvent = activePolicyForEvent(CompanyId.random(), eventId);
+
+        repository.save(singleEvent);
+        repository.save(anotherSingleEvent);
+        repository.save(multiEvent);
+        repository.save(companyWide);
+        repository.save(otherCompanySingleEvent);
+
+        List<DiscountPolicy> found = repository.findSingleEventPolicies(companyId);
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(singleEvent, anotherSingleEvent)
+                .doesNotContain(multiEvent, companyWide, otherCompanySingleEvent);
+    }
+
+    // DP-02 / PRD-03 / UC16:
+    // Repository can query discount policies scoped specifically and only to one
+    // event,
+    // excluding company-wide and multi-event policies that also apply to the event.
+    @Test
+    void findSpecificForEvent_returnsOnlyPoliciesScopedExactlyToThatEvent() {
+        EventId secondEventId = EventId.random();
+
+        DiscountPolicy singleEvent = activePolicyForEvent(companyId, eventId);
+        DiscountPolicy otherCompanySingleEvent = inactivePolicyForEvent(CompanyId.random(), eventId);
+        DiscountPolicy multiEvent = activePolicyForEvents(companyId, eventId, secondEventId);
+        DiscountPolicy companyWide = activeCompanyWidePolicy(companyId);
+        DiscountPolicy wrongSingleEvent = activePolicyForEvent(companyId, secondEventId);
+
+        repository.save(singleEvent);
+        repository.save(otherCompanySingleEvent);
+        repository.save(multiEvent);
+        repository.save(companyWide);
+        repository.save(wrongSingleEvent);
+
+        List<DiscountPolicy> found = repository.findSpecificForEvent(eventId);
+
+        assertThat(found)
+                .containsExactlyInAnyOrder(singleEvent, otherCompanySingleEvent)
+                .doesNotContain(multiEvent, companyWide, wrongSingleEvent);
+    }
+
     @Test
     void nullArguments_areRejected() {
         assertThatThrownBy(() -> repository.findById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findByCompanyId(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findActiveByCompanyId(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null))
+                .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.save(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.deleteById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.existsById(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findSingleEventPolicies(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findSpecificForEvent(null)).isInstanceOf(NullPointerException.class);
     }
 
     private static DiscountPolicy inactivePolicyForEvent(CompanyId companyId, EventId eventId) {
@@ -245,6 +300,18 @@ class InMemoryDiscountPolicyRepositoryTest {
 
     private static DiscountPolicy activeCompanyWidePolicy(CompanyId companyId) {
         DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(companyId);
+        policy.addDiscount(mock(Discount.class));
+        policy.activate();
+        return policy;
+    }
+
+    private static DiscountPolicy activePolicyForEvents(
+            CompanyId companyId,
+            EventId firstEventId,
+            EventId secondEventId) {
+        DiscountPolicy policy = DiscountPolicy.inactiveForEvents(
+                companyId,
+                Set.of(firstEventId, secondEventId));
         policy.addDiscount(mock(Discount.class));
         policy.activate();
         return policy;

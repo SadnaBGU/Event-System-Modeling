@@ -16,6 +16,10 @@ public interface IPurchasePolicyRepository {
 
     List<PurchasePolicy> findApplicableToEvent(EventId eventId);
 
+    List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId);
+
+    List<PurchasePolicy> findSpecificForEvent(EventId eventId);
+
     List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
 
     void save(PurchasePolicy discountPolicy);
