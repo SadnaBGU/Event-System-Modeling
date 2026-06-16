@@ -40,7 +40,7 @@ public class PostgresActiveOrderRepository implements IActiveOrderRepository {
 
     @Override
     public Optional<ActiveOrder> findByBuyerAndEvent(BuyerReference buyer, String eventId) {
-        return jpaRepo.findByBuyerRefAndEventId(buyer, eventId);
+        return jpaRepo.findByBuyerAndEvent(buyer.type(), buyer.sessionId(), buyer.memberId(), eventId);
     }
 
     @Override

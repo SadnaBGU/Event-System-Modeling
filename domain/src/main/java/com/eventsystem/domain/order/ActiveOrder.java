@@ -1,24 +1,24 @@
 package com.eventsystem.domain.order;
 
+import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
+import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
+import com.eventsystem.domain.shared.Money;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-
-import com.eventsystem.domain.domainexceptions.ActiveOrderHasExpiredException;
-import com.eventsystem.domain.domainexceptions.ActiveOrderNotActiveException;
-import com.eventsystem.domain.shared.Money;
-
-import java.time.Instant;
-import java.util.List;
-
-import com.eventsystem.domain.order.OrderItem;
-import com.eventsystem.domain.order.OrderStatus;
-import com.eventsystem.domain.shared.Money;
-
-import jakarta.persistence.*;
 
 
 @Entity
@@ -43,6 +43,9 @@ public class ActiveOrder {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
     private long version;
+
+    protected ActiveOrder() {
+    }
 
     public ActiveOrder(String orderId, BuyerReference buyerRef, String eventId, Instant reservationExpiry) {
         this.orderId = orderId;
@@ -129,4 +132,3 @@ public class ActiveOrder {
         return reservationExpiry; 
     }
 }
-
