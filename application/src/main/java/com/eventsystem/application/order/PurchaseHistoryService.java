@@ -29,7 +29,7 @@ public class PurchaseHistoryService {
         logger.info("Fetching purchase history for buyer");
         
         List<PurchaseRecord> history = purchaseRecordRepository.findByBuyer(buyerId).stream()
-                .sorted(Comparator.comparing(PurchaseRecord::purchaseTimestamp).reversed())
+                .sorted(Comparator.comparing(PurchaseRecord::getPurchaseTimestamp).reversed())
                 .collect(Collectors.toList());
 
         logger.info("Found {} purchase records for buyer", history.size());        

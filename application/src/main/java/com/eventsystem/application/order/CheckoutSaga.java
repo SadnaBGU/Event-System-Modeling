@@ -28,6 +28,8 @@ import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 
+import jakarta.persistence.Embedded;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -115,6 +117,7 @@ public class CheckoutSaga {
         }
 
         // 3. Calculating the total price and applying discounts
+        
         Money finalAmount;
         DiscountSnapshot discount;
         try {
@@ -194,8 +197,8 @@ public class CheckoutSaga {
         order.checkout();
         orderRepository.save(order); 
         
-        notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.recordId());
-        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.recordId());
+        notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.getRecordId());
+        logger.info("Checkout process completed successfully for orderId: {}. Receipt recordId: {}", orderId, receipt.getRecordId());
     }
 
     private void releaseReservedSeats(List<OrderItem> items) {

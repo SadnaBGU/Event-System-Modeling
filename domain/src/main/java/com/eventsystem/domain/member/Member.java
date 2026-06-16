@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+
+import jakarta.persistence.*;
+
 /**
  * Aggregate Root — a registered platform user.
  * Boundary: {@link Member} root + its {@link Notification} inbox.
@@ -19,16 +22,44 @@ import java.util.Optional;
  * - A {@link MemberStatus#SUSPENDED} member cannot modify profile or credentials, but can receive
  *   notifications and perform read-only operations.
  */
+
+@Entity
+@Table(name = "members")
 public class Member {
 
-    private final MemberId memberId;
-    private final String username;
+    @EmbeddedId
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "id"))
+    })
+    private MemberId memberId;
+    
+    private String username;
+    
+    @Embedded
     private HashedCredentials hashedCredentials;
+    
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "firstName", column = @Column(name = "first_name")),
+        @AttributeOverride(name = "lastName", column = @Column(name = "last_name")),
+        @AttributeOverride(name = "email", column = @Column(name = "email")),
+        @AttributeOverride(name = "dateOfBirth", column = @Column(name = "date_of_birth"))
+    })
     private PersonalDetails personalDetails;
-    private MemberStatus status;
-    private Suspension suspension;
-    private final List<Notification> notificationInbox;
 
+    @Enumerated(EnumType.STRING)
+    private MemberStatus status;
+
+    @Embedded
+    private Suspension suspension;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "member_id")
+    private List<Notification> notificationInbox;
+
+
+    public Member() { }
+    
     public Member(MemberId memberId,
                   String username,
                   HashedCredentials hashedCredentials,

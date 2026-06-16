@@ -71,14 +71,20 @@ import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataDiscountPolicyRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresActiveOrderRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresDiscountPolicyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresEventRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresMemberRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresPurchaseRecordRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataActiveOrderRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataDiscountPolicyRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataMemberRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPlatformRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataProductionCompanyRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchasePolicyRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchaseRecordRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresLotteryRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresPlatformRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresProductionCompanyRepository;
@@ -88,9 +94,11 @@ import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQue
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
 
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -102,7 +110,11 @@ import java.util.Objects;
 
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
-@EntityScan(basePackages = "com.eventsystem.domain")
+// @ComponentScan(basePackages = { 
+//     "com.eventsystem.domain.*", 
+//     "com.eventsystem.infrastructure.*" 
+// })
+@EntityScan(basePackages = {"com.eventsystem.domain"})
 public class AppConfig {
 
     // --- Configuration constants ---
@@ -128,10 +140,6 @@ public class AppConfig {
     // ==========================================
     // 1. Adapters (Repositories & Security)
     // ==========================================
-    @Bean
-    public IMemberRepository memberRepository() {
-        return new InMemoryMemberRepository();
-    }
 
     @Bean
     public IPlatformRepository platformRepository(SpringDataPlatformRepository jpaRepo) {
@@ -144,8 +152,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IActiveOrderRepository activeOrderRepository() {
-        return new InMemoryActiveOrderRepository();
+    public IActiveOrderRepository activeOrderRepository(SpringDataActiveOrderRepository springDataActiveOrderRepo) {
+        return new PostgresActiveOrderRepository(springDataActiveOrderRepo);
     }
 
     @Bean
@@ -164,13 +172,18 @@ public class AppConfig {
     }
 
     @Bean
-    public IPurchaseRecordRepository purchaseRecordRepository() {
-        return new InMemoryPurchaseRecordRepository();
+    public IPurchaseRecordRepository purchaseRecordRepository(SpringDataPurchaseRecordRepository springDataPurchaseRecordRepo) {
+        return new PostgresPurchaseRecordRepository(springDataPurchaseRecordRepo);
     }
 
     @Bean
     public IVenueRepository venueRepository(SpringDataVenueRepository springDataVenueRepo) {
         return new PostgresVenueRepository(springDataVenueRepo);
+    }
+
+    @Bean
+    public IMemberRepository memberRepository(SpringDataMemberRepository springDataMemberRepo) {
+        return new PostgresMemberRepository(springDataMemberRepo);
     }
 
     @Bean
@@ -207,6 +220,8 @@ public class AppConfig {
     public PolicyCommandAssembler policyCommandAssembler() {
         return new PolicyCommandAssembler();
     }
+
+
 
     /**
      * Adapter from the company aggregate/repository to the permission port used by

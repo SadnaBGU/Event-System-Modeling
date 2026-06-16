@@ -45,7 +45,7 @@ class AdminServiceTest {
     private Member memberOf(MemberId id) {
         return new Member(id, "u" + id.value().substring(0, 4),
                 new HashedCredentials("h", "s", "BCrypt"),
-                new PersonalDetails("F", "L", "e@x", LocalDate.of(1990, 1, 1)));
+                new PersonalDetails(LocalDate.of(1990, 1, 1), "e@x", "F", "L"));
     }
 
     @Test

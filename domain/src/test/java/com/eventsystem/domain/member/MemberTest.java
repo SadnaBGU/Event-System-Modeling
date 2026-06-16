@@ -11,8 +11,8 @@ class MemberTest {
 
     private static final HashedCredentials CREDS =
             new HashedCredentials("hash123", "salt456", "BCrypt");
-    private static final PersonalDetails DETAILS = new PersonalDetails(
-            "Jon", "Snow", "jon@winterfell.north", LocalDate.of(1990, 1, 1));
+    private static final PersonalDetails DETAILS = new PersonalDetails(LocalDate.of(1990, 1, 1), "jon@winterfell.north", 
+            "Jon", "Snow");
 
     private Member newMember() {
         return new Member(MemberId.generate(), "jon", CREDS, DETAILS);
@@ -47,8 +47,8 @@ class MemberTest {
     @Test
     void updateDetailsReplacesPersonalDetails() {
         Member m = newMember();
-        PersonalDetails updated = new PersonalDetails(
-                "Aegon", "Targaryen", "aegon@dragon.fire", LocalDate.of(1990, 1, 1));
+        PersonalDetails updated = new PersonalDetails(LocalDate.of(1990, 1, 1), "aegon@dragon.fire", 
+                "Aegon", "Targaryen");
         m.updateDetails(updated);
         assertThat(m.getPersonalDetails()).isEqualTo(updated);
     }

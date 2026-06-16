@@ -36,7 +36,7 @@ public class NotificationsRestControllerTest {
     public void pending_returnsNotifications_and_marksDelivered() throws Exception {
         MemberId id = new MemberId("notif-member-1");
         var hashed = new HashedCredentials("h","s","bcrypt");
-        var details = new PersonalDetails("Test","User","t@e.local", java.time.LocalDate.of(1990,1,1));
+        var details = new PersonalDetails(java.time.LocalDate.of(1990,1,1),"t@e.local", "Test","User");
         Member m = new Member(id, id.value(), hashed, details);
         // add an undelivered notification
         m.addNotification(com.eventsystem.domain.member.Notification.create(com.eventsystem.domain.member.NotificationType.PURCHASE_COMPLETED, "ok"));

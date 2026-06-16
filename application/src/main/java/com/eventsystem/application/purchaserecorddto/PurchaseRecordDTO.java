@@ -7,6 +7,11 @@ import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.application.purchaserecorddto.EventSnapshotDTO;
 import com.eventsystem.domain.shared.Money;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+
 
 public record PurchaseRecordDTO(
     String recordId,
@@ -14,6 +19,11 @@ public record PurchaseRecordDTO(
     String buyerDisplayName,
     EventSnapshotDTO eventSnapshot,
     List<PurchasedItemDTO> items,
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
     Money totalPaid,
     List<DiscountSnapshotDTO> discountsApplied,
     Instant purchaseTimestamp,
@@ -24,16 +34,16 @@ public record PurchaseRecordDTO(
             PurchaseRecord purchaseRecord) {
         
         return new PurchaseRecordDTO(
-            purchaseRecord.recordId(),
-            purchaseRecord.buyerId(),
-            purchaseRecord.buyerSnapshot().displayName(),
-            EventSnapshotDTO.fromDomain(purchaseRecord.eventSnapshot()),
-            purchaseRecord.items().stream().map(PurchasedItemDTO::fromDomain).toList(),
-            purchaseRecord.totalPaid(),
-            purchaseRecord.discountsApplied().stream().map(DiscountSnapshotDTO::fromDomain).toList(),
+            purchaseRecord.getRecordId(),
+            purchaseRecord.getBuyerId(),
+            purchaseRecord.getBuyerSnapshot().displayName(),
+            EventSnapshotDTO.fromDomain(purchaseRecord.getEventSnapshot()),
+            purchaseRecord.getItems().stream().map(PurchasedItemDTO::fromDomain).toList(),
+            purchaseRecord.getTotalPaid(),
+            purchaseRecord.getDiscountsApplied().stream().map(DiscountSnapshotDTO::fromDomain).toList(),
             Instant.now(),
-            purchaseRecord.paymentConfirmationId(),
-            purchaseRecord.ticketIssuanceConfirmationId()
+            purchaseRecord.getPaymentConfirmationId(),
+            purchaseRecord.getTicketIssuanceConfirmationId()
         );
     }
 }

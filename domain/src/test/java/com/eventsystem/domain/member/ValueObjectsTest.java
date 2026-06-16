@@ -31,15 +31,15 @@ class ValueObjectsTest {
     @Test
     void personalDetailsRejectsBlankAndNull() {
         LocalDate dob = LocalDate.of(1990, 1, 1);
-        assertThatThrownBy(() -> new PersonalDetails(null, "S", "e@x", dob))
+        assertThatThrownBy(() -> new PersonalDetails(dob, "e@x", null, "S"))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new PersonalDetails(" ", "S", "e@x", dob))
+        assertThatThrownBy(() -> new PersonalDetails(dob, "e@x", " ", "S"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PersonalDetails("J", " ", "e@x", dob))
+        assertThatThrownBy(() -> new PersonalDetails(dob, "e@x", "J", " "))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PersonalDetails("J", "S", "", dob))
+        assertThatThrownBy(() -> new PersonalDetails(dob, "", "J", "S"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PersonalDetails("J", "S", "e@x", null))
+        assertThatThrownBy(() -> new PersonalDetails(null, "e@x", "J", "S"))
                 .isInstanceOf(NullPointerException.class);
     }
 

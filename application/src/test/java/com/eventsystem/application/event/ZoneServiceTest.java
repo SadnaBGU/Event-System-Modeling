@@ -3,6 +3,13 @@ package com.eventsystem.application.event;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
+
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+
+import org.hibernate.annotations.EmbeddableInstantiator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +32,11 @@ class ZoneServiceTest {
 
     private ZoneService service;
     private EventId eventId;
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
+    })
     private Money price;
 
     @BeforeEach
