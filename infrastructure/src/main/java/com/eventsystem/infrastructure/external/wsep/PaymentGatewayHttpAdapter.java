@@ -5,6 +5,14 @@ import com.eventsystem.application.order.PaymentResult;
 import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.shared.Money;
+
+import com.eventsystem.infrastructure.external.wsep.common.WsepAction;
+import com.eventsystem.infrastructure.external.wsep.common.WsepCommunicationException;
+import com.eventsystem.infrastructure.external.wsep.common.WsepHttpClient;
+import com.eventsystem.infrastructure.external.wsep.common.WsepResponseParser;
+import com.eventsystem.infrastructure.external.wsep.common.WsepPaymentDetails;
+
+
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -23,44 +31,52 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
 
     @Override
     public PaymentResult charge(String orderId, Money amount, BuyerReference buyer, String paymentDetailsToken) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("action_type", WsepAction.PAY.actionType());
-        params.put("order_id", orderId);
-        params.put("amount", amount.amount().toPlainString());
-        params.put("buyer_id", buyer.memberId());
-        params.put("payment_token", paymentDetailsToken);
+        try {
+            WsepPaymentDetails paymentDetails = WsepPaymentDetails.fromJson(paymentDetailsToken);
 
-        String response = client.post(params);
+            Map<String, String> params = new LinkedHashMap<>();
+            params.put("action_type", WsepAction.PAY.actionType());
+            params.put("amount", amount.amount().toPlainString());
+            params.put("currency", amount.currency());
+            params.put("card_number", paymentDetails.cardNumber());
+            params.put("month", paymentDetails.month());
+            params.put("year", paymentDetails.year());
+            params.put("holder", paymentDetails.holder());
+            params.put("cvv", paymentDetails.cvv());
+            params.put("id", paymentDetails.id());
 
-        if (isFailure(response)) {
-            return PaymentResult.failed("Payment declined by WSEP");
+            String response = client.post(params);
+
+            if (WsepResponseParser.isFailure(response)) {
+                return PaymentResult.failed("Payment declined by WSEP");
+            }
+
+            return PaymentResult.successful(response.trim());
+        } catch (WsepCommunicationException e) {
+            throw e;
+        } catch (Exception e) {
+            return PaymentResult.failed(e.getMessage());
         }
-
-        return PaymentResult.successful(response);
     }
 
     @Override
     public RefundResult refund(String transactionId, Money amount, String reason) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("action_type", WsepAction.REFUND.actionType());
-        params.put("transaction_id", transactionId);
-        params.put("amount", amount.amount().toPlainString());
-        params.put("reason", reason);
+        try {
+            Map<String, String> params = new LinkedHashMap<>();
+            params.put("action_type", WsepAction.REFUND.actionType());
+            params.put("transaction_id", transactionId);
 
-        String response = client.post(params);
+            String response = client.post(params);
 
-        if (isFailure(response)) {
-            return new RefundResult(false, "Refund rejected by WSEP");
+            if (!WsepResponseParser.isSuccessOne(response)) {
+                return new RefundResult(false, "Refund rejected by WSEP. Response: " + response);
+            }
+
+            return new RefundResult(true, null);
+        } catch (WsepCommunicationException e) {
+            throw e;
+        } catch (Exception e) {
+            return new RefundResult(false, e.getMessage());
         }
-
-        return new RefundResult(true, null);
-    }
-
-    private boolean isFailure(String response) {
-        return response == null
-                || response.isBlank()
-                || response.equalsIgnoreCase("false")
-                || response.equals("0")
-                || response.equals("-1");
     }
 }

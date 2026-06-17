@@ -1,6 +1,7 @@
-package com.eventsystem.infrastructure.external.wsep;
+package com.eventsystem.infrastructure.external.wsep.common;
 
 import com.eventsystem.infrastructure.config.WsepProperties;
+
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
@@ -44,12 +45,19 @@ public class WsepHttpClient {
                 throw new WsepCommunicationException("WSEP returned HTTP " + response.statusCode());
             }
 
-            return response.body() == null ? "" : response.body().trim();
+            String responseBody = response.body();
+            if (responseBody == null || responseBody.isBlank()) {
+                throw new WsepCommunicationException("WSEP returned an empty response");
+            }
+
+            return responseBody.trim();
         } catch (IOException e) {
             throw new WsepCommunicationException("Could not reach WSEP service", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new WsepCommunicationException("Interrupted while calling WSEP service", e);
+        } catch (IllegalArgumentException e) {
+            throw new WsepCommunicationException("Invalid WSEP URL: " + properties.getBaseUrl(), e);
         }
     }
 
