@@ -82,7 +82,7 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
 
             String response = client.post(params);
 
-            if (!WsepResponseParser.isSuccessOne(response)) {
+            if (WsepResponseParser.isSuccessOne(response)) {
                 log.info("WSEP refund succeeded for transactionId={}", transactionId);
                 return new RefundResult(true, null);
             }
