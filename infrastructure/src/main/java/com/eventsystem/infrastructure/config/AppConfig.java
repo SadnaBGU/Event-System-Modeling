@@ -32,6 +32,7 @@ import com.eventsystem.application.policy.PurchasePolicyValidationService;
 import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
 import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.application.venue.VenueManagementService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.IProductionCompanyRepository;
@@ -289,8 +290,10 @@ public class AppConfig {
     }
 
     @Bean
-    public AdminService adminService(IPlatformRepository platformRepo, IMemberRepository memberRepo) {
-        return new AdminService(platformRepo, memberRepo);
+    public AdminService adminService(IPlatformRepository platformRepo,
+                                    IMemberRepository memberRepo,
+                                    IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
+        return new AdminService(platformRepo, memberRepo, externalSystemsAvailabilityPort);
     }
 
     @Bean
@@ -387,33 +390,6 @@ public class AppConfig {
                                             companyPermissionServicePort, eventManagementPort, policyAssembler);
     }
 
-    @Bean
-    public IPaymentGatewayPort paymentGateway() {
-        return new IPaymentGatewayPort() {
-            @Override
-            public PaymentResult charge(String orderId, Money amount, BuyerReference buyer, String token) {
-                return PaymentResult.successful("DUMMY-TXN-" + System.currentTimeMillis());
-            }
-
-            @Override
-            public RefundResult refund(String transactionId, Money amount, String reason) {
-                return new RefundResult(true, reason);
-            }
-        };
-    }
-
-    @Bean
-    public ITicketIssuancePort ticketIssuance() {
-        return new ITicketIssuancePort() {
-            @Override
-            public IssuanceResult issueTickets(String eventId,
-                                               String orderId,
-                                               java.util.List<com.eventsystem.domain.order.OrderItem> items,
-                                               BuyerReference buyer) {
-                return IssuanceResult.successful("DUMMY-TICKET-BATCH-" + System.currentTimeMillis());
-            }
-        };
-    }
 
     @Bean
     public CheckoutSaga checkoutSaga(IActiveOrderRepository orderRepo,
@@ -443,9 +419,18 @@ public class AppConfig {
     // ==========================================
     @Bean
     public CommandLineRunner runAdminBootstrap(IPlatformRepository platformRepo,
-                                               IMemberRepository memberRepo,
-                                               BCryptPasswordHasher passwordHasher,
-                                               BootstrapProperties props) {
-        return args -> new AdminBootstrap(platformRepo, memberRepo, passwordHasher, props).run();
+                                            IMemberRepository memberRepo,
+                                            BCryptPasswordHasher passwordHasher,
+                                            BootstrapProperties props,
+                                            IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
+        return args -> {
+            if (!externalSystemsAvailabilityPort.areExternalSystemsAvailable()) {
+                throw new IllegalStateException(
+                        "External services are unavailable; platform initialization halted."
+                );
+            }
+
+            new AdminBootstrap(platformRepo, memberRepo, passwordHasher, props).run();
+        };
     }
 }
