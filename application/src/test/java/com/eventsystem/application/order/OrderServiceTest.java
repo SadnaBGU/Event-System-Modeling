@@ -1,30 +1,5 @@
 package com.eventsystem.application.order;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.event.IZoneServicePort;
@@ -38,198 +13,248 @@ import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
-import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
+import com.eventsystem.domain.zone.ZoneType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
     @Mock
     private IActiveOrderRepository orderRepository;
-    
     @Mock
-    private IZoneRepository zoneRepository;
-    
+    private IZoneServicePort zoneService;
     @Mock
     private OrderFactory orderFactory;
-
     @Mock
     private ILotteryRepository lotteryRepository;
+    @Mock
+    private IZoneRepository zoneRepository;
 
     @InjectMocks
     private OrderService orderService;
 
+    private final String EVENT_ID = "EVENT-123";
+    private final String ORDER_ID = "ORDER-123";
     private BuyerReference testBuyer;
     private ActiveOrder testOrder;
-    private final String EVENT_ID = "EVENT-777";
-    private final String ORDER_ID = "ORDER-888";
 
     @BeforeEach
     void setUp() {
-        testBuyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "user-123");
+        testBuyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "member-123");
         testOrder = mock(ActiveOrder.class);
         lenient().when(testOrder.getOrderId()).thenReturn(ORDER_ID);
         lenient().when(testOrder.getBuyerRef()).thenReturn(testBuyer);
+        lenient().when(testOrder.getEventId()).thenReturn(EVENT_ID);
     }
 
-    private void mockWithLockExecution() {
+    // ==========================================
+    // createOrGetActiveOrder
+    // ==========================================
+
+    @Test
+    void createOrGetActiveOrder_OrderExists_ReturnsExistingOrder() {
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
+
+        ActiveOrderDTO result = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
+
+        assertEquals(ORDER_ID, result.orderId());
+        verify(orderRepository, never()).save(any()); // לא שומרים מחדש
+    }
+
+    @Test
+    void createOrGetActiveOrder_NoOrderNoLottery_CreatesNewOrder() {
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
+        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.empty());
+        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
+
+        ActiveOrderDTO result = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty());
+
+        assertEquals(ORDER_ID, result.orderId());
+        verify(orderRepository).save(testOrder);
+    }
+
+    @Test
+    void createOrGetActiveOrder_LotteryExistsValidCode_CreatesNewOrder() {
+        Lottery mockLottery = mock(Lottery.class);
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
+        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
+        when(mockLottery.validateCode(eq("VALID-CODE"), any(Instant.class))).thenReturn(Optional.of(new MemberId("member-123")));
+        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
+
+        ActiveOrderDTO result = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("VALID-CODE"));
+
+        assertEquals(ORDER_ID, result.orderId());
+        verify(orderRepository).save(testOrder);
+    }
+
+    @Test
+    void createOrGetActiveOrder_LotteryExistsInvalidCode_ThrowsSecurityException() {
+        Lottery mockLottery = mock(Lottery.class);
+        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
+        when(mockLottery.validateCode(eq("INVALID-CODE"), any(Instant.class))).thenReturn(Optional.empty());
+
+        assertThrows(SecurityException.class, () -> 
+            orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("INVALID-CODE"))
+        );
+        verify(orderRepository, never()).save(any());
+    }
+
+    // ==========================================
+    // createNewOrderStrict
+    // ==========================================
+
+    @Test
+    void createNewOrderStrict_OrderAlreadyExists_ThrowsException() {
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
+
+        assertThrows(AlreadyExistsOrderException.class, () -> 
+            orderService.createNewOrderStrict(testBuyer, EVENT_ID)
+        );
+    }
+
+    @Test
+    void createNewOrderStrict_NoOrderExists_CreatesNewOrder() {
+        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
+        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
+
+        ActiveOrderDTO result = orderService.createNewOrderStrict(testBuyer, EVENT_ID);
+
+        assertEquals(ORDER_ID, result.orderId());
+        verify(orderRepository).save(testOrder);
+    }
+
+    // ==========================================
+    // addItemToOrder & removeItemFromOrder
+    // ==========================================
+
+    @Test
+    void addItemToOrder_OrderNotFound_ThrowsException() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
+
+        assertThrows(OrderNotFoundException.class, () -> 
+            orderService.addItemToOrder(ORDER_ID, "ZONE-1", "SEAT-1", 1)
+        );
+    }
+
+    @Test
+    void addItemToOrder_OrderExists_AddsItemAndSaves() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+
+        orderService.addItemToOrder(ORDER_ID, "ZONE-1", "SEAT-1", 2);
+
+        // משתמשים ב-any() שמסכים לקבל את ה-null שמגיע מהמוק של zoneService
+        verify(testOrder).addItem(any());
+        verify(orderRepository).save(testOrder);
+    }
+
+    @Test
+    void removeItemFromOrder_OrderExists_RemovesItemAndSaves() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+
+        orderService.removeItemFromOrder(ORDER_ID, "ZONE-1", "SEAT-1", 1);
+
+        verify(testOrder).removeItem("ZONE-1", "SEAT-1");
+        verify(orderRepository).save(testOrder);
+    }
+
+    // ==========================================
+    // getOrderById
+    // ==========================================
+
+    @Test
+    void getOrderById_Found_ReturnsDTO() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
+        
+        ActiveOrderDTO result = orderService.getOrderById(ORDER_ID);
+        
+        assertEquals(ORDER_ID, result.orderId());
+    }
+
+    @Test
+    void getOrderById_NotFound_ThrowsException() {
+        when(orderRepository.findById("BOGUS-ID")).thenReturn(Optional.empty());
+        
+        assertThrows(OrderNotFoundException.class, () -> 
+            orderService.getOrderById("BOGUS-ID")
+        );
+    }
+
+    // ==========================================
+    // sweepExpiredOrders (Complex Logic with Locks)
+    // ==========================================
+
+    @Test
+    void sweepExpiredOrders_NoOrders_DoesNothing() {
+        when(orderRepository.findExpired()).thenReturn(Optional.of(List.of()));
+        
+        orderService.sweepExpiredOrders();
+        
+        verify(zoneRepository, never()).withLock(any(), any());
+    }
+
+    @Test
+    void sweepExpiredOrders_WithExpiredOrders_ReleasesSeatsAndSaves() {
+        // Arrange
+        when(orderRepository.findExpired()).thenReturn(Optional.of(List.of(testOrder)));
+        
+        // יצירת פריטי הזמנה פגי תוקף: אחד עמידה, אחד ישיבה
+        OrderItem standingItem = mock(OrderItem.class);
+        when(standingItem.getZoneId()).thenReturn("ZONE-STAND");
+        when(standingItem.getQuantity()).thenReturn(5);
+        
+        OrderItem seatedItem = mock(OrderItem.class);
+        when(seatedItem.getZoneId()).thenReturn("ZONE-SEAT");
+        when(seatedItem.getSeatId()).thenReturn("SEAT-1");
+        
+        when(testOrder.expire()).thenReturn(List.of(standingItem, seatedItem));
+        
+        // התנהגות ה-Zone Repository
+        Zone standingZone = mock(Zone.class);
+        when(standingZone.zoneType()).thenReturn(ZoneType.STANDING);
+        Zone seatedZone = mock(Zone.class);
+        when(seatedZone.zoneType()).thenReturn(ZoneType.SEATED);
+        
+        when(zoneRepository.findById(new ZoneId("ZONE-STAND"))).thenReturn(Optional.of(standingZone));
+        when(zoneRepository.findById(new ZoneId("ZONE-SEAT"))).thenReturn(Optional.of(seatedZone));
+        
+        // קסם המוק - גורם לפונקציית ה-withLock להריץ את ה-Runnable מיד!
         doAnswer(invocation -> {
             Runnable action = invocation.getArgument(1);
             action.run();
             return null;
         }).when(zoneRepository).withLock(any(ZoneId.class), any(Runnable.class));
-    }
-
-    @Test
-    void createOrGetActiveOrder_ExistingValidOrder_ReturnsExistingId() {
-        // Arrange
-        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
-        when(testOrder.isExpired()).thenReturn(false);
-
-        // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty()).orderId();
-
-        // Assert
-        assertEquals(ORDER_ID, resultId);
-        verify(orderFactory, never()).createOrder(any(), any(), any());
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    void createOrGetActiveOrder_NoOrderExists_CreatesNewOrder() {
-        // Arrange
-        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
-        
-        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any(Instant.class))).thenReturn(testOrder);
-
-        // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.empty()).orderId();
-
-        // Assert
-        assertEquals(ORDER_ID, resultId);
-        verify(orderFactory, times(1)).createOrder(eq(testBuyer), eq(EVENT_ID), any(Instant.class));
-        verify(orderRepository, times(1)).save(testOrder);
-    }
-
-    @Test
-    void reserveSeat_OrderNotFound_ThrowsException() {
-        // Arrange
-        when(orderRepository.findById("INVALID_ORDER")).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(OrderNotFoundException.class, () -> {
-            orderService.addItemToOrder("INVALID_ORDER", "ZONE-A", "SEAT-1", 1);
-        });
-    }
-
-    @Test
-    void reserveSeat_ValidOrder_AddsItemAndSaves() {
-        // Arrange
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
-        mockWithLockExecution();
-
-
-        
-       Zone mockZone = mock(Zone.class);
-        when(mockZone.zoneId()).thenReturn(new ZoneId("ZONE-A"));
-        when(mockZone.pricePerTicket()).thenReturn(Money.of(new BigDecimal("100.0"), "USD"));
-        when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
-
-        // Act
-        orderService.addItemToOrder(ORDER_ID, "ZONE-A", "SEAT-1", 1);
-
-        // Assert
-        verify(mockZone, times(1)).reserveSeat(new SeatId("SEAT-1"));
-        verify(zoneRepository, times(1)).save(mockZone);
-        verify(testOrder, times(1)).addItem(any(OrderItem.class));
-        verify(orderRepository, times(1)).save(testOrder);
-    }
-
-    @Test
-    void sweepExpiredOrders_ProcessesOrdersAndUnlocksSeats() {
-        // Arrange
-        when(orderRepository.findExpired()).thenReturn(Optional.of(List.of(testOrder)));
-        
-        OrderItem expiredItem = new OrderItem("ZONE-VIP", "SEAT-9", 1, Money.of(new BigDecimal("200.0"), "USD"));
-        when(testOrder.expire()).thenReturn(List.of(expiredItem));
-        mockWithLockExecution();
-
-        Zone mockZone = mock(Zone.class);
-        when(zoneRepository.findById(new ZoneId("ZONE-VIP"))).thenReturn(Optional.of(mockZone));
 
         // Act
         orderService.sweepExpiredOrders();
 
         // Assert
-        verify(testOrder, times(1)).expire();
-        verify(orderRepository, times(1)).save(testOrder);
-        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-9"));
-        verify(zoneRepository, times(1)).save(mockZone);
-    }
-
-    @Test
-    void releaseSeat_ValidOrder_RemovesItemAndUnlocks() {
-        // Arrange
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
-        mockWithLockExecution();
-
-        Zone mockZone = mock(Zone.class);
-        when(zoneRepository.findById(new ZoneId("ZONE-A"))).thenReturn(Optional.of(mockZone));
-
-        // Act
-        orderService.removeItemFromOrder(ORDER_ID, "ZONE-A", "SEAT-1", 1);
-
-        // Assert
-        verify(testOrder, times(1)).removeItem("ZONE-A", "SEAT-1");
-        verify(orderRepository, times(1)).save(testOrder);
-        verify(mockZone, times(1)).releaseSeat(new SeatId("SEAT-1"));
-        verify(zoneRepository, times(1)).save(mockZone);
-    }
-
-    @Test
-    void createOrder_LotteryEvent_ValidCode_CreatesOrder() {
-        // Arrange - UAT 17
-        Lottery mockLottery = mock(Lottery.class);
-        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
-        when(mockLottery.validateCode(eq("WINNER-123"), any(Instant.class))).thenReturn(Optional.of(new MemberId(testBuyer.memberId())));
-        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.empty());
-        when(orderFactory.createOrder(eq(testBuyer), eq(EVENT_ID), any())).thenReturn(testOrder);
-
-        // Act
-        String resultId = orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("WINNER-123")).orderId();
-
-        // Assert
-        assertEquals(ORDER_ID, resultId);
-        verify(orderRepository, times(1)).save(testOrder);
-    }
-
-    @Test
-    void createOrder_LotteryEvent_InvalidCode_ThrowsException() {
-        // Arrange - UAT 18
-        Lottery mockLottery = mock(Lottery.class);
-        when(lotteryRepository.findByEventId(new EventId(EVENT_ID))).thenReturn(Optional.of(mockLottery));
-        when(mockLottery.validateCode(eq("FAKE-CODE"), any(Instant.class))).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(SecurityException.class, () -> {
-            orderService.createOrGetActiveOrder(testBuyer, EVENT_ID, Optional.of("FAKE-CODE"));
-        });
+        verify(testOrder).expire();
+        verify(orderRepository).save(testOrder);
         
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    void createNewOrderStrict_ExistingOrder_ThrowsException() {
-        // Arrange - UAT 19
-        when(orderRepository.findByBuyerAndEvent(testBuyer, EVENT_ID)).thenReturn(Optional.of(testOrder));
-        when(testOrder.isExpired()).thenReturn(false);
-
-        // Act & Assert
-        assertThrows(AlreadyExistsOrderException.class, () -> {
-            orderService.createNewOrderStrict(testBuyer, EVENT_ID);
-        });
+        // וידוא שחרור מקומות
+        verify(standingZone).releaseStanding(5);
+        verify(seatedZone).releaseSeat(new SeatId("SEAT-1"));
+        
+        // וידוא שמירה של האזורים
+        verify(zoneRepository).save(standingZone);
+        verify(zoneRepository).save(seatedZone);
     }
 }

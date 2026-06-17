@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /**
@@ -179,6 +180,6 @@ public class ZoneService implements IZoneServicePort {
 
     private Zone loadZone(ZoneId zoneId) {
         return zoneRepository.findById(zoneId)
-                .orElseThrow(() -> new IllegalArgumentException("zone not found: " + zoneId.value()));
+                .orElseThrow(() -> new NoSuchElementException("Zone not found for zoneId: " + zoneId));
     }
 }

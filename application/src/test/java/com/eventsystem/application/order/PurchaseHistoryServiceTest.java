@@ -33,41 +33,43 @@ class PurchaseHistoryServiceTest {
 
     private final String BUYER_ID = "buyer-123";
 
-    // מתודת עזר לייצור Mock אחיד של סנאפשוטים כדי למנוע NPE
-    private void setupSnapshotsForRecord(PurchaseRecord record) {
-        BuyerSnapshot dummyBuyerSnapshot = mock(BuyerSnapshot.class);
-        lenient().when(dummyBuyerSnapshot.displayName()).thenReturn("John Doe");
-
-        EventSnapshot dummyEventSnapshot = mock(EventSnapshot.class);
-        lenient().when(dummyEventSnapshot.eventId()).thenReturn("EVENT-999");
-
-        lenient().when(record.getBuyerSnapshot()).thenReturn(dummyBuyerSnapshot);
-        lenient().when(record.getEventSnapshot()).thenReturn(dummyEventSnapshot);
+    // מתודת עזר לייצור Mock אחיד של סנאפשוטים כדי למנוע NullPointer ב-DTO mapping
+    private void setupSnapshotsForRecord(PurchaseRecord mockRecord) {
+        BuyerSnapshot bs = mock(BuyerSnapshot.class);
+        EventSnapshot es = mock(EventSnapshot.class);
+        lenient().when(mockRecord.getBuyerSnapshot()).thenReturn(bs);
+        lenient().when(mockRecord.getEventSnapshot()).thenReturn(es);
+        lenient().when(mockRecord.getItems()).thenReturn(List.of());
+        lenient().when(mockRecord.getDiscountsApplied()).thenReturn(List.of());
     }
 
     @Test
-    void getHistoryForBuyer_ReturnsSortedRecordsNewestFirst() {
+    void getHistoryForBuyer_ReturnsSortedHistory() {
         // Arrange
-        PurchaseRecord oldRecord = mock(PurchaseRecord.class);
-        lenient().when(oldRecord.getRecordId()).thenReturn("REC-OLD");
-        setupSnapshotsForRecord(oldRecord);
-        when(oldRecord.getPurchaseTimestamp()).thenReturn(Instant.now().minus(5, ChronoUnit.DAYS));
+        PurchaseRecord rec1 = mock(PurchaseRecord.class);
+        PurchaseRecord rec2 = mock(PurchaseRecord.class);
         
-        PurchaseRecord newRecord = mock(PurchaseRecord.class);
-        lenient().when(newRecord.getRecordId()).thenReturn("REC-NEW");
-        setupSnapshotsForRecord(newRecord);
-        when(newRecord.getPurchaseTimestamp()).thenReturn(Instant.now());
+        setupSnapshotsForRecord(rec1);
+        setupSnapshotsForRecord(rec2);
+        
+        lenient().when(rec1.getRecordId()).thenReturn("REC-1");
+        lenient().when(rec2.getRecordId()).thenReturn("REC-2");
+        
+        Instant now = Instant.now();
+        // rec1 is older, rec2 is newer
+        lenient().when(rec1.getPurchaseTimestamp()).thenReturn(now.minus(2, ChronoUnit.DAYS));
+        lenient().when(rec2.getPurchaseTimestamp()).thenReturn(now.minus(1, ChronoUnit.DAYS));
 
-        when(purchaseRecordRepository.findByBuyer(BUYER_ID)).thenReturn(List.of(oldRecord, newRecord));
+        // Repository returns them in unsorted order
+        when(purchaseRecordRepository.findByBuyer(BUYER_ID)).thenReturn(List.of(rec1, rec2));
 
         // Act
         List<PurchaseRecordDTO> history = purchaseHistoryService.getHistoryForBuyer(BUYER_ID);
 
         // Assert
         assertEquals(2, history.size());
-        // משווים את ה-ID של ה-DTO מול ה-ID של הרשומה המקורית
-        assertEquals("REC-NEW", history.get(0).recordId(), "Newest record should be first");
-        assertEquals("REC-OLD", history.get(1).recordId(), "Oldest record should be last");
+        assertEquals("REC-2", history.get(0).recordId(), "Newest record should be first");
+        assertEquals("REC-1", history.get(1).recordId(), "Oldest record should be last");
     }
 
     @Test
@@ -86,6 +88,19 @@ class PurchaseHistoryServiceTest {
         // Assert
         assertTrue(result.isPresent());
         assertEquals(recordId, result.get().recordId());
+    }
+
+    @Test
+    void getReceiptDetails_Empty_LogsWarningAndReturnsEmpty() {
+        // Arrange
+        String recordId = "REC-NOT-FOUND";
+        when(purchaseRecordRepository.findById(recordId)).thenReturn(Optional.empty());
+
+        // Act
+        Optional<PurchaseRecordDTO> result = purchaseHistoryService.getReceiptDetails(recordId);
+
+        // Assert
+        assertTrue(result.isEmpty());
     }
 
     @Test
