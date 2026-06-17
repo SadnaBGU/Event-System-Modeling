@@ -3,6 +3,8 @@ package com.eventsystem.domain.company;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,6 +26,20 @@ class OwnerNodeTest {
         assertThat(node2.isAccepted()).isFalse();
         node2.accept();
         assertThat(node2.isAccepted()).isTrue();
+    }
+
+    @Test
+    void jsonCreatorConstructor_worksViaReflection() throws Exception {
+        Constructor<OwnerNode> c = OwnerNode.class.getDeclaredConstructor(
+                MemberId.class, MemberId.class, boolean.class, List.class, List.class);
+        c.setAccessible(true);
+        
+        MemberId m1 = MemberId.random();
+        OwnerNode node = c.newInstance(m1, MemberId.random(), true, null, null);
+        
+        assertThat(node.memberId()).isEqualTo(m1);
+        assertThat(node.appointedOwners()).isEmpty();
+        assertThat(node.appointedManagers()).isEmpty();
     }
 
     @Test
@@ -49,6 +65,11 @@ class OwnerNodeTest {
     
     @Test
     void nullValidations() {
-        assertThatThrownBy(() -> new OwnerNode(null, MemberId.random())).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new OwnerNode(null, MemberId.random()))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("memberId");
+                
+        assertThatThrownBy(() -> new OwnerNode(null, MemberId.random(), true))
+                .isInstanceOf(NullPointerException.class);
     }
 }
