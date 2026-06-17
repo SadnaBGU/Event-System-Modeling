@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.List;
 
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
-import com.eventsystem.application.purchaserecorddto.EventSnapshotDTO;
 import com.eventsystem.domain.shared.Money;
 
 import jakarta.persistence.AttributeOverride;

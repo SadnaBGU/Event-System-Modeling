@@ -7,7 +7,6 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.appexceptions.PriceCalcException;
 import com.eventsystem.application.event.IEventQueryPort;
-import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
@@ -27,10 +26,6 @@ import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
-
-import jakarta.persistence.Embedded;
-
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 

@@ -1,6 +1,5 @@
 package com.eventsystem.infrastructure.api.auth;
 
-import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
 import com.eventsystem.application.auth.RegisterMemberRequest;

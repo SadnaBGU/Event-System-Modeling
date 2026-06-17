@@ -77,6 +77,7 @@ class AppConfigBeansTest {
         assertThatThrownBy(() -> port.getCompanyName(null)).isInstanceOf(NullPointerException.class);
     }
 
+    @SuppressWarnings("null")
     @Test
     void bootstrapPropertiesBean_InitializesCorrectly() {
         org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminUsername", "admin");

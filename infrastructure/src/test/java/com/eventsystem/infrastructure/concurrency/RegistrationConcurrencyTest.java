@@ -4,7 +4,6 @@ import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.RegisterMemberRequest;
 import com.eventsystem.application.member.MemberService;
-import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;

@@ -3,7 +3,6 @@ package com.eventsystem.application.venue;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
 import com.eventsystem.domain.member.IMemberRepository;
-import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.venue.*;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.SeatId;
@@ -16,6 +15,7 @@ import java.util.Objects;
 
 public class VenueManagementService {
     private final IVenueRepository venueRepository;
+    @SuppressWarnings("unused")
     private final IMemberRepository memberRepository;
 
     public VenueManagementService(IVenueRepository venueRepository, IMemberRepository memberRepository) {

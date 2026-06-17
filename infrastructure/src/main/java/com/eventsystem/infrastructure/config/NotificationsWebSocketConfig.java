@@ -5,15 +5,12 @@ import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.security.ITokenService.TokenClaims;
 import com.eventsystem.infrastructure.notifications.NotificationBroadcasterImpl;
 
-import io.micrometer.common.lang.NonNull;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -32,6 +29,7 @@ import java.util.List;
 @EnableWebSocketMessageBroker
 public class NotificationsWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    @SuppressWarnings("unused")
     private static final Logger log = LoggerFactory.getLogger(NotificationsWebSocketConfig.class);
 
     private final ITokenService tokenService;

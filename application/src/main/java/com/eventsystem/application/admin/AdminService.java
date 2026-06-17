@@ -5,7 +5,6 @@ import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.member.Suspension;
 import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;

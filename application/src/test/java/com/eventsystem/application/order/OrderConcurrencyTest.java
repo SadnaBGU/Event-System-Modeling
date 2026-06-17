@@ -1,7 +1,5 @@
 package com.eventsystem.application.order;
 
-import com.eventsystem.application.event.ZoneService;
-import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.order.*;
@@ -12,7 +10,6 @@ import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 // track a: concurrency test for orderservice. 100 threads attempt to reserve the same seat. expected: 1 succeeds, 99 fail.

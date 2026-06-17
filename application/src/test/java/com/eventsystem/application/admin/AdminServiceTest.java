@@ -11,7 +11,6 @@ import com.eventsystem.domain.platform.IPlatformRepository;
 import com.eventsystem.domain.platform.Platform;
 import com.eventsystem.domain.platform.PlatformStatus;
 import com.eventsystem.domain.shared.ProviderId;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

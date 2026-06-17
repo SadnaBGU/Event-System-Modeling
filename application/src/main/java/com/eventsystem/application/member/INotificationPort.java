@@ -1,8 +1,6 @@
 package com.eventsystem.application.member;
 
 import com.eventsystem.domain.order.BuyerReference;
-import java.math.BigDecimal;
-import java.util.List;
 
 public interface INotificationPort {
     

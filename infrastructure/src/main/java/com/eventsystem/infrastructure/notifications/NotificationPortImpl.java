@@ -3,7 +3,6 @@ package com.eventsystem.infrastructure.notifications;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.domain.member.IMemberRepository;
-import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;

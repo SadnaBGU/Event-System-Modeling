@@ -1,7 +1,5 @@
 package com.eventsystem.domain.order;
 
-import java.math.BigDecimal;
-
 import com.eventsystem.domain.shared.Money;
 
 import jakarta.persistence.AttributeOverride;

@@ -4,7 +4,6 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;

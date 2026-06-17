@@ -1,6 +1,5 @@
 package com.eventsystem.infrastructure.api.auth;
 
-import com.eventsystem.application.auth.AuthService;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
 import com.eventsystem.application.auth.RegisterMemberRequest;
@@ -9,7 +8,6 @@ import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
-import com.eventsystem.infrastructure.config.WebMvcConfig;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -17,9 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,7 +27,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import org.springframework.context.annotation.FilterType;
 
 @WebMvcTest(value = AuthController.class, properties = "spring.main.web-application-type=servlet")
 @AutoConfigureMockMvc(addFilters = false)

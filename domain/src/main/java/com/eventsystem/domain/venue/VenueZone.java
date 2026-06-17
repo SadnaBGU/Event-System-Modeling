@@ -9,7 +9,6 @@ import com.eventsystem.domain.zone.SeatedZoneHelper;
 import com.eventsystem.domain.shared.Money;
 import jakarta.persistence.*;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
 @Entity

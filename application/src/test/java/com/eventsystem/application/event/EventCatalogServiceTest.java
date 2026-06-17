@@ -1,6 +1,5 @@
 package com.eventsystem.application.event;
 
-import com.eventsystem.domain.company.CompanyDetails;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.ProductionCompany;
@@ -11,8 +10,6 @@ import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
-import com.eventsystem.domain.zone.ZoneId;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,7 +24,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

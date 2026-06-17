@@ -1,7 +1,6 @@
 package com.eventsystem.infrastructure.persistence.springrepos;
 
 import com.eventsystem.domain.order.ActiveOrder;
-import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
