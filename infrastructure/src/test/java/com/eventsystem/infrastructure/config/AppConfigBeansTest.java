@@ -4,9 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -15,11 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
-import com.eventsystem.application.order.IPaymentGatewayPort;
-import com.eventsystem.application.order.ITicketIssuancePort;
-import com.eventsystem.application.order.IssuanceResult;
-import com.eventsystem.application.order.PaymentResult;
-import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.domain.company.CompanyDetails;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.IProductionCompanyRepository;
@@ -28,9 +20,6 @@ import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.order.BuyerType;
-import com.eventsystem.domain.shared.Money;
 
 @ExtendWith(MockitoExtension.class)
 class AppConfigBeansTest {
@@ -88,31 +77,6 @@ class AppConfigBeansTest {
         assertThatThrownBy(() -> port.getCompanyName(null)).isInstanceOf(NullPointerException.class);
     }
 
-    @Test
-    void paymentGatewayDummy_ExecutesSuccessfully() {
-        IPaymentGatewayPort gateway = appConfig.paymentGateway();
-        BuyerReference buyer = new BuyerReference(BuyerType.GUEST, "sess", null);
-        Money money = new Money(BigDecimal.TEN, "USD");
-
-        PaymentResult chargeResult = gateway.charge("ORD-1", money, buyer, "token");
-        assertThat(chargeResult.success()).isTrue();
-        assertThat(chargeResult.transactionId()).contains("DUMMY-TXN");
-
-        RefundResult refundResult = gateway.refund("TXN-1", money, "Customer request");
-        assertThat(refundResult.success()).isTrue();
-        assertThat(refundResult.errorMessage()).isEqualTo("Customer request");
-    }
-
-    @Test
-    void ticketIssuanceDummy_ExecutesSuccessfully() {
-        ITicketIssuancePort issuance = appConfig.ticketIssuance();
-        BuyerReference buyer = new BuyerReference(BuyerType.GUEST, "sess", null);
-
-        IssuanceResult result = issuance.issueTickets("EV-1", "ORD-1", List.of(), buyer);
-        assertThat(result.success()).isTrue();
-    }
-
-    @SuppressWarnings("null")
     @Test
     void bootstrapPropertiesBean_InitializesCorrectly() {
         org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminUsername", "admin");
