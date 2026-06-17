@@ -4,9 +4,11 @@ import java.util.Arrays;
 
 public enum WsepAction {
 
+    HANDSHAKE("handshake"),
     PAY("pay"),
     REFUND("refund"),
-    ISSUE_TICKETS("issue_tickets");
+    ISSUE_TICKET("issue_ticket"),
+    CANCEL_TICKET("cancel_ticket");
 
     private final String actionType;
 
