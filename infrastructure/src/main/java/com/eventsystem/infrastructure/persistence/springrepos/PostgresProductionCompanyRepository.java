@@ -17,6 +17,7 @@ public class PostgresProductionCompanyRepository implements IProductionCompanyRe
         this.jpaRepository = Objects.requireNonNull(jpaRepository);
     }
 
+    @SuppressWarnings("null")
     @Override
     public Optional<ProductionCompany> findById(CompanyId companyId) {
         return jpaRepository.findById(companyId);
@@ -27,11 +28,13 @@ public class PostgresProductionCompanyRepository implements IProductionCompanyRe
         return jpaRepository.findByDetailsName(companyName);
     }
 
+    @SuppressWarnings("null")
     @Override
     public void save(ProductionCompany company) {
         jpaRepository.save(company);
     }
 
+    @SuppressWarnings("null")
     @Override
     public boolean hasPermission(MemberId memberId, CompanyId companyId, Permission permission) {
         return jpaRepository.findById(companyId)

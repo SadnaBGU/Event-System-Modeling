@@ -23,6 +23,64 @@ class VirtualQueueTest {
         queue = new VirtualQueue(queueId, eventId, 50, maxAdmissions);
     }
 
+    // ==========================================
+    // Constructors & Persistable 
+    // ==========================================
+
+    @Test
+    void jpaConstructor_createsEmptyInstance() throws Exception {
+        java.lang.reflect.Constructor<VirtualQueue> c = VirtualQueue.class.getDeclaredConstructor();
+        c.setAccessible(true);
+        VirtualQueue vq = c.newInstance();
+        
+        assertThat(vq.getId()).isNull();
+        assertThat(vq.isNew()).isTrue();
+    }
+
+    @Test
+    void fullConstructor_andGetters_workCorrectly() {
+        VirtualQueue vq = new VirtualQueue("Q-1", "E-1", QueueStatus.ACTIVE, 50, 100, List.of(), List.of(), 5);
+        
+        assertThat(vq.getQueueId()).isEqualTo("Q-1");
+        assertThat(vq.getEventId()).isEqualTo("E-1");
+        assertThat(vq.getStatus()).isEqualTo(QueueStatus.ACTIVE);
+        assertThat(vq.getLoadThreshold()).isEqualTo(50);
+        assertThat(vq.getMaxConcurrentAdmissions()).isEqualTo(100);
+        assertThat(vq.getVersion()).isEqualTo(0L);
+        assertThat(vq.isNew()).isTrue();
+        assertThat(vq.getId()).isEqualTo("Q-1");
+    }
+
+    // ==========================================
+    // Queue Status Lifecycle
+    // ==========================================
+
+    @Test
+    void pause_setsStatusToInactive() {
+        queue.activate();
+        assertThat(queue.getStatus()).isEqualTo(QueueStatus.ACTIVE);
+        
+        queue.pause();
+        assertThat(queue.getStatus()).isEqualTo(QueueStatus.INACTIVE);
+    }
+
+    @Test
+    void clearQueue_setsInactive_and_returnsWaitingEntries() {
+        queue.activate();
+        BuyerReference v1 = new BuyerReference(BuyerType.MEMBER, "s1", "m1");
+        queue.joinQueue(v1);
+        
+        List<BuyerReference> waiting = queue.clearQueue();
+        
+        assertThat(queue.getStatus()).isEqualTo(QueueStatus.INACTIVE);
+        assertThat(waiting).containsExactly(v1);
+        assertThat(queue.positionOf(v1)).isEqualTo(-1); // Queue is cleared
+    }
+
+    // ==========================================
+    // Core Queue Operations
+    // ==========================================
+
     @Test
     void enqueue_InactiveQueue_ThrowsException() {
         BuyerReference visitor = new BuyerReference(BuyerType.MEMBER, "session-1", "member-1");
@@ -66,6 +124,13 @@ class VirtualQueueTest {
         for (BuyerReference visitor : visitors) {
             assertThat(queue.isAdmitted(visitor)).isFalse();
         }
+    }
+
+    @Test
+    void admitNextGroup_whenNotActive_returnsEmpty() {
+        // queue is inactive initially
+        List<AdmissionToken> tokens = queue.admitNextGroup(10);
+        assertThat(tokens).isEmpty();
     }
 
     @Test
@@ -138,6 +203,30 @@ class VirtualQueueTest {
         }
     }
 
+    // ==========================================
+    // Queries & Token Operations
+    // ==========================================
+
+    @Test
+    void positionOf_returnsCorrectValues() {
+        queue = new VirtualQueue(queueId, eventId, 50, 1);
+        queue.activate();
+        
+        BuyerReference v1 = new BuyerReference(BuyerType.MEMBER, "s1", "m1");
+        BuyerReference v2 = new BuyerReference(BuyerType.MEMBER, "s2", "m2");
+        BuyerReference v3 = new BuyerReference(BuyerType.MEMBER, "s3", "m3");
+
+        queue.joinQueue(v1);
+        queue.joinQueue(v2);
+
+        // Admits v1 because maxConcurrent is 1
+        queue.admitNextGroup(10); 
+
+        assertThat(queue.positionOf(v1)).isEqualTo(0); // Admitted
+        assertThat(queue.positionOf(v2)).isGreaterThan(0); // Waiting
+        assertThat(queue.positionOf(v3)).isEqualTo(-1); // Not in queue
+    }
+
     @Test
     void isAdmitted_AdmittedVisitor_ReturnsTrue() {
         queue.activate();
@@ -189,10 +278,11 @@ class VirtualQueueTest {
         BuyerReference visitor = new BuyerReference(BuyerType.MEMBER, "session-1", "member-1");
         queue.joinQueue(visitor);
         
+        // 0 minutes validity means it expires instantly
         queue.admitNextGroup(0);
 
         try {
-            Thread.sleep(100);
+            Thread.sleep(10);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -220,6 +310,21 @@ class VirtualQueueTest {
     }
 
     @Test
+    void consumeTokenFor_marksTokenAsConsumed() {
+        queue.activate();
+        BuyerReference v1 = new BuyerReference(BuyerType.MEMBER, "s1", "m1");
+        queue.joinQueue(v1);
+        queue.admitNextGroup(10);
+
+        assertThat(queue.getOpenSlots()).isEqualTo(99);
+        
+        queue.consumeTokenFor(v1);
+        
+        // After consuming, open slots should go back to 100 because consumed tokens don't count towards current load
+        assertThat(queue.getOpenSlots()).isEqualTo(100);
+    }
+
+    @Test
     void expireTokens_RemovesExpiredTokensAndFreesSlots() {
         queue = new VirtualQueue(queueId, eventId, 50, 5);
         queue.activate();
@@ -234,14 +339,14 @@ class VirtualQueueTest {
             queue.joinQueue(visitor);
         }
         
-        queue.admitNextGroup(0);
+        queue.admitNextGroup(0); // instant expire
         
         for (BuyerReference visitor : next5) {
             assertThat(queue.isAdmitted(visitor)).isFalse();
         }
         
         try {
-            Thread.sleep(100);
+            Thread.sleep(10);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -275,6 +380,10 @@ class VirtualQueueTest {
         queue.revokeAdmission(visitors.get(0));
         assertThat(queue.getOpenSlots()).isEqualTo(71);
     }
+
+    // ==========================================
+    // Helpers
+    // ==========================================
 
     private List<BuyerReference> createBuyerReferences(int count) {
         return createBuyerReferences(count, 0);

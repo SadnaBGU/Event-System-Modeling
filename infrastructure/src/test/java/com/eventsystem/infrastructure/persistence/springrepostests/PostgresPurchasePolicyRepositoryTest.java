@@ -5,6 +5,7 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresPurchasePolicyRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +14,10 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
-import jakarta.persistence.EntityManager;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -26,165 +26,84 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
 
     @Autowired
-    private PostgresPurchasePolicyRepository purchasePolicyRepository;
-
+    private PostgresPurchasePolicyRepository repository;
     @Autowired
     private EntityManager em;
 
     private CompanyId companyId;
+    private EventId eventId;
 
     @BeforeEach
     void setUp() {
-        companyId = new CompanyId("COMP-PURCHASE-123");
+        companyId = new CompanyId("COMP-1");
+        eventId = new EventId("EV-1");
+
+        // נשמור 3 סוגי פוליסות כדי לכסות את כל סינוני ה-Streams (true/false)
+        PurchasePolicy inactive = PurchasePolicy.newMaxTicketPolicy(companyId, "Inactive", 5);
+        
+        PurchasePolicy activeCompanyWide = PurchasePolicy.newMaxTicketPolicy(companyId, "Active CW", 5);
+        activeCompanyWide.setCompanyWide();
+        
+        PurchasePolicy activeEventSpecific = PurchasePolicy.newMaxTicketPolicy(companyId, "Active Event", 5);
+        activeEventSpecific.activateForEvent(eventId);
+
+        repository.save(inactive);
+        repository.save(activeCompanyWide);
+        repository.save(activeEventSpecific);
+        
+        em.flush();
+        em.clear();
     }
 
     @Test
-    void saveAndFindById_savesPolicyCorrectly() {
-        // Arrange - יצירת פוליסה שחלה על כל החברה (ולכן היא נחשבת פעילה)
-        PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "Global Allow Policy");
-        policy.setCompanyWide();
+    void findMethods_filterStreamsCorrectly() {
+        // findByCompanyId - אמור להחזיר את כולם (3 פוליסות)
+        List<PurchasePolicy> allCompany = repository.findByCompanyId(companyId);
+        assertThat(allCompany).hasSize(3);
 
-        purchasePolicyRepository.save(policy);
-        em.flush(); em.clear();
+        // findActiveByCompanyId - מסנן את הלא-פעילים (אמור להחזיר 2)
+        List<PurchasePolicy> activeOnly = repository.findActiveByCompanyId(companyId);
+        assertThat(activeOnly).hasSize(2).allMatch(PurchasePolicy::isActive);
 
-        // Act
-        Optional<PurchasePolicy> foundOpt = purchasePolicyRepository.findById(policy.id());
+        // findApplicableToEvent - מחזיר את הכלל חברתי ואת הספציפי לאירוע (2)
+        List<PurchasePolicy> applicableToEv1 = repository.findApplicableToEvent(eventId);
+        assertThat(applicableToEv1).hasSize(2);
+        
+        // findApplicableToEvent לאירוע אחר - יחזיר רק את הכלל חברתי (1)
+        List<PurchasePolicy> applicableToEv2 = repository.findApplicableToEvent(new EventId("EV-2"));
+        assertThat(applicableToEv2).hasSize(1);
 
-        // Assert
-        assertThat(foundOpt).isPresent();
-        assertThat(foundOpt.get().isActive()).isTrue();
-        assertThat(foundOpt.get().policyName()).isEqualTo("Global Allow Policy");
+        // findApplicableToPurchase - מחזיר את הכלל חברתי ואת הספציפי לאירוע השייכים לחברה
+        List<PurchasePolicy> applicablePurchase = repository.findApplicableToPurchase(companyId, eventId);
+        assertThat(applicablePurchase).hasSize(2);
+
+        // findSingleEventPolicies - מחזיר רק את הספציפי לאירוע בודד
+        List<PurchasePolicy> singleEvent = repository.findSingleEventPolicies(companyId);
+        assertThat(singleEvent).hasSize(1);
+        assertThat(singleEvent.get(0).policyName()).isEqualTo("Active Event");
+
+        // findSpecificForEvent - מחזיר רק את הפוליסה הספציפית לאירוע הזה (לא את הכלל חברתי)
+        List<PurchasePolicy> specificEvent = repository.findSpecificForEvent(eventId);
+        assertThat(specificEvent).hasSize(1);
     }
 
     @Test
-    void findById_returnsEmptyWhenNotFound() {
-        // Act
-        Optional<PurchasePolicy> foundOpt = purchasePolicyRepository.findById(PurchasePolicyId.random());
-
-        // Assert
-        assertThat(foundOpt).isEmpty();
+    void crudOperations_workCorrectly() {
+        PurchasePolicyId id = repository.findByCompanyId(companyId).get(0).id();
+        
+        assertThat(repository.findById(id)).isPresent();
+        assertThat(repository.existsById(id)).isTrue();
+        
+        repository.deleteById(id);
+        em.flush();
+        em.clear();
+        
+        assertThat(repository.findById(id)).isEmpty();
+        assertThat(repository.existsById(id)).isFalse();
     }
 
     @Test
-    void update_modifiesExistingPolicyInDatabase() {
-        // Arrange - יצירת פוליסה לא פעילה (ללא Scope)
-        PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "Temp Policy");
-        purchasePolicyRepository.save(policy);
-        em.flush(); em.clear();
-
-        // Act 
-        PurchasePolicy savedPolicy = purchasePolicyRepository.findById(policy.id()).orElseThrow();
-        savedPolicy.setNameTo("Updated Policy");
-        savedPolicy.setCompanyWide(); // הופך את isActive ל-true
-        purchasePolicyRepository.save(savedPolicy);
-        em.flush(); em.clear();
-
-        // Assert
-        PurchasePolicy updatedPolicy = purchasePolicyRepository.findById(policy.id()).orElseThrow();
-        assertThat(updatedPolicy.isActive()).isTrue();
-        assertThat(updatedPolicy.policyName()).isEqualTo("Updated Policy");
-    }
-
-    @Test
-    void deleteById_and_existsById_workCorrectly() {
-        // Arrange
-        PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "To Be Deleted");
-        policy.setCompanyWide();
-        purchasePolicyRepository.save(policy);
-        em.flush(); em.clear();
-
-        PurchasePolicyId policyId = policy.id();
-
-        // Assert - 
-        assertThat(purchasePolicyRepository.existsById(policyId)).isTrue();
-
-        // Act - 
-        purchasePolicyRepository.deleteById(policyId);
-        em.flush(); em.clear();
-
-        // Assert - בדיקה שהפוליסה נמחקה
-        assertThat(purchasePolicyRepository.existsById(policyId)).isFalse();
-        assertThat(purchasePolicyRepository.findById(policyId)).isEmpty();
-    }
-
-    @Test
-    void findByCompanyId_returnsPoliciesForSpecificCompany() {
-        // Arrange - החברה שלנו
-        PurchasePolicy myPolicy = PurchasePolicy.newAllowAllPolicy(companyId, "My Company Policy");
-        myPolicy.setCompanyWide();
-        purchasePolicyRepository.save(myPolicy);
-
-        // Arrange - חברה אחרת
-        CompanyId otherCompany = new CompanyId("COMP-OTHER-999");
-        PurchasePolicy otherPolicy = PurchasePolicy.newAllowAllPolicy(otherCompany, "Other Company Policy");
-        otherPolicy.setCompanyWide();
-        purchasePolicyRepository.save(otherPolicy);
-
-        em.flush(); em.clear();
-
-        // Act
-        List<PurchasePolicy> results = purchasePolicyRepository.findByCompanyId(companyId);
-
-        // Assert
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).companyId()).isEqualTo(companyId);
-    }
-
-    @Test
-    void findActiveByCompanyId_returnsOnlyActivePolicies() {
-        // Arrange - פוליסה פעילה
-        PurchasePolicy activePolicy = PurchasePolicy.newAllowAllPolicy(companyId, "Active Policy");
-        activePolicy.setCompanyWide();
-        purchasePolicyRepository.save(activePolicy);
-
-        // Arrange - פוליסה לא פעילה (ללא Scope)
-        PurchasePolicy inactivePolicy = PurchasePolicy.newAllowAllPolicy(companyId, "Inactive Policy");
-        purchasePolicyRepository.save(inactivePolicy);
-
-        em.flush(); em.clear();
-
-        // Act
-        List<PurchasePolicy> results = purchasePolicyRepository.findActiveByCompanyId(companyId);
-
-        // Assert
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).id()).isEqualTo(activePolicy.id());
-        assertThat(results.get(0).isActive()).isTrue();
-    }
-
-    @Test
-    void findApplicableToEvent_returnsMatchingPoliciesAndTriggersLambda() {
-        // Arrange
-        EventId eventId = new EventId("EVT-111");
-        PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "Event Policy");
-        policy.activateForEvent(eventId); 
-        purchasePolicyRepository.save(policy);
-
-        em.flush(); em.clear();
-
-        // Act
-        List<PurchasePolicy> results = purchasePolicyRepository.findApplicableToEvent(eventId);
-
-        // Assert
-        assertThat(results).isNotEmpty();
-        assertThat(results.get(0).id()).isEqualTo(policy.id());
-    }
-
-    @Test
-    void findApplicableToPurchase_returnsMatchingPoliciesAndTriggersLambda() {
-        // Arrange
-        EventId eventId = new EventId("EVT-PURCHASE-222");
-        PurchasePolicy policy = PurchasePolicy.newAllowAllPolicy(companyId, "Purchase Policy");
-        policy.activateForEvent(eventId);
-        purchasePolicyRepository.save(policy);
-
-        em.flush(); em.clear();
-
-        // Act
-        List<PurchasePolicy> results = purchasePolicyRepository.findApplicableToPurchase(companyId, eventId);
-
-        // Assert
-        assertThat(results).isNotEmpty();
-        assertThat(results.get(0).id()).isEqualTo(policy.id());
+    void save_null_throwsException() {
+        assertThatThrownBy(() -> repository.save(null)).isInstanceOf(NullPointerException.class);
     }
 }

@@ -18,6 +18,7 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
         this.jpaRepository = Objects.requireNonNull(jpaRepository, "jpaRepository must not be null");
     }
 
+    @SuppressWarnings("null")
     @Override
     public Optional<PurchasePolicy> findById(PurchasePolicyId policyId) {
         return jpaRepository.findById(policyId);
@@ -57,13 +58,29 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
         jpaRepository.save(purchasePolicy);
     }
 
+    @SuppressWarnings("null")
     @Override
     public void deleteById(PurchasePolicyId policyId) {
         jpaRepository.deleteById(policyId);
     }
 
+    @SuppressWarnings("null")
     @Override
     public boolean existsById(PurchasePolicyId policyId) {
         return jpaRepository.existsById(policyId);
+    }
+
+    @Override
+    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId).stream()
+                .filter(PurchasePolicy::isSingleEventPolicy)
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
+        return jpaRepository.findAll().stream()
+                .filter(policy -> policy.isSpecificFor(eventId))
+                .toList();
     }
 }

@@ -3,7 +3,6 @@ package com.eventsystem.infrastructure.security;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.infrastructure.persistence.springrepostests.BasePostgresTest;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.hibernate.ddl-auto=create-drop"
 }) //gives this test its DB for the test
 @AutoConfigureMockMvc
-public class AuthenticationInterceptorIntegrationTest extends BasePostgresTest{
+// התיקון: הסרנו את ה-extends BasePostgresTest כדי למנוע קונפליקטים בהגדרות הדרייברים
+public class AuthenticationInterceptorIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

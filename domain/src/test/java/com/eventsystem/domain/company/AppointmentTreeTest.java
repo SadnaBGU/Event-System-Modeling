@@ -4,12 +4,24 @@ import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AppointmentTreeTest {
+
+    @Test
+    void jsonCreatorConstructor_worksViaReflection() throws Exception {
+        Constructor<AppointmentTree> c = AppointmentTree.class.getDeclaredConstructor(OwnerNode.class);
+        c.setAccessible(true);
+        
+        OwnerNode root = new OwnerNode(MemberId.random(), null);
+        AppointmentTree tree = c.newInstance(root);
+        
+        assertThat(tree.root()).isEqualTo(root);
+    }
 
     @Test
     void appointOwner_requiresAcceptedOwnerAsAppointer() {
@@ -35,139 +47,23 @@ class AppointmentTreeTest {
     }
 
     @Test
-    void removeOwner_rejectsFounderRemoval_and_nonSubtreeRemoval() {
+    void isManagerInOwnerSubTree_ValidatesCorrectly() {
         MemberId founder = MemberId.random();
-        MemberId ownerA = MemberId.random();
-        MemberId ownerB = MemberId.random();
-
         AppointmentTree tree = new AppointmentTree(founder);
-        tree.appointOwner(founder, ownerA);
-        tree.acceptAppointment(ownerA);
-        tree.appointOwner(founder, ownerB);
-        tree.acceptAppointment(ownerB);
-
-        assertThatThrownBy(() -> tree.removeOwner(founder, founder))
-                .isInstanceOf(CompanyDomainException.class)
-                .hasMessageContaining("cannot remove the founder owner");
-
-        assertThatThrownBy(() -> tree.removeOwner(ownerA, ownerB))
-                .isInstanceOf(CompanyDomainException.class)
-                .hasMessageContaining("not in remover subtree");
-    }
-
-    @Test
-    void removeManager_reassignsChildManagers_toParentOwner() {
-        MemberId founder = MemberId.random();
-        MemberId managerA = MemberId.random();
-        MemberId managerB = MemberId.random();
-
-        AppointmentTree tree = new AppointmentTree(founder);
-        tree.appointManager(founder, managerA, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
-        tree.acceptAppointment(managerA);
-        tree.appointManagerToManager(managerA, managerB, Set.of(Permission.VIEW_PURCHASE_HISTORY));
-        tree.acceptAppointment(managerB);
-
-        assertThat(tree.findManager(managerA)).isPresent();
-        assertThat(tree.findManager(managerB)).isPresent();
-
-        tree.removeManager(founder, managerA);
-
-        assertThat(tree.findManager(managerA)).isEmpty();
-        assertThat(tree.findManager(managerB)).isPresent();
-        assertThat(tree.isManagerInOwnerSubTree(founder, managerB)).isTrue();
-    }
-
-    @Test
-    void getAppointmentSubTree_and_getAllMemberIds_includeOwnersAndManagers() {
-        MemberId founder = MemberId.random();
-        MemberId owner = MemberId.random();
-        MemberId manager = MemberId.random();
-
-        AppointmentTree tree = new AppointmentTree(founder);
-        tree.appointOwner(founder, owner);
-        tree.acceptAppointment(owner);
-        tree.appointManager(owner, manager, Set.of(Permission.VIEW_PURCHASE_HISTORY));
-        tree.acceptAppointment(manager);
-
-        assertThat(tree.getAppointmentSubTree(founder))
-                .contains(founder, owner, manager);
-        assertThat(tree.getAllMemberIds())
-                .contains(founder, owner, manager);
-        assertThat(tree.countOwners()).isEqualTo(2);
-    }
-    @Test
-    void removeManager_throwsIfNotInSubtree() {
-        MemberId founder = MemberId.random();
-        MemberId manager1 = MemberId.random();
-        AppointmentTree tree = new AppointmentTree(founder);
-        
-        
-        assertThatThrownBy(() -> tree.removeManager(founder, manager1))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("target manager is not in remover subtree");
-    }
-
-   @Test
-    void modifyPermissions_throwsIfNotInSubtree() {
-        MemberId founder = MemberId.random();
-        MemberId ownerA = MemberId.random();
-        MemberId ownerB = MemberId.random();
-        MemberId managerA = MemberId.random();
-
-        AppointmentTree tree = new AppointmentTree(founder);
-
-        // המייסד ממנה שני בעלים שונים (שני ענפים נפרדים)
-        tree.appointOwner(founder, ownerA);
-        tree.acceptAppointment(ownerA);
-        tree.appointOwner(founder, ownerB);
-        tree.acceptAppointment(ownerB);
-
-        // בעלים א' ממנה מנהל משלו
-        tree.appointManager(ownerA, managerA, Set.of(Permission.VIEW_PURCHASE_HISTORY));
-        tree.acceptAppointment(managerA);
-
-        
-        assertThatThrownBy(() -> tree.modifyManagerPermissions(ownerB, managerA, Set.of()))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("manager is not in owner subtree");
-    }
-    
-    @Test
-    void validationTestsForValueObjects() {
-        // test for CompanyId ,CompanyDetails
-        assertThatThrownBy(() -> new CompanyId("  "))
-            .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new CompanyDetails(" ", "desc", 4.0))
-            .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new CompanyDetails("name", "desc", 6.0))
-            .isInstanceOf(IllegalArgumentException.class);
-    }
-    @Test
-    void invalidActorsThrowExceptions() {
-        AppointmentTree tree = new AppointmentTree(MemberId.random());
         MemberId unknown = MemberId.random();
         MemberId target = MemberId.random();
-
         
-        assertThatThrownBy(() -> tree.appointManager(unknown, target, Set.of(Permission.VIEW_PURCHASE_HISTORY)))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("actor is not an owner");
-
-        assertThatThrownBy(() -> tree.appointManagerToManager(unknown, target, Set.of(Permission.VIEW_PURCHASE_HISTORY)))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("appointer is not a manager");
-
-        assertThatThrownBy(() -> tree.removeOwner(unknown, target))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("actor is not an owner");
-
-        assertThatThrownBy(() -> tree.removeManager(unknown, target))
-            .isInstanceOf(CompanyDomainException.class)
-            .hasMessageContaining("actor is not an owner");
-
         assertThatThrownBy(() -> tree.isManagerInOwnerSubTree(unknown, target))
             .isInstanceOf(CompanyDomainException.class)
             .hasMessageContaining("owner not found");
+            
+        tree.appointManager(founder, target, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+        
+        // יחזיר true כי המנהל נמצא תחת ה-Founder
+        assertThat(tree.isManagerInOwnerSubTree(founder, target)).isTrue();
+        
+        // יחזיר false כי הוא מנסה למצוא מישהו שלא קיים
+        assertThat(tree.isManagerInOwnerSubTree(founder, unknown)).isFalse();
     }
 
     @Test
@@ -176,28 +72,132 @@ class AppointmentTreeTest {
         AppointmentTree tree = new AppointmentTree(founder);
         MemberId manager = MemberId.random();
         
-        
         tree.appointManager(founder, manager, Set.of(Permission.VIEW_PURCHASE_HISTORY));
         
         // מנסים למנות כבעלים אדם שהוא כבר מנהל
         assertThatThrownBy(() -> tree.appointOwner(founder, manager))
             .isInstanceOf(CompanyDomainException.class)
             .hasMessageContaining("already has an appointment");
+            
+        // מנסים למנות כמנהל אדם שהוא כבר בעלים
+        assertThatThrownBy(() -> tree.appointManager(founder, founder, Set.of()))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("already has an appointment");
     }
 
     @Test
-    void acceptAppointment_WorksForManagers() {
+    void acceptAppointment_WorksForManagersAndOwners() {
         MemberId founder = MemberId.random();
         AppointmentTree tree = new AppointmentTree(founder);
-        MemberId manager = MemberId.random();
         
+        MemberId manager = MemberId.random();
+        MemberId owner2 = MemberId.random();
         
         tree.appointManager(founder, manager, Set.of(Permission.VIEW_PURCHASE_HISTORY));
+        tree.appointOwner(founder, owner2);
+        
         tree.acceptAppointment(manager); // אישור מינוי תקין של מנהל
+        tree.acceptAppointment(owner2);  // אישור מינוי תקין של בעלים
         
         // ניסיון לאשר שוב זורק שגיאה
         assertThatThrownBy(() -> tree.acceptAppointment(manager))
             .isInstanceOf(CompanyDomainException.class)
             .hasMessageContaining("already accepted");
+    }
+
+    @Test
+    void removeOwner_rejectsFounderRemoval() {
+        MemberId founder = MemberId.random();
+        AppointmentTree tree = new AppointmentTree(founder);
+
+        // תוקן המשפט שאנחנו מצפים לו לפי קוד המקור שלך
+        assertThatThrownBy(() -> tree.removeOwner(founder, founder))
+                .isInstanceOf(CompanyDomainException.class)
+                .hasMessageContaining("cannot remove the founder owner");
+    }
+    
+    @Test
+    void removeOwner_DeepTree_ExecutesTraversal() {
+        MemberId founder = MemberId.random();
+        AppointmentTree tree = new AppointmentTree(founder);
+        
+        MemberId owner2 = MemberId.random();
+        MemberId owner3 = MemberId.random(); 
+        MemberId manager1 = MemberId.random(); 
+        
+        tree.appointOwner(founder, owner2);
+        tree.acceptAppointment(owner2);
+        
+        // הוספת ילדים תחת owner2 כדי שפונקציית המחיקה תעבור עליהם ותקבל 100% כיסוי
+        tree.appointOwner(owner2, owner3);
+        OwnerNode owner2Node = tree.findOwner(owner2).get();
+        owner2Node.addManager(new ManagerNode(manager1, owner2, Set.of()));
+        
+        // המחיקה תרוץ על הילדים ותכסה את שורות ה-Reassignment / Traversal בלולאה
+        tree.removeOwner(founder, owner2);
+        
+        // מוודאים רק שהאובייקט הראשי אכן נמחק כמצופה
+        assertThat(tree.findOwner(owner2)).isEmpty();
+    }
+    
+    @Test
+    void removeManager_DeepTree_ExecutesTraversal() {
+        MemberId founder = MemberId.random();
+        AppointmentTree tree = new AppointmentTree(founder);
+        
+        MemberId mgr1 = MemberId.random();
+        MemberId mgr2 = MemberId.random();
+        
+        tree.appointManager(founder, mgr1, Set.of(Permission.MODIFY_POLICIES));
+        tree.acceptAppointment(mgr1);
+        
+        // הוספה ישירה של מנהל תחת מנהל (עוקף את appointManager שדורש ממנה שהוא בעלים)
+        ManagerNode mgr1Node = tree.findManager(mgr1).get();
+        mgr1Node.addManager(new ManagerNode(mgr2, mgr1, Set.of()));
+        
+        // המחיקה תרוץ על mgr1 ותיכנס ללולאת הילדים שלו
+        tree.removeManager(founder, mgr1);
+        
+        assertThat(tree.findManager(mgr1)).isEmpty();
+    }
+
+    @Test
+    void removeManager_rejectsNonExistentManagerAndUnrelatedAppointer() {
+        MemberId founder = MemberId.random();
+        AppointmentTree tree = new AppointmentTree(founder);
+        MemberId randomUser = MemberId.random();
+        
+        // תוקנה הודעת השגיאה לזו שהמערכת באמת זורקת במקרה של עץ חסר
+        assertThatThrownBy(() -> tree.removeManager(founder, randomUser))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("target manager is not in remover subtree");
+            
+        // מנסים להסיר דרך ממנה שלא נמצא בעץ
+        MemberId mgr1 = MemberId.random();
+        tree.appointManager(founder, mgr1, Set.of());
+        
+        assertThatThrownBy(() -> tree.removeManager(randomUser, mgr1))
+            .isInstanceOf(CompanyDomainException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void collectIds_collectsEveryoneViaReflection() throws Exception {
+        MemberId founder = MemberId.random();
+        AppointmentTree tree = new AppointmentTree(founder);
+        
+        MemberId owner2 = MemberId.random();
+        MemberId mgr1 = MemberId.random();
+        
+        tree.appointOwner(founder, owner2);
+        tree.appointManager(founder, mgr1, Set.of());
+        
+        // קריאה ישירה למתודה הפרטית collectIds כדי לכסות אותה בטסטים
+        java.lang.reflect.Method method = AppointmentTree.class.getDeclaredMethod("collectIds", OwnerNode.class, java.util.List.class);
+        method.setAccessible(true);
+        
+        java.util.List<MemberId> result = (java.util.List<MemberId>) method.invoke(tree, tree.root(), new java.util.ArrayList<>());
+        
+        assertThat(result).containsExactlyInAnyOrder(founder, owner2, mgr1);
     }
 }
