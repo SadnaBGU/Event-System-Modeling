@@ -1,6 +1,7 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
@@ -33,6 +34,7 @@ class AdminServiceTest {
 
     @Mock private IPlatformRepository platformRepo;
     @Mock private IMemberRepository memberRepo;
+    @Mock private IExternalSystemsAvailabilityPort exServicePort;
     @InjectMocks private AdminService service;
 
     private final MemberId admin = MemberId.generate();
@@ -77,6 +79,7 @@ class AdminServiceTest {
     void activateTransitionsAndSaves() {
         Platform p = platformWithAdmin();
         when(platformRepo.findInstance()).thenReturn(Optional.of(p));
+        when(exServicePort.areExternalSystemsAvailable()).thenReturn(true);
         service.activate(admin);
         assertThat(p.getStatus()).isEqualTo(PlatformStatus.ACTIVE);
         verify(platformRepo).save(p);
@@ -169,5 +172,37 @@ class AdminServiceTest {
         service.setQueueLoadThreshold(admin, 250);
 
         assertThat(p.getQueueLoadThreshold()).isEqualTo(250);
+    }
+
+    //test to ensure reqExternalSystems works correctly:
+
+    @Test
+    void activateRequiresExternalSystemsAvailable() {
+        Platform p = platformWithAdmin();
+        AdminService serviceWithAvailableExternalSystems = adminServiceWithExternalAvailability(true);
+
+        when(platformRepo.findInstance()).thenReturn(Optional.of(p));
+
+        serviceWithAvailableExternalSystems.activate(admin);
+
+        assertThat(p.getStatus()).isEqualTo(PlatformStatus.ACTIVE);
+        verify(platformRepo).save(p);
+    }
+
+    @Test
+    void activateFailsWhenExternalSystemsUnavailable() {
+        AdminService serviceWithUnavailableExternalSystems = adminServiceWithExternalAvailability(false);
+
+        assertThatThrownBy(() -> serviceWithUnavailableExternalSystems.activate(admin))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Required external systems are unavailable");
+
+        verify(platformRepo, never()).findInstance();
+        verify(platformRepo, never()).save(any());
+    }
+
+    private AdminService adminServiceWithExternalAvailability(boolean available) {
+        IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort = () -> available;
+        return new AdminService(platformRepo, memberRepo, externalSystemsAvailabilityPort);
     }
 }

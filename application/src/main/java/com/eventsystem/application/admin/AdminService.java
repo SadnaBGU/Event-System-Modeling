@@ -1,6 +1,7 @@
 package com.eventsystem.application.admin;
 
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
@@ -31,10 +32,21 @@ public class AdminService {
 
     private final IPlatformRepository platformRepo;
     private final IMemberRepository memberRepo;
+    private final IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort;
 
     public AdminService(IPlatformRepository platformRepo, IMemberRepository memberRepo) {
+        this(platformRepo, memberRepo, () -> true);
+    }
+
+    public AdminService(IPlatformRepository platformRepo,
+                        IMemberRepository memberRepo,
+                        IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
         this.platformRepo = platformRepo;
         this.memberRepo = memberRepo;
+        this.externalSystemsAvailabilityPort = Objects.requireNonNull(
+                externalSystemsAvailabilityPort,
+                "externalSystemsAvailabilityPort must not be null"
+        );
     }
 
     public PlatformDto getPlatform(MemberId actor) {
@@ -43,6 +55,8 @@ public class AdminService {
     }
 
     public void activate(MemberId actor) {
+        requireExternalSystemsAvailable();
+
         Platform p = requireAdmin(actor);
         p.activate();
         platformRepo.save(p);
@@ -180,6 +194,13 @@ public class AdminService {
             throw new NotAuthorizedException(actor.value());
         }
         return p;
+    }
+
+    private void requireExternalSystemsAvailable() {
+        if (!externalSystemsAvailabilityPort.areExternalSystemsAvailable()) {
+            log.error("Platform activation blocked: required external systems are unavailable");
+            throw new IllegalStateException("Required external systems are unavailable");
+        }
     }
 
     private Member loadMember(MemberId memberId) {

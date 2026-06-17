@@ -22,6 +22,7 @@ eventsystem:
     token-validity: PT5M
     bcrypt-strength: 4
   bootstrap:
+    enabled: false
     default-reservation-timeout: PT15M
     queue-load-threshold: 100
     admin:
@@ -35,3 +36,8 @@ logging:
   level:
     root: WARN
     com.eventsystem: INFO
+
+wsep:
+  base-url: http://localhost:9999/
+  connect-timeout: 1s
+  read-timeout: 1s
