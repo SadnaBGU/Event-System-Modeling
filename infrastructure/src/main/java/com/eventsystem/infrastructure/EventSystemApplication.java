@@ -1,5 +1,8 @@
 package com.eventsystem.infrastructure;
 
+import com.eventsystem.infrastructure.config.WsepProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -10,6 +13,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
  */
 @SpringBootApplication
 @EntityScan(basePackages = {"com.eventsystem.domain"})
+@EnableConfigurationProperties(WsepProperties.class)
 public class EventSystemApplication {
 
     public static void main(String[] args) {

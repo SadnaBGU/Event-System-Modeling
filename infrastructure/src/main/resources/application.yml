@@ -50,3 +50,8 @@ logging:
     com.eventsystem: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    
+wsep:
+  base-url: ${WSEP_BASE_URL:http://localhost:8089/wsep}
+  connect-timeout: 3s
+  read-timeout: 5s
