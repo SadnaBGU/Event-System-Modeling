@@ -20,14 +20,14 @@ public enum WsepAction {
         return actionType;
     }
 
-    public static WsepAction fromActionType(String value) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("WSEP action_type must not be blank");
-        }
+    // public static WsepAction fromActionType(String value) {
+    //     if (value == null || value.isBlank()) {
+    //         throw new IllegalArgumentException("WSEP action_type must not be blank");
+    //     }
 
-        return Arrays.stream(values())
-                .filter(action -> action.actionType.equalsIgnoreCase(value.trim()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported WSEP action_type: " + value));
-    }
+    //     return Arrays.stream(values())
+    //             .filter(action -> action.actionType.equalsIgnoreCase(value.trim()))
+    //             .findFirst()
+    //             .orElseThrow(() -> new IllegalArgumentException("Unsupported WSEP action_type: " + value));
+    // }
 }

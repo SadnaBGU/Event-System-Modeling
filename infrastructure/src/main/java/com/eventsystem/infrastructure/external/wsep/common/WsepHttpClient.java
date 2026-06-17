@@ -34,6 +34,10 @@ public class WsepHttpClient {
 
     public String post(Map<String, String> params) {
         String actionType = params.get("action_type");
+        if (actionType == null || actionType.isBlank()) {
+            throw new IllegalArgumentException("WSEP request must include action_type");
+        }
+
         String body = formEncode(params);
 
         log.debug("Sending WSEP HTTP POST request, action_type={}", actionType);
