@@ -34,6 +34,7 @@ class AdminServiceTest {
 
     @Mock private IPlatformRepository platformRepo;
     @Mock private IMemberRepository memberRepo;
+    @Mock private IExternalSystemsAvailabilityPort exServicePort;
     @InjectMocks private AdminService service;
 
     private final MemberId admin = MemberId.generate();
@@ -78,6 +79,7 @@ class AdminServiceTest {
     void activateTransitionsAndSaves() {
         Platform p = platformWithAdmin();
         when(platformRepo.findInstance()).thenReturn(Optional.of(p));
+        when(exServicePort.areExternalSystemsAvailable()).thenReturn(true);
         service.activate(admin);
         assertThat(p.getStatus()).isEqualTo(PlatformStatus.ACTIVE);
         verify(platformRepo).save(p);

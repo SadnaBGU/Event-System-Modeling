@@ -20,14 +20,14 @@ class TicketIssuanceAdapterTest {
     private static final BuyerReference MEMBER_BUYER = new BuyerReference(BuyerType.MEMBER, null, "849302");
     private static final BuyerReference GUEST_BUYER = new BuyerReference(BuyerType.GUEST, "session-abc", null);
 
-    // REQ: SYS-04, USR-10, UC 9, UAT-26 - general admission ticket issuance sends quantity.
+    // REQ: SYS-04, USR-10, UC 9, UAT-26 - general admission ticket issuance sends
+    // quantity.
     @Test
     void issueTickets_forGeneralAdmission_sendsIssueTicketWithQuantity() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
             server.enqueue(200, "TIX-GA-1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem item = new OrderItem("Golden Ring", null, 2, USD_100);
 
@@ -35,8 +35,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-9923",
                     "order-1",
                     List.of(item),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertTrue(result.success());
             assertEquals("TIX-GA-1", result.issuanceConfirmationId());
@@ -52,14 +51,14 @@ class TicketIssuanceAdapterTest {
         }
     }
 
-    // REQ: SYS-04, USR-07, UC 9, UAT-26 - assigned seating ticket issuance sends is_seating and seats.
+    // REQ: SYS-04, USR-07, UC 9, UAT-26 - assigned seating ticket issuance sends
+    // is_seating and seats.
     @Test
     void issueTickets_forAssignedSeat_sendsIssueTicketWithSeatsJson() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
             server.enqueue(200, "TIX-SEAT-1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem item = new OrderItem("VIP Balcony", "4:12", 1, USD_100);
 
@@ -67,8 +66,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-9923",
                     "order-1",
                     List.of(item),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertTrue(result.success());
             assertEquals("TIX-SEAT-1", result.issuanceConfirmationId());
@@ -87,8 +85,7 @@ class TicketIssuanceAdapterTest {
         try (WsepTestServer server = new WsepTestServer()) {
             server.enqueue(200, "TIX-GUEST-1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem item = new OrderItem("Standing", null, 1, USD_100);
 
@@ -96,8 +93,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-1",
                     "order-1",
                     List.of(item),
-                    GUEST_BUYER
-            );
+                    GUEST_BUYER);
 
             assertTrue(result.success());
             assertEquals("session-abc", server.request(0).form().get("customer_id"));
@@ -110,8 +106,7 @@ class TicketIssuanceAdapterTest {
         try (WsepTestServer server = new WsepTestServer()) {
             server.enqueue(200, "-1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem item = new OrderItem("Standing", null, 1, USD_100);
 
@@ -119,8 +114,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-1",
                     "order-1",
                     List.of(item),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertFalse(result.success());
             assertNull(result.issuanceConfirmationId());
@@ -129,7 +123,8 @@ class TicketIssuanceAdapterTest {
         }
     }
 
-    // REQ: INV-10, SYS-04, ROB-01, UC 9, UAT-30 - partial WSEP issuance rollback uses cancel_ticket.
+    // REQ: INV-10, SYS-04, ROB-01, UC 9, UAT-30 - partial WSEP issuance rollback
+    // uses cancel_ticket.
     @Test
     void issueTickets_whenSecondTicketFails_cancelsAlreadyIssuedTicket() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
@@ -137,8 +132,7 @@ class TicketIssuanceAdapterTest {
             server.enqueue(200, "-1");
             server.enqueue(200, "1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem first = new OrderItem("Standing A", null, 1, USD_100);
             OrderItem second = new OrderItem("Standing B", null, 1, USD_100);
@@ -147,8 +141,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-1",
                     "order-1",
                     List.of(first, second),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertFalse(result.success());
             assertEquals(3, server.requestCount());
@@ -164,7 +157,8 @@ class TicketIssuanceAdapterTest {
         }
     }
 
-    // REQ: ROB-01, TST-17, UC 9, UAT-30 - communication failure after partial success triggers best-effort cancel_ticket.
+    // REQ: ROB-01, TST-17, UC 9, UAT-30 - communication failure after partial
+    // success triggers best-effort cancel_ticket.
     @Test
     void issueTickets_whenCommunicationFailsAfterPartialSuccess_cancelsAlreadyIssuedTicketAndThrows() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
@@ -172,15 +166,13 @@ class TicketIssuanceAdapterTest {
             server.enqueue(503, "ticket system down");
             server.enqueue(200, "1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem first = new OrderItem("Standing A", null, 1, USD_100);
             OrderItem second = new OrderItem("Standing B", null, 1, USD_100);
 
-            assertThrows(WsepCommunicationException.class, () ->
-                    adapter.issueTickets("EVT-1", "order-1", List.of(first, second), MEMBER_BUYER)
-            );
+            assertThrows(WsepCommunicationException.class,
+                    () -> adapter.issueTickets("EVT-1", "order-1", List.of(first, second), MEMBER_BUYER));
 
             assertEquals(3, server.requestCount());
             assertEquals("cancel_ticket", server.request(2).form().get("action_type"));
@@ -188,7 +180,8 @@ class TicketIssuanceAdapterTest {
         }
     }
 
-    // REQ: ROB-01, UC 9, UAT-30 - failed best-effort cancel_ticket does not hide original issuance failure.
+    // REQ: ROB-01, UC 9, UAT-30 - failed best-effort cancel_ticket does not hide
+    // original issuance failure.
     @Test
     void issueTickets_whenRollbackCancelFails_stillReturnsOriginalIssuanceFailure() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
@@ -196,8 +189,7 @@ class TicketIssuanceAdapterTest {
             server.enqueue(200, "-1");
             server.enqueue(200, "-1");
 
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem first = new OrderItem("Standing A", null, 1, USD_100);
             OrderItem second = new OrderItem("Standing B", null, 1, USD_100);
@@ -206,8 +198,7 @@ class TicketIssuanceAdapterTest {
                     "EVT-1",
                     "order-1",
                     List.of(first, second),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertFalse(result.success());
             assertEquals(3, server.requestCount());
@@ -219,15 +210,13 @@ class TicketIssuanceAdapterTest {
     @Test
     void issueTickets_whenItemsEmpty_returnsFailureWithoutHttpCall() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             IssuanceResult result = adapter.issueTickets(
                     "EVT-1",
                     "order-1",
                     List.of(),
-                    MEMBER_BUYER
-            );
+                    MEMBER_BUYER);
 
             assertFalse(result.success());
             assertEquals(0, server.requestCount());
@@ -238,8 +227,7 @@ class TicketIssuanceAdapterTest {
     @Test
     void issueTickets_whenBuyerIsNull_returnsFailureWithoutHttpCall() throws Exception {
         try (WsepTestServer server = new WsepTestServer()) {
-            TicketIssuanceHttpAdapter adapter =
-                    new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
 
             OrderItem item = new OrderItem("Standing", null, 1, USD_100);
 
@@ -247,11 +235,78 @@ class TicketIssuanceAdapterTest {
                     "EVT-1",
                     "order-1",
                     List.of(item),
-                    null
-            );
+                    null);
 
             assertFalse(result.success());
             assertEquals(0, server.requestCount());
+        }
+    }
+
+    // REQ: SYS-04, USR-07 - assigned seat IDs using dash format are converted into
+    // WSEP seats JSON.
+    @Test
+    void issueTickets_forAssignedSeatWithDashFormat_sendsParsedSeatsJson() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "TIX-SEAT-DASH");
+
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+
+            OrderItem item = new OrderItem("VIP Balcony", "7-18", 1, USD_100);
+
+            IssuanceResult result = adapter.issueTickets(
+                    "EVT-9923",
+                    "order-1",
+                    List.of(item),
+                    MEMBER_BUYER);
+
+            assertTrue(result.success());
+            assertEquals("true", server.request(0).form().get("is_seating"));
+            assertEquals("[{\"row\":7,\"seat\":18}]", server.request(0).form().get("seats"));
+        }
+    }
+
+    // REQ: SYS-04, USR-07 - assigned seat IDs using row/seat key-value format are
+    // converted into WSEP seats JSON.
+    @Test
+    void issueTickets_forAssignedSeatWithKeyValueFormat_sendsParsedSeatsJson() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "TIX-SEAT-KV");
+
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+
+            OrderItem item = new OrderItem("VIP Balcony", "row=9, seat=41", 1, USD_100);
+
+            IssuanceResult result = adapter.issueTickets(
+                    "EVT-9923",
+                    "order-1",
+                    List.of(item),
+                    MEMBER_BUYER);
+
+            assertTrue(result.success());
+            assertEquals("true", server.request(0).form().get("is_seating"));
+            assertEquals("[{\"row\":9,\"seat\":41}]", server.request(0).form().get("seats"));
+        }
+    }
+
+    // REQ: SYS-04, USR-07 - plain assigned seat ID defaults row to 0.
+    @Test
+    void issueTickets_forAssignedSeatWithPlainSeatId_defaultsRowToZero() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "TIX-SEAT-PLAIN");
+
+            TicketIssuanceHttpAdapter adapter = new TicketIssuanceHttpAdapter(new WsepHttpClient(server.properties()));
+
+            OrderItem item = new OrderItem("VIP Balcony", "55", 1, USD_100);
+
+            IssuanceResult result = adapter.issueTickets(
+                    "EVT-9923",
+                    "order-1",
+                    List.of(item),
+                    MEMBER_BUYER);
+
+            assertTrue(result.success());
+            assertEquals("true", server.request(0).form().get("is_seating"));
+            assertEquals("[{\"row\":0,\"seat\":55}]", server.request(0).form().get("seats"));
         }
     }
 }

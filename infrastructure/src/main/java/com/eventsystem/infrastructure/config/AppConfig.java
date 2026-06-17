@@ -97,6 +97,7 @@ import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepos
 
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -418,6 +419,11 @@ public class AppConfig {
     // 3. Bootstrap Runner
     // ==========================================
     @Bean
+    @ConditionalOnProperty(
+            name = "eventsystem.bootstrap.enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
     public CommandLineRunner runAdminBootstrap(IPlatformRepository platformRepo,
                                             IMemberRepository memberRepo,
                                             BCryptPasswordHasher passwordHasher,

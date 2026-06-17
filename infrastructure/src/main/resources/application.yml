@@ -34,6 +34,7 @@ eventsystem:
     bcrypt-strength: 12
 
   bootstrap:
+    enabled: true
     default-reservation-timeout: PT15M
     queue-load-threshold: 100
     admin:

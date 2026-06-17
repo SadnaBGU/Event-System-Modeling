@@ -42,14 +42,14 @@ public class WsepHttpClient {
 
         log.debug("Sending WSEP HTTP POST request, action_type={}", actionType);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(properties.getBaseUrl()))
-                .timeout(properties.getReadTimeout())
-                .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-
         try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(properties.getBaseUrl()))
+                    .timeout(properties.getReadTimeout())
+                    .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             log.debug("Received WSEP HTTP response, action_type={}, status={}",
