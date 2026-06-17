@@ -24,7 +24,7 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
     @Override
     public PaymentResult charge(String orderId, Money amount, BuyerReference buyer, String paymentDetailsToken) {
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("action_type", WsepAction.ACTION_PAY.actionString());
+        params.put("action_type", WsepAction.PAY.actionType());
         params.put("order_id", orderId);
         params.put("amount", amount.amount().toPlainString());
         params.put("buyer_id", buyer.memberId());
@@ -42,7 +42,7 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
     @Override
     public RefundResult refund(String transactionId, Money amount, String reason) {
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("action_type", WsepAction.ACTION_REFUND.actionString());
+        params.put("action_type", WsepAction.REFUND.actionType());
         params.put("transaction_id", transactionId);
         params.put("amount", amount.amount().toPlainString());
         params.put("reason", reason);

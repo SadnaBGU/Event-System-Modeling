@@ -24,7 +24,7 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
     @Override
     public IssuanceResult issueTickets(String eventId, String activeOrderId, List<OrderItem> items, BuyerReference buyer) {
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("action_type", WsepAction.ACTION_ISSUE_TICKETS.actionString());
+        params.put("action_type", WsepAction.ISSUE_TICKETS.actionType());
         params.put("event_id", eventId);
         params.put("order_id", activeOrderId);
         params.put("buyer_id", buyer.memberId());

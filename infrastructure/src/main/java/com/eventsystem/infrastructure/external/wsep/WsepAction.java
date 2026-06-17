@@ -1,23 +1,31 @@
 package com.eventsystem.infrastructure.external.wsep;
 
+import java.util.Arrays;
+
 public enum WsepAction {
-    ACTION_PAY,
-    ACTION_REFUND,
-    ACTION_ISSUE_TICKETS;
 
+    PAY("pay"),
+    REFUND("refund"),
+    ISSUE_TICKETS("issue_tickets");
 
-    public String actionString() {
-        return this == ACTION_PAY ? "pay"
-                 : this == ACTION_REFUND ? "refund"
-                 : this == ACTION_ISSUE_TICKETS ? "issue_tickets"
-                 : null;
+    private final String actionType;
+
+    WsepAction(String actionType) {
+        this.actionType = actionType;
     }
 
-    public WsepAction fromString(String str) {
-        str = str.toLowerCase().trim();
-        return str.equals("pay") ? ACTION_PAY 
-                : str.equals("refund") ? ACTION_REFUND
-                : str.equals("issue_tickets") ? ACTION_ISSUE_TICKETS
-                : null;
+    public String actionType() {
+        return actionType;
+    }
+
+    public static WsepAction fromActionType(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("WSEP action_type must not be blank");
+        }
+
+        return Arrays.stream(values())
+                .filter(action -> action.actionType.equalsIgnoreCase(value.trim()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported WSEP action_type: " + value));
     }
 }
