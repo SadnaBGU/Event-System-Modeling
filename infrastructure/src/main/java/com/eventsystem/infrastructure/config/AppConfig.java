@@ -69,6 +69,9 @@ import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQ
 import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+
+import jakarta.validation.Valid;
+
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresActiveOrderRepository;
@@ -94,7 +97,7 @@ import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQue
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
 
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
@@ -110,29 +113,51 @@ import java.util.Objects;
 
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
-// @ComponentScan(basePackages = { 
-//     "com.eventsystem.domain.*", 
-//     "com.eventsystem.infrastructure.*" 
-// })
 @EntityScan(basePackages = {"com.eventsystem.domain"})
 public class AppConfig {
 
     // --- Configuration constants ---
-    private final String jwtSecret = "CHANGE_ME_DEV_ONLY_0123456789abcdef";
-    private final Duration tokenValidity = Duration.ofHours(1);
-    private final int bcryptStrength = 12;
+    // הוספנו ערכי ברירת מחדל אחרי הנקודתיים (:) עבור סביבת הטסטים
+    @Value("${eventsystem.security.jwt-secret:CHANGE_ME_DEV_ONLY_0123456789abcdef}")
+    private String jwtSecret;
+
+    @Value("${eventsystem.security.token-validity:PT1H}")
+    private Duration tokenValidity;
+
+    @Value("${eventsystem.security.bcrypt-strength:12}")
+    private int bcryptStrength;
+
     private final Duration lotteryCodeValidity = Duration.ofMinutes(15);
+
+    // --- Admin Config ---
+    @Value("${eventsystem.bootstrap.admin.username:admin}")
+    private String adminUsername;
+
+    @Value("${eventsystem.bootstrap.admin.password:changeme123}")
+    private String adminPassword;
+
+    @Value("${eventsystem.bootstrap.admin.first-name:Initial}")
+    private String adminFirstName;
+
+    @Value("${eventsystem.bootstrap.admin.last-name:Admin}")
+    private String adminLastName;
+
+    @Value("${eventsystem.bootstrap.admin.email:admin@eventsystem.local}")
+    private String adminEmail;
+
+    @Value("${eventsystem.bootstrap.admin.date-of-birth:1990-01-01}")
+    private LocalDate adminDob;
 
     @Bean
     public BootstrapProperties bootstrapProperties() {
         return new BootstrapProperties(
                 new BootstrapProperties.Admin(
-                        "admin",
-                        "changeme123",
-                        "Initial",
-                        "Admin",
-                        "admin@eventsystem.local",
-                        LocalDate.of(1990, 1, 1)),
+                        adminUsername,
+                        adminPassword,
+                        adminFirstName,
+                        adminLastName,
+                        adminEmail,
+                        adminDob),
                 Duration.ofMinutes(15),
                 100);
     }
