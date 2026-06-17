@@ -22,6 +22,10 @@ public interface IDiscountPolicyRepository {
 
     List<DiscountPolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
 
+    List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId);
+
+    List<DiscountPolicy> findSpecificForEvent(EventId eventId);
+
     void save(DiscountPolicy discountPolicy);
 
     void deleteById(DiscountPolicyId policyId);

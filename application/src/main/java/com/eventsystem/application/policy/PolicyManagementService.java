@@ -86,9 +86,9 @@ public class PolicyManagementService implements IPolicyManagementPort {
         MemberId actorId = new MemberId(command.actorId());
         CompanyId companyId = new CompanyId(command.companyId());
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-
         PolicyScope scope = policyCommandAssembler.toScope(command.scope());
+
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, scope);
         requireCompanyOwnsScopeEvents(companyId, scope);
 
         IPolicy rule = policyCommandAssembler.toPolicy(command.rule());
@@ -118,8 +118,8 @@ public class PolicyManagementService implements IPolicyManagementPort {
     public void savePurchasePolicy(MemberId actorId, CompanyId companyId, PurchasePolicy purchasePolicy) {
         Objects.requireNonNull(purchasePolicy, "purchasePolicy must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
         requirePurchasePolicyBelongsToCompany(purchasePolicy, companyId);
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, purchasePolicy.scope());
         requireCompanyOwnsScopeEvents(companyId, purchasePolicy.scope());
 
         requirePurchasePolicyCompatibleWithActiveDiscounts(purchasePolicy);
@@ -142,10 +142,16 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(newScope, "newScope must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-
         PurchasePolicy policy = getPurchasePolicyOrThrow(policyId);
         requirePurchasePolicyBelongsToCompany(policy, companyId);
+
+        requireManagePurchasePolicyScopeChangePermission(
+                actorId,
+                companyId,
+                policy.scope(),
+                newScope
+        );
+
         requireCompanyOwnsScopeEvents(companyId, newScope);
 
         policy.setScopeTo(newScope);
@@ -219,11 +225,11 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-        requireCompanyOwnsEvent(companyId, eventId);
-
         PurchasePolicy policy = getPurchasePolicyOrThrow(policyId);
         requirePurchasePolicyBelongsToCompany(policy, companyId);
+
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, policy.scope());
+        requireCompanyOwnsEvent(companyId, eventId);
 
         policy.activateForEvent(eventId);
 
@@ -247,11 +253,11 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-        requireCompanyOwnsEvent(companyId, eventId);
-
         PurchasePolicy policy = getPurchasePolicyOrThrow(policyId);
         requirePurchasePolicyBelongsToCompany(policy, companyId);
+
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, policy.scope());
+        requireCompanyOwnsEvent(companyId, eventId);
 
         policy.deactivateForEvent(eventId);
 
@@ -273,10 +279,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(newName, "newName must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-
         PurchasePolicy policy = getPurchasePolicyOrThrow(policyId);
         requirePurchasePolicyBelongsToCompany(policy, companyId);
+
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, policy.scope());
 
         policy.setNameTo(newName);
 
@@ -292,10 +298,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
     public void deletePurchasePolicy(MemberId actorId, CompanyId companyId, PurchasePolicyId policyId) {
         Objects.requireNonNull(policyId, "policyId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
-
         PurchasePolicy policy = getPurchasePolicyOrThrow(policyId);
         requirePurchasePolicyBelongsToCompany(policy, companyId);
+
+        requireManagePurchasePolicyPermissionForScope(actorId, companyId, policy.scope());
 
         purchasePolicyRepository.deleteById(policyId);
 
@@ -340,7 +346,7 @@ public class PolicyManagementService implements IPolicyManagementPort {
     ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
+        requireManageEventPurchasePolicyPermission(actorId, companyId);
         requireCompanyOwnsEvent(companyId, eventId);
 
         List<PurchasePolicy> companyPolicies = purchasePolicyRepository.findByCompanyId(companyId);
@@ -378,7 +384,7 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
+        requireManageEventPurchasePolicyPermission(actorId, companyId);
         requireCompanyOwnsEvent(companyId, eventId);
 
         PurchasePolicy policy = PurchasePolicy.allowAll(
@@ -406,7 +412,7 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManagePurchasePoliciesPermission(actorId, companyId);
+        requireManageEventPurchasePolicyPermission(actorId, companyId);
         requireCompanyOwnsEvent(companyId, eventId);
 
         PurchasePolicy policy = PurchasePolicy.notAllowed(
@@ -447,9 +453,9 @@ public class PolicyManagementService implements IPolicyManagementPort {
         MemberId actorId = new MemberId(command.actorId());
         CompanyId companyId = new CompanyId(command.companyId());
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         PolicyScope scope = policyCommandAssembler.toScope(command.scope());
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, scope);
         requireCompanyOwnsScopeEvents(companyId, scope);
 
         if (command.discounts() == null || command.discounts().isEmpty()) {
@@ -496,8 +502,8 @@ public class PolicyManagementService implements IPolicyManagementPort {
     public void saveDiscountPolicy(MemberId actorId, CompanyId companyId, DiscountPolicy discountPolicy) {
         Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
         requireDiscountPolicyBelongsToCompany(discountPolicy, companyId);
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, discountPolicy.scope());
         requireCompanyOwnsScopeEvents(companyId, discountPolicy.scope());
 
         requireDiscountPolicyCompatibleWithActivePurchasePolicies(discountPolicy);
@@ -518,10 +524,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
     ) {
         Objects.requireNonNull(policyId, "policyId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
 
         policy.activate();
 
@@ -543,10 +549,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
     ) {
         Objects.requireNonNull(policyId, "policyId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
 
         policy.deactivate();
 
@@ -568,10 +574,16 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(newScope, "newScope must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyScopeChangePermission(
+                actorId,
+                companyId,
+                policy.scope(),
+                newScope
+        );
+
         requireCompanyOwnsScopeEvents(companyId, newScope);
 
         policy.changeScope(newScope);
@@ -645,11 +657,11 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-        requireCompanyOwnsEvent(companyId, eventId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
+        requireCompanyOwnsEvent(companyId, eventId);
 
         policy.activateForEvent(eventId);
 
@@ -673,11 +685,11 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-        requireCompanyOwnsEvent(companyId, eventId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
+        requireCompanyOwnsEvent(companyId, eventId);
 
         policy.deactivateForEvent(eventId);
 
@@ -712,10 +724,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policyId, "policyId must not be null");
         Objects.requireNonNull(discount, "discount must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
 
         policy.addDiscount(discount);
 
@@ -733,10 +745,10 @@ public class PolicyManagementService implements IPolicyManagementPort {
     public void deleteDiscountPolicy(MemberId actorId, CompanyId companyId, DiscountPolicyId policyId) {
         Objects.requireNonNull(policyId, "policyId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-
         DiscountPolicy policy = getDiscountPolicyOrThrow(policyId);
         requireDiscountPolicyBelongsToCompany(policy, companyId);
+
+        requireManageDiscountPolicyPermissionForScope(actorId, companyId, policy.scope());
 
         discountPolicyRepository.deleteById(policyId);
 
@@ -781,7 +793,7 @@ public class PolicyManagementService implements IPolicyManagementPort {
     ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
 
-        requireManageDiscountPoliciesPermission(actorId, companyId);
+        requireManageEventDiscountPolicyPermission(actorId, companyId);
         requireCompanyOwnsEvent(companyId, eventId);
 
         List<DiscountPolicy> companyPolicies = discountPolicyRepository.findByCompanyId(companyId);
@@ -1008,7 +1020,96 @@ public class PolicyManagementService implements IPolicyManagementPort {
         }
     }
 
-     public PurchasePolicyId createCompanyWidePurchasePolicy(MemberId actorId, CompanyId companyId, String policyName, IPolicy policy) {
+    private void requireManageEventDiscountPolicyPermission(MemberId actorId, CompanyId companyId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+
+        if (!permissionChecker.canManageDiscountPolicies(actorId, companyId)
+                && !permissionChecker.canManageEvents(actorId, companyId)) {
+            throw new SecurityException(
+                    "actor is not allowed to manage event discount policies for company: " + companyId
+            );
+        }
+    }
+
+    private void requireManageEventPurchasePolicyPermission(MemberId actorId, CompanyId companyId) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+        Objects.requireNonNull(companyId, "companyId must not be null");
+
+        if (!permissionChecker.canManagePurchasePolicies(actorId, companyId)
+                && !permissionChecker.canManageEvents(actorId, companyId)) {
+            throw new SecurityException(
+                    "actor is not allowed to manage event purchase policies for company: " + companyId
+            );
+        }
+    }
+
+    private void requireManagePurchasePolicyPermissionForScope(
+            MemberId actorId,
+            CompanyId companyId,
+            PolicyScope scope
+    ) {
+        Objects.requireNonNull(scope, "scope must not be null");
+
+        if (scope.isCompanyWide()) {
+            requireManagePurchasePoliciesPermission(actorId, companyId);
+        } else {
+            requireManageEventPurchasePolicyPermission(actorId, companyId);
+        }
+    }
+
+    private void requireManageDiscountPolicyPermissionForScope(
+            MemberId actorId,
+            CompanyId companyId,
+            PolicyScope scope
+    ) {
+        Objects.requireNonNull(scope, "scope must not be null");
+
+        if (scope.isCompanyWide()) {
+            requireManageDiscountPoliciesPermission(actorId, companyId);
+        } else {
+            requireManageEventDiscountPolicyPermission(actorId, companyId);
+        }
+    }
+
+    private void requireManagePurchasePolicyScopeChangePermission(
+            MemberId actorId,
+            CompanyId companyId,
+            PolicyScope currentScope,
+            PolicyScope newScope
+    ) {
+        Objects.requireNonNull(currentScope, "currentScope must not be null");
+        Objects.requireNonNull(newScope, "newScope must not be null");
+
+        if (currentScope.isCompanyWide() || newScope.isCompanyWide()) {
+            requireManagePurchasePoliciesPermission(actorId, companyId);
+        } else {
+            requireManageEventPurchasePolicyPermission(actorId, companyId);
+        }
+    }
+
+    private void requireManageDiscountPolicyScopeChangePermission(
+            MemberId actorId,
+            CompanyId companyId,
+            PolicyScope currentScope,
+            PolicyScope newScope
+    ) {
+        Objects.requireNonNull(currentScope, "currentScope must not be null");
+        Objects.requireNonNull(newScope, "newScope must not be null");
+
+        if (currentScope.isCompanyWide() || newScope.isCompanyWide()) {
+            requireManageDiscountPoliciesPermission(actorId, companyId);
+        } else {
+            requireManageEventDiscountPolicyPermission(actorId, companyId);
+        }
+    }
+
+    public PurchasePolicyId createCompanyWidePurchasePolicy(
+            MemberId actorId,
+            CompanyId companyId,
+            String policyName,
+            IPolicy policy
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(policyName, "policyName must not be null");
@@ -1016,25 +1117,31 @@ public class PolicyManagementService implements IPolicyManagementPort {
 
         requireManagePurchasePoliciesPermission(actorId, companyId);
 
-        PurchasePolicy purchasePolicy = new PurchasePolicy( 
+        PurchasePolicy purchasePolicy = new PurchasePolicy(
                 companyId,
                 policyName,
                 PolicyScope.companyWideScope(),
                 policy
         );
-        
+
         savePurchasePolicy(actorId, companyId, purchasePolicy);
         return purchasePolicy.id();
     }
 
-    public PurchasePolicyId createEventScopedPurchasePolicy(MemberId actorId, EventId eventId, String policyName, IPolicy policy) {
+    public PurchasePolicyId createEventScopedPurchasePolicy(
+            MemberId actorId,
+            EventId eventId,
+            String policyName,
+            IPolicy policy
+    ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(policyName, "policyName must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 
         CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
-        requireManagePurchasePoliciesPermission(actorId, companyId);
+
+        requireManageEventPurchasePolicyPermission(actorId, companyId);
         requireCompanyOwnsEvent(companyId, eventId);
 
         PurchasePolicy purchasePolicy = new PurchasePolicy(
@@ -1048,8 +1155,16 @@ public class PolicyManagementService implements IPolicyManagementPort {
         return purchasePolicy.id();
     }
 
-    public DiscountPolicyId createCompanyWideDiscountPolicy(MemberId actorId, CompanyId companyId, String discountName, boolean isStackable,
-                                                             BigDecimal discountPercent, IPolicy policy, boolean isVisible, LocalDate endDate) {
+    public DiscountPolicyId createCompanyWideDiscountPolicy(
+            MemberId actorId,
+            CompanyId companyId,
+            String discountName,
+            boolean isStackable,
+            BigDecimal discountPercent,
+            IPolicy policy,
+            boolean isVisible,
+            LocalDate endDate
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(discountName, "discountName must not be null");
@@ -1057,17 +1172,32 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policy, "policy must not be null");
 
         requireManageDiscountPoliciesPermission(actorId, companyId);
-        DiscountPolicy discountPolicy= new DiscountPolicy(DiscountPolicyId.random(),companyId,PolicyScope.companyWideScope());
+
+        DiscountPolicy discountPolicy = new DiscountPolicy(
+                DiscountPolicyId.random(),
+                companyId,
+                PolicyScope.companyWideScope()
+        );
         discountPolicy.addDiscount(new Discount(discountName, discountPercent, policy, isVisible, endDate));
+
         if (isStackable) {
             discountPolicy.allowStacking();
         }
+
         saveDiscountPolicy(actorId, companyId, discountPolicy);
         return discountPolicy.id();
     }
 
-    public DiscountPolicyId createEventScopedDiscountPolicy(MemberId actorId, EventId eventId, String discountName, BigDecimal discountPercent, IPolicy policy,
-                                                             boolean isVisible, LocalDate endDate, boolean stackable) {
+    public DiscountPolicyId createEventScopedDiscountPolicy(
+            MemberId actorId,
+            EventId eventId,
+            String discountName,
+            BigDecimal discountPercent,
+            IPolicy policy,
+            boolean isVisible,
+            LocalDate endDate,
+            boolean stackable
+    ) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(discountName, "discountName must not be null");
@@ -1075,53 +1205,79 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(policy, "policy must not be null");
 
         CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
-        requireManageDiscountPoliciesPermission(actorId, companyId);
-        DiscountPolicy discountPolicy= new DiscountPolicy(DiscountPolicyId.random(),companyId,PolicyScope.forSingleEvent(eventId));
+
+        requireManageEventDiscountPolicyPermission(actorId, companyId);
+        requireCompanyOwnsEvent(companyId, eventId);
+
+        DiscountPolicy discountPolicy = new DiscountPolicy(
+                DiscountPolicyId.random(),
+                companyId,
+                PolicyScope.forSingleEvent(eventId)
+        );
         discountPolicy.addDiscount(new Discount(discountName, discountPercent, policy, isVisible, endDate));
+
         if (stackable) {
             discountPolicy.allowStacking();
         }
-        
+
         saveDiscountPolicy(actorId, companyId, discountPolicy);
         return discountPolicy.id();
     }
 
-
-    private DiscountPolicyId createNewDiscountPolicyForEvents (MemberId actorId, Set<EventId> events,
-                                                                 List<Discount> discounts, boolean stackable) {
+    private DiscountPolicyId createNewDiscountPolicyForEvents(
+            MemberId actorId,
+            Set<EventId> events,
+            List<Discount> discounts,
+            boolean stackable
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(events, "events must not be null");
+
         if (events.isEmpty()) {
             throw new IllegalArgumentException("events must be non empty");
         }
+
         for (EventId eventId : events) {
-            Objects.requireNonNull(eventId, "discount must not be null");
+            Objects.requireNonNull(eventId, "eventId must not be null");
         }
+
         Objects.requireNonNull(discounts, "discounts must not be null");
         for (Discount discount : discounts) {
             Objects.requireNonNull(discount, "discount must not be null");
         }
-        EventId sampleEventId = events.stream().findAny()
-                                        .orElseThrow(() -> new IllegalArgumentException("No eventId found"));
+
+        EventId sampleEventId = events.stream()
+                .findAny()
+                .orElseThrow(() -> new IllegalArgumentException("No eventId found"));
+
         CompanyId companyId = eventOwnershipChecker.companyOfEvent(sampleEventId);
+
         requireCompanyOwnsAllEventsInSet(companyId, events);
-        requireManageDiscountPoliciesPermission(actorId, companyId);
+        requireManageEventDiscountPolicyPermission(actorId, companyId);
 
         DiscountPolicy discountPolicy = DiscountPolicy.inactiveForEvents(companyId, events);
         discountPolicy = DiscountPolicy.withDiscounts(discountPolicy, discounts);
+
         if (stackable) {
             discountPolicy.allowStacking();
         }
+
+        requireDiscountPolicyCompatibleWithActivePurchasePolicies(discountPolicy);
 
         discountPolicyRepository.save(discountPolicy);
         return discountPolicy.id();
     }
 
-    private DiscountPolicyId createNewCompanyWideDiscountPolicy (MemberId actorId, CompanyId companyId,
-                                                                 List<Discount> discounts, boolean stackable) {
+    private DiscountPolicyId createNewCompanyWideDiscountPolicy(
+            MemberId actorId,
+            CompanyId companyId,
+            List<Discount> discounts,
+            boolean stackable
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(discounts, "discounts must not be null");
+
         for (Discount discount : discounts) {
             Objects.requireNonNull(discount, "discount must not be null");
         }
@@ -1130,17 +1286,23 @@ public class PolicyManagementService implements IPolicyManagementPort {
 
         DiscountPolicy discountPolicy = DiscountPolicy.inactiveCompanyWide(companyId);
         discountPolicy = DiscountPolicy.withDiscounts(discountPolicy, discounts);
+
         if (stackable) {
             discountPolicy.allowStacking();
         }
+
+        requireDiscountPolicyCompatibleWithActivePurchasePolicies(discountPolicy);
 
         discountPolicyRepository.save(discountPolicy);
         return discountPolicy.id();
     }
 
-
-    public PurchasePolicyId createMinAgePurchasePolicyForEvent(MemberId actorId, EventId eventId,
-                                                                 int minAge, String policyName) {
+    public PurchasePolicyId createMinAgePurchasePolicyForEvent(
+            MemberId actorId,
+            EventId eventId,
+            int minAge,
+            String policyName
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(policyName, "policyName must not be null");
@@ -1149,38 +1311,71 @@ public class PolicyManagementService implements IPolicyManagementPort {
         return createEventScopedPurchasePolicy(actorId, eventId, policyName, ageLimPolicy);
     }
 
-    
-    public PurchasePolicyId createMinMaxTicketsPurchasePolicyForEvent(MemberId actorId, EventId eventId,
-                                                                 int minAllowed, int maxAllowed, String policyName) {
+    public PurchasePolicyId createMinMaxTicketsPurchasePolicyForEvent(
+            MemberId actorId,
+            EventId eventId,
+            int minAllowed,
+            int maxAllowed,
+            String policyName
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(policyName, "policyName must not be null");
+
         if (minAllowed < 1 || maxAllowed < 1) {
             throw new IllegalArgumentException("minimum and maximum allowed must be higher than 0");
         }
-        if (minAllowed > maxAllowed ) {
+
+        if (minAllowed > maxAllowed) {
             throw new IllegalArgumentException("maximum cannot be less than minimum");
         }
-        IPolicy allowedTicketAmountPolicy = new AndPolicy(List.of(new MinTicketPolicy(minAllowed), new MaxTicketPolicy(maxAllowed)));
+
+        IPolicy allowedTicketAmountPolicy = new AndPolicy(
+                List.of(
+                        new MinTicketPolicy(minAllowed),
+                        new MaxTicketPolicy(maxAllowed)
+                )
+        );
+
         return createEventScopedPurchasePolicy(actorId, eventId, policyName, allowedTicketAmountPolicy);
     }
 
-
-    public DiscountPolicyId createGeneralCompanyWideDiscount(MemberId actorId, CompanyId companyId, String discountName,
-                                                             BigDecimal discountPercent, LocalDate endDate, boolean stackable) {
+    public DiscountPolicyId createGeneralCompanyWideDiscount(
+            MemberId actorId,
+            CompanyId companyId,
+            String discountName,
+            BigDecimal discountPercent,
+            LocalDate endDate,
+            boolean stackable
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(discountName, "discountName must not be null");
-        List<Discount> discounts = List.of(Discount.GeneralDiscount(discountName, discountPercent, endDate));
+
+        List<Discount> discounts = List.of(
+                Discount.GeneralDiscount(discountName, discountPercent, endDate)
+        );
+
         return createNewCompanyWideDiscountPolicy(actorId, companyId, discounts, stackable);
     }
 
-    public DiscountPolicyId createCouponCompanyWideDiscount(MemberId actorId, CompanyId companyId, String discountName,
-                                                             BigDecimal discountPercent, LocalDate endDate, boolean stackable, String code) {
+    public DiscountPolicyId createCouponCompanyWideDiscount(
+            MemberId actorId,
+            CompanyId companyId,
+            String discountName,
+            BigDecimal discountPercent,
+            LocalDate endDate,
+            boolean stackable,
+            String code
+    ) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(discountName, "discountName must not be null");
-        List<Discount> discounts = List.of(Discount.CouponDiscount(discountName, discountPercent, endDate, code));
+
+        List<Discount> discounts = List.of(
+                Discount.CouponDiscount(discountName, discountPercent, endDate, code)
+        );
+
         return createNewCompanyWideDiscountPolicy(actorId, companyId, discounts, stackable);
     }
-
 }

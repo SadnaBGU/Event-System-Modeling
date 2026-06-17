@@ -30,7 +30,7 @@ public class PostgresVirtualQueueRepository implements IVirtualQueueRepository {
     @Override
     public Optional<VirtualQueue> findByEvent(String eventId) {
         Objects.requireNonNull(eventId, "eventId must not be null");
-        return jpaRepository.findByEventId(eventId);
+        return jpaRepository.findByEventIdForUpdate(eventId);
     }
 
     @Override
