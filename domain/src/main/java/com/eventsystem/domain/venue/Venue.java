@@ -60,7 +60,7 @@ public class Venue implements Persistable<VenueId> {
         return venueName;
     }
 
-    public long getVersion() {
+    public Long getVersion() {
         return version;
     }
 

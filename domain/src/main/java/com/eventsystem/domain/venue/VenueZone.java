@@ -123,6 +123,10 @@ public class VenueZone {
     }
 
     public int getAvailableCount() {
+        if (zoneType == ZoneType.STANDING) {
+            return totalCapacity;
+        }
+        
         return (int) seats.stream()
                 .filter(seat -> seat.status() == SeatStatus.AVAILABLE)
                 .count();
