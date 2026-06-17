@@ -1,5 +1,7 @@
 package com.eventsystem.domain.policy.discount;
-
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,15 +17,28 @@ import com.eventsystem.domain.policy.rule.composite.AndPolicy;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 
-
+@Embeddable
 public final class Discount {
 
-    private final String discountName;
-    private final BigDecimal discountPercent;
-    private final IPolicy discountPolicy;
-    private final DiscountVisibility visibility;
-    private final LocalDate endDate;
+    @Column(name = "discount_name", nullable = false)
+    private String discountName;
 
+    @Column(name = "discount_percent", nullable = false)
+    private BigDecimal discountPercent;
+
+    
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "discount_policy_tree", columnDefinition = "jsonb")
+    private IPolicy discountPolicy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DiscountVisibility visibility;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    protected Discount() {}
 
     public Discount(String discountName, BigDecimal discountPercent, IPolicy policy, boolean isVisible, LocalDate endDate) {
         if (!isValidDiscountPercent(discountPercent)) {

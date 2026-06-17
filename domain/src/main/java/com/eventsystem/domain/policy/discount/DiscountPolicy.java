@@ -9,26 +9,58 @@ import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
-
+import jakarta.persistence.*;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 
-
-
+@Entity
+@Table(name = "discount_policies")
 public final class DiscountPolicy {
 
-    private final DiscountPolicyId id;
-    private final CompanyId companyId;
+    @EmbeddedId
+    private DiscountPolicyId id;
+
+    // מגדיר אוטומטית את העמודה כדי שלא יתנגש עם שמות אחרים
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+    })
+    private CompanyId companyId;
+
+    // מכיוון שעוד לא ראיתי את קוד ה-Scope, אפשר לשמור גם אותו כ-JSON 
+    // או כ-Embedded אם זה מתאים
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "policy_scope", columnDefinition = "jsonb")
     private PolicyScope scope;
-    private final List<Discount> discounts;
+
+    // טבלת קשר מיוחדת שתחזיק את כל ההנחות שקשורות לפוליסה הזו
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "discount_policy_discounts", 
+            joinColumns = @JoinColumn(name = "discount_policy_id")
+    )
+    private List<Discount> discounts = new ArrayList<>();
+
     private boolean stackable;
     private boolean active;
+
+    // הבונוס: מונע בעיות ביצועים בשמירה ומונע דריסת נתונים ממספר שרתים במקביל
+    @Version
+    private Long version;
+
+    // חובה עבור JPA
+    protected DiscountPolicy() {}
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 

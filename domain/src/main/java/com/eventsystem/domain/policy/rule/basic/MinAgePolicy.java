@@ -6,9 +6,11 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class MinAgePolicy implements IBasicPolicy {
-
+    @JsonProperty("minAge")
     private final int minAge;
 
     @Override
@@ -16,7 +18,8 @@ public final class MinAgePolicy implements IBasicPolicy {
         return PolicyType.MIN_AGE;
     }
 
-    public MinAgePolicy(int minAge) {
+    @JsonCreator
+    public MinAgePolicy(@JsonProperty("minAge") int minAge) {
         if (minAge < 0) {
             throw new PolicyException("Minimum age must not be negative");
         }

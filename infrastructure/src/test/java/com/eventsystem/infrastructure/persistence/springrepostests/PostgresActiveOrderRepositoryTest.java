@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @EntityScan(basePackages = "com.eventsystem.domain")
 @Import(PostgresActiveOrderRepository.class)
-class PostgresActiveOrderRepositoryTest {
+class PostgresActiveOrderRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresActiveOrderRepository activeOrderRepository;
@@ -151,7 +151,7 @@ class PostgresActiveOrderRepositoryTest {
                 orderId,
                 new BuyerReference(BuyerType.MEMBER, null, "member-1"),
                 "event-1",
-                Instant.now().plus(30, ChronoUnit.MINUTES)
+                Instant.now().plus(10, ChronoUnit.DAYS)
         );
     }
 

@@ -1,7 +1,8 @@
 package com.eventsystem.domain.company;
-
+import jakarta.persistence.Embeddable;
 import java.util.Objects;
 
+@Embeddable
 public record CompanyDetails(String name, String description, double rating) {
 
     public CompanyDetails {

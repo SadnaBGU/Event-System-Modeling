@@ -1,5 +1,7 @@
 package com.eventsystem.domain.policy.purchase;
-
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -20,14 +22,37 @@ import com.eventsystem.domain.company.CompanyId;
 
 
 
-
+@Entity
+@Table(name = "purchase_policies")
 public class PurchasePolicy{
 
-    private final PurchasePolicyId id;
+    @EmbeddedId
+    private PurchasePolicyId id;
+
+    @Column(name = "policy_name", nullable = false)
     private String policyName;
-    private final CompanyId companyId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+    })
+    private CompanyId companyId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "policy_scope", columnDefinition = "jsonb")
     private PolicyScope scope;
-    private final IPolicy policy;
+
+    // כאן כל העץ המורכב נשמר כגוש JSON אחד!
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "policy_tree", columnDefinition = "jsonb")
+    private IPolicy policy;
+
+    
+    @Version
+    private Long version;
+
+    // חובה עבור JPA
+    protected PurchasePolicy() {}
 
 
     public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope, IPolicy policy) {

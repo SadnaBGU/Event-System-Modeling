@@ -2,6 +2,7 @@ package com.eventsystem.domain.platform;
 
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.shared.ProviderId;
+import jakarta.persistence.*;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -20,14 +21,64 @@ import java.util.concurrent.ConcurrentHashMap;
  * - {@code defaultReservationTimeout} must be positive.
  * - {@code queueLoadThreshold} must be non-negative.
  */
+@Entity
+@Table(name = "platform_config")
 public class Platform {
 
+    // מכיוון שזה סינגלטון, נקבע לו ID קשיח ותמיד נשלוף אותו.
+    @Id
+    @Column(name = "id", nullable = false, updatable = false)
+    private final Long id = 1L;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PlatformStatus status;
-    private final Set<MemberId> systemAdmins;
-    private final Set<ProviderId> paymentProviders;
-    private final Set<ProviderId> issuanceProviders;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "platform_system_admins",
+            joinColumns = @JoinColumn(name = "platform_id")
+    )
+    @AttributeOverrides({
+            @AttributeOverride(name = "value", column = @Column(name = "member_id", nullable = false))
+    })
+    private Set<MemberId> systemAdmins;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "platform_payment_providers",
+            joinColumns = @JoinColumn(name = "platform_id")
+    )
+    @AttributeOverrides({
+            @AttributeOverride(name = "value", column = @Column(name = "provider_id", nullable = false))
+    })
+    private Set<ProviderId> paymentProviders;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "platform_issuance_providers",
+            joinColumns = @JoinColumn(name = "platform_id")
+    )
+    @AttributeOverrides({
+            @AttributeOverride(name = "value", column = @Column(name = "provider_id", nullable = false))
+    })
+    private Set<ProviderId> issuanceProviders;
+
+    @Column(name = "default_reservation_timeout")
     private Duration defaultReservationTimeout;
+
+    @Column(name = "queue_load_threshold")
     private int queueLoadThreshold;
+
+    @Version
+    private Long version;
+
+    // חובה עבור JPA
+    protected Platform() {
+        this.systemAdmins = ConcurrentHashMap.newKeySet();
+        this.paymentProviders = ConcurrentHashMap.newKeySet();
+        this.issuanceProviders = ConcurrentHashMap.newKeySet();
+    }
 
     public Platform(MemberId initialAdmin,
                     Duration defaultReservationTimeout,

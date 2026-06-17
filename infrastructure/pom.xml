@@ -14,6 +14,9 @@
     <artifactId>infrastructure</artifactId>
     <packaging>jar</packaging>
     <name>Event System :: Infrastructure</name>
+    <properties>
+        <testcontainers.version>1.20.0</testcontainers.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -93,7 +96,16 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.19.8</version> <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>1.19.8</version> <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -101,6 +113,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.eventsystem.infrastructure.EventSystemApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

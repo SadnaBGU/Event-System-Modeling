@@ -2,29 +2,93 @@ package com.eventsystem.domain.company;
 
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public final class ProductionCompany {
-    private final CompanyId companyId;
-    private final MemberId founderId;
+@Entity
+@Table(name = "production_companies")
+public final class ProductionCompany implements Persistable<CompanyId> {
+    @EmbeddedId
+    private CompanyId companyId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "value", column = @Column(name = "founder_id"))
+    })
+    private MemberId founderId;
+
+    @Embedded
+    @AttributeOverrides({
+    @AttributeOverride(name = "name", column = @Column(name = "name", insertable = false, updatable = false)),
+    @AttributeOverride(name = "description", column = @Column(name = "description")),
+    @AttributeOverride(name = "rating", column = @Column(name = "rating"))
+})
     private CompanyDetails companyDetails;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CompanyStatus status;
-    private final AppointmentTree appointmentTree;
+
+    // כאן הקסם קורה! כל העץ נשמר כ-JSONB בתוך עמודה אחת בפוסטגרס
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "appointment_tree", columnDefinition = "jsonb")
+    private AppointmentTree appointmentTree;
+
+    @Column(name = "name", unique = true, nullable = false)
+    private String name;
+
+    @Transient
+    private boolean isNew = true;
+
+    // --- מימוש פונקציות הממשק Persistable ---
+
+    @Override
+    public CompanyId getId() {
+        return this.companyId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.isNew;
+    }
+
+    // פונקציות קסם של JPA שמכבות את הדגל ברגע שהאובייקט נטען מה-DB או נשמר אליו
+    @PostPersist
+    @PostLoad
+    protected void markNotNew() {
+        this.isNew = false;
+    }
+
+    protected ProductionCompany() {
+    }
 
     private ProductionCompany(CompanyId companyId, MemberId founderId, CompanyDetails companyDetails) {
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.founderId = Objects.requireNonNull(founderId, "founderId must not be null");
         this.companyDetails = Objects.requireNonNull(companyDetails, "companyDetails must not be null");
         this.status = CompanyStatus.ACTIVE;
+        this.name = companyDetails.name();
         this.appointmentTree = new AppointmentTree(founderId);
     }
 
     public static ProductionCompany create(MemberId founderId, String name, String description, double rating) {
         return new ProductionCompany(CompanyId.random(), founderId, new CompanyDetails(name, description, rating));
     }
+
+    public synchronized void updateName(String newName) {
+    requireActive();
+    if (newName == null || newName.isBlank()) {
+        throw new IllegalArgumentException("name must not be blank");
+    }
+    this.companyDetails = new CompanyDetails(newName, companyDetails.description(), companyDetails.rating());
+    this.name = newName; // חובה כדי לסנכרן עם ה-DB!
+}
 
     public synchronized void appointOwner(MemberId appointerId, MemberId targetId) {
         requireActive();
@@ -121,14 +185,6 @@ public final class ProductionCompany {
         appointmentTree.acceptAppointment(targetId);
     }
 
-
-    public synchronized void updateName(String newName) {
-        requireActive();
-        if (newName == null || newName.isBlank()) {
-            throw new IllegalArgumentException("name must not be blank");
-        }
-        this.companyDetails = new CompanyDetails(newName, companyDetails.description(), companyDetails.rating());
-    }
 
     public synchronized void updateDescription(String newDescription) {
         requireActive();

@@ -6,6 +6,8 @@ import java.util.Objects;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class AfterDatePolicy implements IBasicPolicy {
 
@@ -13,10 +15,12 @@ public final class AfterDatePolicy implements IBasicPolicy {
     public PolicyType type() {
         return PolicyType.AFTER_DATE;
     }
-
+    
+    @JsonProperty("deadlineDate")
     private final LocalDate deadlineDate;
 
-    public AfterDatePolicy(LocalDate deadlineDate) {
+    @JsonCreator
+    public AfterDatePolicy(@JsonProperty("deadlineDate") LocalDate deadlineDate) {
         this.deadlineDate = Objects.requireNonNull(deadlineDate, "Chosen date cannot be null");
     }
 

@@ -1,9 +1,11 @@
 package com.eventsystem.domain.policy.discount;
-
+import jakarta.persistence.Embeddable;
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
 
-public record DiscountPolicyId(String value) {
+@Embeddable
+public record DiscountPolicyId(String value) implements Serializable {
 
     public DiscountPolicyId {
         Objects.requireNonNull(value, "value must not be null");
