@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @EntityScan(basePackages = "com.eventsystem.domain")
 @Import(PostgresMemberRepository.class)
-class PostgresMemberRepositoryTest {
+class PostgresMemberRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresMemberRepository memberRepository;
