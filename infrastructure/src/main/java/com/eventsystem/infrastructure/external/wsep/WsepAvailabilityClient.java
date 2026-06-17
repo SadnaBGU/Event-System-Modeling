@@ -2,6 +2,7 @@ package com.eventsystem.infrastructure.external.wsep;
 
 import org.springframework.stereotype.Component;
 
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.infrastructure.external.wsep.common.WsepAction;
 import com.eventsystem.infrastructure.external.wsep.common.WsepCommunicationException;
 import com.eventsystem.infrastructure.external.wsep.common.WsepHttpClient;
@@ -13,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component
-public class WsepAvailabilityClient {
+public class WsepAvailabilityClient implements IExternalSystemsAvailabilityPort{
 
     private static final Logger log = LoggerFactory.getLogger(WsepAvailabilityClient.class);
 
@@ -44,5 +45,10 @@ public class WsepAvailabilityClient {
             log.error("WSEP handshake communication failure", e);
             throw e;
         }
+    }
+
+    @Override
+    public boolean areExternalSystemsAvailable() {
+        return isAvailable();
     }
 }
