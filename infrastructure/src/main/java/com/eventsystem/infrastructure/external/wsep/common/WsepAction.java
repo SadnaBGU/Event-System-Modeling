@@ -1,7 +1,5 @@
 package com.eventsystem.infrastructure.external.wsep.common;
 
-import java.util.Arrays;
-
 public enum WsepAction {
 
     HANDSHAKE("handshake"),

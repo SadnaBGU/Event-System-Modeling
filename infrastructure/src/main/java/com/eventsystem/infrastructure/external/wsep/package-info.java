@@ -18,7 +18,8 @@
  *     {@code TicketIssuanceHttpAdapter} -
  *     implements the application ticket-issuance port by calling WSEP ticket
  *     actions. It maps ticket generation requests to
- *     {@code action_type=issue_ticket}.
+ *     {@code action_type=issue_ticket} and performs best-effort rollback of
+ *     partially issued external tickets using {@code action_type=cancel_ticket}.
  *   </li>
  *   <li>
  *     {@code WsepAvailabilityClient} -
