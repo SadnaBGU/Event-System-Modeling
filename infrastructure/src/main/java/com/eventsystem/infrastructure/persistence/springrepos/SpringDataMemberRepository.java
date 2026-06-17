@@ -16,9 +16,10 @@ import java.util.Optional;
 
 public interface SpringDataMemberRepository extends JpaRepository<Member, MemberId> {
 
+    @SuppressWarnings("null")
     @Override
     @EntityGraph(attributePaths = "notificationInbox")
-    Optional<Member> findById(MemberId id);
+    Optional<Member> findById(@SuppressWarnings("null") MemberId id);
 
     // Derived query method to find a member by username
     Optional<Member> findByUsername(String username);

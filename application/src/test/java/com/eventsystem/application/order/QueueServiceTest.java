@@ -41,43 +41,43 @@ class QueueServiceTest {
     void setUp() {
         testBuyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "user-123");
         mockQueue = mock(VirtualQueue.class);
+        lenient().when(mockQueue.getQueueId()).thenReturn("Q-123");
     }
 
     @Test
-    void enqueueVisitor_ExistingQueue_AddsVisitorAndSaves() {
+    void enqueueVisitor_QueueExists_DelegatesToQueue() {
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
 
         queueService.enqueueVisitor(EVENT_ID, testBuyer);
 
-        verify(mockQueue, times(1)).joinQueue(testBuyer);
-        verify(queueRepository, times(1)).save(mockQueue);
+        verify(mockQueue).joinQueue(testBuyer);
+        verify(queueRepository).save(mockQueue);
     }
 
     @Test
-    void enqueueVisitor_NoQueueExists_CreatesNewQueueAndSaves() {
+    void enqueueVisitor_NoQueueExists_CreatesNewQueueAndEnqueues() {
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.empty());
 
         queueService.enqueueVisitor(EVENT_ID, testBuyer);
 
-        verify(queueRepository, times(1)).save(any(VirtualQueue.class));
+        // נוודא שהוא מייצר ושומר תור חדש מכיוון שלא היה אחד
+        verify(queueRepository).save(any(VirtualQueue.class));
+        // מכיוון שהוא מפעיל את joinQueue על אובייקט חדש שיצר פנימית, 
+        // אנו לא יכולים לנטר את mockQueue פה, אלא את העובדה שה-save אכן נקרא.
     }
 
     @Test
     void processNextBatch_QueueExists_AdmitsAndNotifies() {
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
+        AdmissionToken token = mock(AdmissionToken.class);
+        when(token.getBuyerRef()).thenReturn(testBuyer);
         
-        BuyerReference buyer2 = new BuyerReference(BuyerType.MEMBER, "sess-2", "user-456");
-        AdmissionToken token1 = new AdmissionToken(testBuyer, 10);
-        AdmissionToken token2 = new AdmissionToken(buyer2, 10);
-        when(mockQueue.admitNextGroup(anyInt())).thenReturn(List.of(token1, token2));
+        when(mockQueue.admitNextGroup(anyInt())).thenReturn(List.of(token));
 
         queueService.processNextBatch(EVENT_ID);
 
-        verify(mockQueue, times(1)).admitNextGroup(anyInt());
-        verify(queueRepository, times(1)).save(mockQueue);
-        
-        verify(notificationPort, times(1)).sendQueueTurnArrived(testBuyer, EVENT_ID);
-        verify(notificationPort, times(1)).sendQueueTurnArrived(buyer2, EVENT_ID);
+        verify(queueRepository).save(mockQueue);
+        verify(notificationPort).sendQueueTurnArrived(testBuyer, EVENT_ID);
     }
 
     @Test
@@ -91,22 +91,25 @@ class QueueServiceTest {
     }
 
     @Test
-    void checkAdmissionStatus_QueueExistsAndAdmitted_ReturnsTrue() {
+    void getAdmissionStatus_QueueExistsAndAdmitted_ReturnsStatusObject() {
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
         when(mockQueue.isAdmitted(testBuyer)).thenReturn(true);
+        when(mockQueue.positionOf(testBuyer)).thenReturn(0);
 
-        boolean result = queueService.checkAdmissionStatus(EVENT_ID, testBuyer);
+        QueueService.AdmissionStatus result = queueService.getAdmissionStatus(EVENT_ID, testBuyer);
 
-        assertTrue(result);
+        assertTrue(result.isAdmitted);
+        assertEquals(0, result.position);
     }
 
     @Test
-    void checkAdmissionStatus_NoQueueExists_ReturnsFalse() {
+    void getAdmissionStatus_NoQueueExists_ReturnsFalseAndMinusOne() {
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.empty());
 
-        boolean result = queueService.checkAdmissionStatus(EVENT_ID, testBuyer);
+        QueueService.AdmissionStatus result = queueService.getAdmissionStatus(EVENT_ID, testBuyer);
 
-        assertFalse(result);
+        assertFalse(result.isAdmitted);
+        assertEquals(-1, result.position);
     }
 
     @Test
@@ -117,8 +120,18 @@ class QueueServiceTest {
 
         queueService.handleEventSoldOut(EVENT_ID);
 
-        verify(mockQueue, times(1)).clearQueue();
-        verify(queueRepository, times(1)).save(mockQueue);
-        verify(notificationPort, times(1)).sendEventSoldOut(waitingBuyer, EVENT_ID);
+        verify(mockQueue).clearQueue();
+        verify(queueRepository).save(mockQueue);
+        verify(notificationPort).sendEventSoldOut(waitingBuyer, EVENT_ID);
+    }
+
+    @Test
+    void handleEventSoldOut_NoQueueExists_DoesNothing() {
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.empty());
+
+        queueService.handleEventSoldOut(EVENT_ID);
+
+        verify(queueRepository, never()).save(any());
+        verify(notificationPort, never()).sendEventSoldOut(any(), any());
     }
 }

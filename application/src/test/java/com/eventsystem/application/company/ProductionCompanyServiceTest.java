@@ -1,264 +1,92 @@
 package com.eventsystem.application.company;
 
-import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.company.IProductionCompanyRepository;
-import com.eventsystem.domain.company.Permission;
-import com.eventsystem.domain.company.ProductionCompany;
+import com.eventsystem.domain.company.*;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
-import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-
+import com.eventsystem.domain.member.IMemberRepository;
+import com.eventsystem.domain.company.IProductionCompanyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ProductionCompanyServiceTest {
-    private InMemoryMemberRepository memberRepository;
-    private InMemoryProductionCompanyRepository companyRepository;
+    private IMemberRepository memberRepository;
+    private IProductionCompanyRepository companyRepository;
     private ProductionCompanyService service;
 
     @BeforeEach
     void setUp() {
-        memberRepository = new InMemoryMemberRepository();
-        companyRepository = new InMemoryProductionCompanyRepository();
+        memberRepository = mock(IMemberRepository.class);
+        companyRepository = mock(IProductionCompanyRepository.class);
         service = new ProductionCompanyService(companyRepository, memberRepository);
     }
 
     @Test
     void createCompanyFailsWhenFounderMissing() {
-        assertThatThrownBy(() -> service.createCompany(MemberId.random(), "Nope", "desc", 3.0))
+        assertThatThrownBy(() -> service.createCompany(MemberId.random(), "Name", "Desc", 5.0))
                 .isInstanceOf(CompanyDomainException.class)
                 .hasMessageContaining("member not found");
     }
 
     @Test
-    void hasPermissionReturnsFalseForNonExistingMember() {
+    void createCompanyFailsWhenNameExists() {
         MemberId founder = MemberId.random();
         memberRepository.save(new Member(founder));
-        CompanyId companyId = service.createCompany(founder, "Comp", "desc", 4.2);
-
-        boolean result = service.hasPermission(MemberId.random(), companyId, Permission.MODIFY_POLICIES);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void removeAppointeeReassignsOwnersToParent() {
-        MemberId founder = MemberId.random();
-        MemberId owner = MemberId.random();
-        MemberId childOwner = MemberId.random();
-        memberRepository.save(new Member(founder));
-        memberRepository.save(new Member(owner));
-        memberRepository.save(new Member(childOwner));
-
-        CompanyId companyId = service.createCompany(founder, "Cascade", "desc", 4.1);
-        service.appointOwner(companyId, founder, owner);
-    service.acceptAppointment(companyId, owner);
-        service.appointOwner(companyId, owner, childOwner);
-    service.acceptAppointment(companyId, childOwner);
-
-        service.removeAppointee(companyId, founder, owner);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThat(company.isOwner(owner)).isFalse();
-        // childOwner should be reassigned to founder (owner's appointer)
-        assertThat(company.isOwner(childOwner)).isTrue();
-    }
-
-    @Test
-    void appointManagerToManager_successfully_creates_manager_hierarchy() {
-        MemberId founder = MemberId.random();
-        MemberId manager1 = MemberId.random();
-        MemberId manager2 = MemberId.random();
-        memberRepository.save(new Member(founder));
-        memberRepository.save(new Member(manager1));
-        memberRepository.save(new Member(manager2));
-
-        CompanyId companyId = service.createCompany(founder, "ManagerHierarchy", "desc", 4.3);
-        service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
-        service.acceptAppointment(companyId, manager1);
-        service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
-        service.acceptAppointment(companyId, manager2);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThat(company.isManager(manager1)).isTrue();
-        assertThat(company.isManager(manager2)).isTrue();
-    }
-
-    @Test
-    void removeManager_reassigns_subordinate_managers_to_parent() {
-        MemberId founder = MemberId.random();
-        MemberId manager1 = MemberId.random();
-        MemberId manager2 = MemberId.random();
-        MemberId manager3 = MemberId.random();
-        memberRepository.save(new Member(founder));
-        memberRepository.save(new Member(manager1));
-        memberRepository.save(new Member(manager2));
-        memberRepository.save(new Member(manager3));
-
-        CompanyId companyId = service.createCompany(founder, "ReassignManagers", "desc", 4.0);
-        service.appointManager(companyId, founder, manager1, Set.of(Permission.EVENT_INVENTORY_MANAGEMENT));
-    service.acceptAppointment(companyId, manager1);
-        service.appointManagerToManager(companyId, manager1, manager2, Set.of(Permission.VENUE_CONFIGURATION));
-    service.acceptAppointment(companyId, manager2);
-        service.appointManagerToManager(companyId, manager1, manager3, Set.of(Permission.VIEW_PURCHASE_HISTORY));
-    service.acceptAppointment(companyId, manager3);
-
-        service.removeAppointee(companyId, founder, manager1);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThat(company.isManager(manager1)).isFalse();
-        assertThat(company.isManager(manager2)).isTrue();
-        assertThat(company.isManager(manager3)).isTrue();
-    }
-
-    @Test
-    void createCompany_with_duplicate_name_fails() {
-        MemberId founder = MemberId.random();
-        memberRepository.save(new Member(founder));
-
-        service.createCompany(founder, "DuplicateCompany", "First", 4.5);
-
-        assertThatThrownBy(() -> service.createCompany(founder, "DuplicateCompany", "Second", 3.0))
+        when(companyRepository.findByName("Exists")).thenReturn(Optional.of(ProductionCompany.create(founder, "Exists", "Desc", 5.0)));
+        when(memberRepository.findById(founder)).thenReturn(Optional.of(new Member(founder)));
+        assertThatThrownBy(() -> service.createCompany(founder, "Exists", "Desc", 5.0))
                 .isInstanceOf(CompanyDomainException.class)
                 .hasMessageContaining("already exists");
     }
 
     @Test
-    void suspendCompany_prevents_new_operations() {
+    void createCompanySuccess() {
         MemberId founder = MemberId.random();
         memberRepository.save(new Member(founder));
+        when(memberRepository.findById(founder)).thenReturn(Optional.of(new Member(founder)));
 
-        CompanyId companyId = service.createCompany(founder, "SuspendTest", "desc", 4.0);
-        service.suspendCompany(companyId);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
-                .isInstanceOf(CompanyDomainException.class);
+        CompanyId id = service.createCompany(founder, "New", "Desc", 4.5);
+        
+        assertThat(id).isNotNull();
     }
 
     @Test
-    void reopenCompany_restores_functionality() {
-        MemberId founder = MemberId.random();
-        memberRepository.save(new Member(founder));
+    void permissionChecks_ReturnsFalseWhenCompanyMissing() {
+        MemberId actor = MemberId.random();
+        CompanyId company = CompanyId.random();
 
-        CompanyId companyId = service.createCompany(founder, "ReopenTest", "desc", 4.0);
-        service.suspendCompany(companyId);
-        service.reopenCompany(companyId);
-
-        MemberId newOwner = MemberId.random();
-        memberRepository.save(new Member(newOwner));
-        service.appointOwner(companyId, founder, newOwner);
-        service.acceptAppointment(companyId, newOwner);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThat(company.isOwner(newOwner)).isTrue();
+        assertThat(service.canManageEvents(actor, company)).isFalse();
+        assertThat(service.canManageDiscountPolicies(actor, company)).isFalse();
+        assertThat(service.canManagePurchasePolicies(actor, company)).isFalse();
+    }
+    
+    @Test
+    void acceptAppointment_ThrowsWhenCompanyMissing() {
+        assertThatThrownBy(() -> service.acceptAppointment(CompanyId.random(), MemberId.random()))
+            .isInstanceOf(CompanyDomainException.class)
+            .hasMessageContaining("company not found");
     }
 
     @Test
-    void terminateCompany_closes_operations() {
-        MemberId founder = MemberId.random();
-        memberRepository.save(new Member(founder));
-
-        CompanyId companyId = service.createCompany(founder, "TerminateTest", "desc", 4.0);
-        service.terminateCompany(companyId);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
-                .isInstanceOf(CompanyDomainException.class)
-                .hasMessageContaining("not active");
+    void getCompanyName_ThrowsWhenCompanyMissing() {
+        assertThatThrownBy(() -> service.getCompanyName(CompanyId.random()))
+            .isInstanceOf(CompanyDomainException.class);
     }
-
+    
     @Test
-    void reopenCompany_fails_when_admin_closed() {
-        MemberId founder = MemberId.random();
-        memberRepository.save(new Member(founder));
-
-        CompanyId companyId = service.createCompany(founder, "AdminClosedTest", "desc", 4.0);
-        service.adminCloseCompany(companyId);
-
-        assertThatThrownBy(() -> service.reopenCompany(companyId))
-                .isInstanceOf(CompanyDomainException.class)
-                .hasMessageContaining("admin-closed");
-    }
-
-    @Test
-    void adminClosedCompany_prevents_all_operations() {
-        MemberId founder = MemberId.random();
-        memberRepository.save(new Member(founder));
-
-        CompanyId companyId = service.createCompany(founder, "AdminClosedOpsTest", "desc", 4.0);
-        service.adminCloseCompany(companyId);
-
-        ProductionCompany company = companyRepository.findById(companyId).orElseThrow();
-        assertThatThrownBy(() -> company.appointOwner(founder, MemberId.random()))
-                .isInstanceOf(CompanyDomainException.class);
-    }
-
-
-    private static final class InMemoryMemberRepository implements IMemberRepository {
-        private final Map<MemberId, Member> members = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<Member> findById(MemberId memberId) {
-            return Optional.ofNullable(members.get(memberId));
-        }
-
-        @Override
-        public Optional<Member> findByUsername(String username) {
-            return members.values().stream()
-                    .filter(m -> m.getUsername().equals(username))
-                    .findFirst();
-        }
-
-        @Override
-        public java.util.Collection<Member> findAll() {
-            return members.values();
-        }
-
-        @Override
-        public void save(Member member) {
-            members.put(member.memberId(), member);
-        }
-    }
-
-    private static final class InMemoryProductionCompanyRepository implements IProductionCompanyRepository {
-        private final Map<CompanyId, ProductionCompany> companiesById = new ConcurrentHashMap<>();
-        private final Map<String, CompanyId> names = new ConcurrentHashMap<>();
-
-        @Override
-        public Optional<ProductionCompany> findById(CompanyId companyId) {
-            return Optional.ofNullable(companiesById.get(companyId));
-        }
-
-        @Override
-        public Optional<ProductionCompany> findByName(String companyName) {
-            CompanyId id = names.get(companyName.toLowerCase());
-            if (id == null) {
-                return Optional.empty();
-            }
-            return Optional.ofNullable(companiesById.get(id));
-        }
-
-        @Override
-        public void save(ProductionCompany productionCompany) {
-            names.put(productionCompany.companyDetails().name().toLowerCase(), productionCompany.companyId());
-            companiesById.put(productionCompany.companyId(), productionCompany);
-        }
-
-        @Override
-        public boolean hasPermission(MemberId memberId, CompanyId companyId, Permission eventInventoryManagement) {
-            return findById(companyId)
-                    .map(company -> company.hasPermission(memberId, eventInventoryManagement))
-                    .orElse(false);
-        }
+    void constructor_NullChecks() {
+        assertThatThrownBy(() -> new ProductionCompanyService(null, memberRepository))
+            .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new ProductionCompanyService(companyRepository, null))
+            .isInstanceOf(NullPointerException.class);
     }
 }

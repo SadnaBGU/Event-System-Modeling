@@ -49,6 +49,7 @@ public class PostgresActiveOrderRepository implements IActiveOrderRepository {
         return expiredOrders.isEmpty() ? Optional.empty() : Optional.of(expiredOrders);
     }
 
+    @SuppressWarnings("null")
     @Override
     public void delete(String orderId) {
         jpaRepo.deleteById(orderId);

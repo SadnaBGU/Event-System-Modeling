@@ -34,6 +34,7 @@ public class PostgresPurchaseRecordRepository implements IPurchaseRecordReposito
         jpaRepo.save(purchaseRecord);
     }
 
+        @SuppressWarnings("null")
         @Override
     public void append(PurchaseRecord record) {
         jpaRepo.save(record);

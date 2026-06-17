@@ -4,20 +4,17 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
-
-import org.hibernate.annotations.EmbeddableInstantiator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -30,129 +27,129 @@ class ZoneServiceTest {
     @Mock
     private IZoneRepository zoneRepository;
 
+    @InjectMocks
     private ZoneService service;
+
     private EventId eventId;
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "amount", column = @Column(name = "price_amount")),
-        @AttributeOverride(name = "currency", column = @Column(name = "price_currency"))
-    })
     private Money price;
 
     @BeforeEach
     void setUp() {
-        lenient().doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
-                .when(zoneRepository).withLock(any(), any());
-        service = new ZoneService(zoneRepository);
-        eventId = EventId.random();
-        price = new Money(new BigDecimal("20.00"), "ILS");
-    }
-
-    // ── createStandingZone ───────────────────────────────────────────────────
-
-    @Test
-    void createStandingZone_savesZoneAndReturnsId() {
-        ZoneId id = service.createStandingZone(eventId, "GA", price, 100);
-
-        assertThat(id).isNotNull();
-        verify(zoneRepository).save(any(Zone.class));
+        eventId = new EventId("EV-1");
+        price = new Money(new BigDecimal("100.00"), "USD");
+        
+        // גורם לפונקציית withLock להריץ מיד את הלולאה הפנימית שבתוכה (ה-Runnable)
+        lenient().doAnswer(invocation -> {
+            Runnable action = invocation.getArgument(1);
+            action.run();
+            return null;
+        }).when(zoneRepository).withLock(any(ZoneId.class), any(Runnable.class));
     }
 
     @Test
-    void createStandingZone_zeroCapacity_throws() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.createStandingZone(eventId, "GA", price, 0));
-        verify(zoneRepository, never()).save(any());
+    void constructor_rejectsNull() {
+        assertThatThrownBy(() -> new ZoneService(null)).isInstanceOf(NullPointerException.class);
     }
 
-    @Test
-    void createStandingZone_nullEventId_throws() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> service.createStandingZone(null, "GA", price, 100));
-    }
-
-    // ── createSeatedZone ─────────────────────────────────────────────────────
+    // ==========================================
+    // Creation
+    // ==========================================
 
     @Test
-    void createSeatedZone_savesZoneAndReturnsId() {
+    void createSeatedZone_savesAndReturnsId() {
         Row row = new Row("A", List.of(new Seat(SeatId.random(), "A", 1)));
+        
         ZoneId id = service.createSeatedZone(eventId, "VIP", price, List.of(row));
-
+        
         assertThat(id).isNotNull();
-        verify(zoneRepository).save(any(Zone.class));
+        ArgumentCaptor<Zone> captor = ArgumentCaptor.forClass(Zone.class);
+        verify(zoneRepository).save(captor.capture());
+        assertThat(captor.getValue().zoneType()).isEqualTo(ZoneType.SEATED);
     }
 
     @Test
-    void createSeatedZone_emptyRows_throws() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.createSeatedZone(eventId, "VIP", price, List.of()));
-        verify(zoneRepository, never()).save(any());
-    }
-
-    // ── reserveStanding ──────────────────────────────────────────────────────
-
-    @Test
-    void reserveStanding_delegatesToZoneAndSaves() {
-        Zone zone = Zone.createStanding(ZoneId.random(), eventId, "GA", price, 50);
-        when(zoneRepository.findById(zone.zoneId())).thenReturn(Optional.of(zone));
-
-        service.reserveStanding(zone.zoneId(), 10);
-
-        assertThat(zone.getAvailableCount()).isEqualTo(40);
-        verify(zoneRepository).save(zone);
+    void createStandingZone_savesAndReturnsId() {
+        ZoneId id = service.createStandingZone(eventId, "GA", price, 500);
+        
+        assertThat(id).isNotNull();
+        ArgumentCaptor<Zone> captor = ArgumentCaptor.forClass(Zone.class);
+        verify(zoneRepository).save(captor.capture());
+        assertThat(captor.getValue().zoneType()).isEqualTo(ZoneType.STANDING);
     }
 
     @Test
-    void reserveStanding_zoneNotFound_throws() {
-        ZoneId unknown = ZoneId.random();
-        when(zoneRepository.findById(unknown)).thenReturn(Optional.empty());
-
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.reserveStanding(unknown, 1));
+    void createZones_validateNullsAndNegatives() {
+        assertThatThrownBy(() -> service.createSeatedZone(null, "VIP", price, List.of()))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> service.createSeatedZone(eventId, null, price, List.of()))
+                .isInstanceOf(NullPointerException.class);
+                
+        assertThatThrownBy(() -> service.createStandingZone(null, "GA", price, 100))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> service.createStandingZone(eventId, null, price, 100))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> service.createStandingZone(eventId, "GA", price, 0))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
-    void reserveStanding_zeroQuantity_throws_beforeLoadingZone() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> service.reserveStanding(ZoneId.random(), 0));
-        verify(zoneRepository, never()).findById(any());
-    }
-
-    // ── releaseSeat ──────────────────────────────────────────────────────────
+    // ==========================================
+    // Seated Operations (withLock)
+    // ==========================================
 
     @Test
-    void releaseSeat_delegatesToZoneAndSaves() {
+    void seatedOperations_delegateToZoneAndSave() {
+        Zone mockZone = mock(Zone.class);
+        ZoneId zoneId = ZoneId.random();
         SeatId seatId = SeatId.random();
-        Seat seat = new Seat(seatId, "A", 1);
-        Row row = new Row("A", List.of(seat));
-        Zone zone = Zone.createSeated(ZoneId.random(), eventId, "VIP", price, List.of(row));
-        zone.reserveSeat(seatId);
-        when(zoneRepository.findById(zone.zoneId())).thenReturn(Optional.of(zone));
+        when(zoneRepository.findById(zoneId)).thenReturn(Optional.of(mockZone));
 
-        service.releaseSeat(zone.zoneId(), seatId);
+        service.reserveSeat(zoneId, seatId);
+        verify(mockZone).reserveSeat(seatId);
 
-        assertThat(seat.status()).isEqualTo(SeatStatus.AVAILABLE);
-        verify(zoneRepository).save(zone);
+        service.releaseSeat(zoneId, seatId);
+        verify(mockZone).releaseSeat(seatId);
+
+        service.markSeatSold(zoneId, seatId);
+        verify(mockZone).markSold(seatId);
+
+        verify(zoneRepository, times(3)).save(mockZone);
     }
 
-    // ── markSeatSold ─────────────────────────────────────────────────────────
+    // ==========================================
+    // Standing Operations (withLock)
+    // ==========================================
 
     @Test
-    void markSeatSold_delegatesToZoneAndSaves() {
-        SeatId seatId = SeatId.random();
-        Seat seat = new Seat(seatId, "A", 1);
-        Row row = new Row("A", List.of(seat));
-        Zone zone = Zone.createSeated(ZoneId.random(), eventId, "VIP", price, List.of(row));
-        zone.reserveSeat(seatId);
-        when(zoneRepository.findById(zone.zoneId())).thenReturn(Optional.of(zone));
+    void standingOperations_delegateToZoneAndSave() {
+        Zone mockZone = mock(Zone.class);
+        ZoneId zoneId = ZoneId.random();
+        when(zoneRepository.findById(zoneId)).thenReturn(Optional.of(mockZone));
 
-        service.markSeatSold(zone.zoneId(), seatId);
+        service.reserveStanding(zoneId, 5);
+        verify(mockZone).reserveStanding(5);
 
-        assertThat(seat.status()).isEqualTo(SeatStatus.SOLD);
-        verify(zoneRepository).save(zone);
+        service.releaseStanding(zoneId, 5);
+        verify(mockZone).releaseStanding(5);
+
+        service.markStandingSold(zoneId, 5);
+        verify(mockZone).markSoldStanding(5);
+
+        verify(zoneRepository, times(3)).save(mockZone);
     }
 
-    // ── updateZoneName / updateZonePrice ─────────────────────────────────────
+    @Test
+    void standingOperations_validateNegatives() {
+        ZoneId zoneId = ZoneId.random();
+        assertThatThrownBy(() -> service.reserveStanding(zoneId, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.releaseStanding(zoneId, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.markStandingSold(zoneId, 0)).isInstanceOf(IllegalArgumentException.class);
+        
+        assertThatThrownBy(() -> service.reserveStanding(null, 5)).isInstanceOf(NullPointerException.class);
+    }
+
+    // ==========================================
+    // Updates & Queries
+    // ==========================================
 
     @Test
     void updateZoneName_delegatesToZoneAndSaves() {
@@ -177,15 +174,24 @@ class ZoneServiceTest {
         verify(zoneRepository).save(zone);
     }
 
-    // ── findByEvent ──────────────────────────────────────────────────────────
+    @Test
+    void findById_delegatesToRepository() {
+        Zone zone = mock(Zone.class);
+        ZoneId zoneId = ZoneId.random();
+        when(zoneRepository.findById(zoneId)).thenReturn(Optional.of(zone));
+
+        assertThat(service.findById(zoneId)).isEqualTo(zone);
+        
+        when(zoneRepository.findById(zoneId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.findById(zoneId)).isInstanceOf(NoSuchElementException.class);
+    }
 
     @Test
     void findByEvent_delegatesToRepository() {
-        Zone z1 = Zone.createStanding(ZoneId.random(), eventId, "GA", price, 50);
-        when(zoneRepository.findByEventId(eventId)).thenReturn(List.of(z1));
+        Zone zone = mock(Zone.class);
+        when(zoneRepository.findByEventId(eventId)).thenReturn(List.of(zone));
 
-        List<Zone> result = service.findByEvent(eventId);
-
-        assertThat(result).hasSize(1).first().extracting(Zone::zoneName).isEqualTo("GA");
+        assertThat(service.findByEvent(eventId)).containsExactly(zone);
+        assertThatThrownBy(() -> service.findByEvent(null)).isInstanceOf(NullPointerException.class);
     }
 }

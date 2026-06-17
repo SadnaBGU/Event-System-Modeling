@@ -19,6 +19,7 @@ public class PostgresPlatformRepository implements IPlatformRepository {
         return jpaRepository.findById(1L);
     }
 
+    @SuppressWarnings("null")
     @Override
     public void save(Platform platform) {
         jpaRepository.save(platform);

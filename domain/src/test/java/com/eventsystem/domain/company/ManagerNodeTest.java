@@ -3,6 +3,8 @@ package com.eventsystem.domain.company;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,13 +33,33 @@ class ManagerNodeTest {
     }
 
     @Test
+    void emptyPermissions_CreatesEmptyEnumSet() {
+        ManagerNode node = new ManagerNode(MemberId.random(), MemberId.random(), Set.of());
+        assertThat(node.permissions()).isEmpty();
+    }
+
+    @Test
+    void jsonCreatorConstructor_worksViaReflection() throws Exception {
+        Constructor<ManagerNode> c = ManagerNode.class.getDeclaredConstructor(
+                MemberId.class, MemberId.class, Set.class, boolean.class, List.class);
+        c.setAccessible(true);
+        
+        MemberId m1 = MemberId.random();
+        ManagerNode node = c.newInstance(m1, MemberId.random(), Set.of(), true, null);
+        
+        assertThat(node.memberId()).isEqualTo(m1);
+        assertThat(node.appointedManagers()).isEmpty();
+    }
+
+    @Test
     void permissionsManagement() {
         ManagerNode node = new ManagerNode(MemberId.random(), MemberId.random(), Set.of(Permission.VIEW_PURCHASE_HISTORY));
         
         assertThat(node.hasPermission(Permission.VIEW_PURCHASE_HISTORY)).isTrue();
         assertThat(node.hasPermission(Permission.MODIFY_POLICIES)).isFalse();
-
-        node.replacePermissions(Set.of(Permission.MODIFY_POLICIES, Permission.VENUE_CONFIGURATION));
+        
+        node.replacePermissions(Set.of(Permission.MODIFY_POLICIES));
+        
         assertThat(node.hasPermission(Permission.VIEW_PURCHASE_HISTORY)).isFalse();
         assertThat(node.hasPermission(Permission.MODIFY_POLICIES)).isTrue();
         
