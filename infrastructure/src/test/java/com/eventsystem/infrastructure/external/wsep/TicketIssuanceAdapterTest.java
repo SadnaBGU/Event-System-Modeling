@@ -14,7 +14,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class TicketIssuanceHttpAdapterTest {
+class TicketIssuanceAdapterTest {
 
     private static final Money USD_100 = Money.of(new BigDecimal("100"), "USD");
     private static final BuyerReference MEMBER_BUYER = new BuyerReference(BuyerType.MEMBER, null, "849302");
