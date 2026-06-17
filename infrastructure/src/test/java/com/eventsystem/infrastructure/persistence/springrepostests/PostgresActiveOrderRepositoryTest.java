@@ -110,6 +110,7 @@ class PostgresActiveOrderRepositoryTest extends BasePostgresTest {
         assertThat(found.getOrderId()).isEqualTo("order-target");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     void findExpired_returnsOnlyOrdersPastReservationExpiry() {
         ActiveOrder expired = order("order-expired", new BuyerReference(BuyerType.MEMBER, null, "member-expired"), "event-expired", Instant.now().minus(5, ChronoUnit.MINUTES));

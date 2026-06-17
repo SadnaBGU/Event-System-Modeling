@@ -14,6 +14,7 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
         this.jpaRepository = jpaRepository;
     }
 
+    @SuppressWarnings("null")
     @Override
     public Optional<DiscountPolicy> findById(DiscountPolicyId id) { return jpaRepository.findById(id); }
 
@@ -51,11 +52,27 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
     }
 
     @Override
+    public List<DiscountPolicy> findSpecificForEvent(EventId eventId) {
+        return jpaRepository.findAll().stream()
+                .filter(p -> p.isActive() && p.isSpecificFor(eventId))
+                .toList();
+    }
+
+    public List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId).stream()
+                .filter(DiscountPolicy::isSingleEventPolicy)
+                .toList();
+    }
+
+    @SuppressWarnings("null")
+    @Override
     public void save(DiscountPolicy p) { jpaRepository.save(p); }
 
+    @SuppressWarnings("null")
     @Override
     public void deleteById(DiscountPolicyId id) { jpaRepository.deleteById(id); }
 
+    @SuppressWarnings("null")
     @Override
     public boolean existsById(DiscountPolicyId id) { return jpaRepository.existsById(id); }
 }
