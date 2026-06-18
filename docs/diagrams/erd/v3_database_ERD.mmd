@@ -1,0 +1,254 @@
+﻿erDiagram
+
+    MEMBERS ||--o{ NOTIFICATIONS : "inbox (cascade)"
+    MEMBERS {
+        string id PK
+        string username UK
+        string hash
+        string salt
+        string algorithm
+        string first_name
+        string last_name
+        string email
+        date   date_of_birth
+        string status "ACTIVE|SUSPENDED|CANCELLED"
+        timestamp suspended_at
+        string duration
+        string reason
+    }
+    NOTIFICATIONS {
+        string notification_id PK
+        string member_id FK
+        string type
+        string content
+        timestamp created_at
+        boolean delivered
+    }
+
+    PLATFORM_CONFIG ||--o{ PLATFORM_SYSTEM_ADMINS : "admins"
+    PLATFORM_CONFIG ||--o{ PLATFORM_PAYMENT_PROVIDERS : "payment providers"
+    PLATFORM_CONFIG ||--o{ PLATFORM_ISSUANCE_PROVIDERS : "issuance providers"
+    PLATFORM_CONFIG {
+        bigint id PK "always 1"
+        string status "INITIALIZING|ACTIVE|SHUTDOWN"
+        string default_reservation_timeout
+        int    queue_load_threshold
+        bigint version "ver"
+    }
+    PLATFORM_SYSTEM_ADMINS {
+        bigint platform_id FK
+        string member_id "-> members.id"
+    }
+    PLATFORM_PAYMENT_PROVIDERS {
+        bigint platform_id FK
+        string provider_id
+    }
+    PLATFORM_ISSUANCE_PROVIDERS {
+        bigint platform_id FK
+        string provider_id
+    }
+
+    MEMBERS ||--o{ PRODUCTION_COMPANIES : "founder"
+    PRODUCTION_COMPANIES ||--o{ EVENTS : "catalog"
+    PRODUCTION_COMPANIES ||--o{ VENUES : "owns"
+    PRODUCTION_COMPANIES ||--o{ PURCHASE_POLICIES : "defines"
+    PRODUCTION_COMPANIES ||--o{ DISCOUNT_POLICIES : "defines"
+    PRODUCTION_COMPANIES {
+        string id PK
+        string founder_id FK
+        string name UK
+        string description
+        double rating
+        string status "ACTIVE|SUSPENDED|TERMINATED|ADMIN_CLOSED"
+        jsonb  appointment_tree "owners/managers/permissions"
+    }
+
+    EVENTS ||--o{ EVENT_DATES : "show dates"
+    EVENTS ||--o{ EVENT_ZONES : "zone ids"
+    EVENTS ||--o{ ZONES : "inventory"
+    EVENTS ||--o{ LOTTERIES : "lottery"
+    EVENTS {
+        string id PK
+        string company_id FK
+        string event_name
+        string category
+        string location
+        string description
+        jsonb  venue_map "List<MapElement>"
+        string status "DRAFT|PUBLISHED|CANCELLED"
+        string sales_method "REGULAR|LOTTERY"
+        bigint version "ver"
+    }
+    EVENT_DATES {
+        string event_id FK
+        timestamp event_date
+    }
+    EVENT_ZONES {
+        string event_id FK
+        string zone_id
+    }
+
+    ZONES ||--o{ SEATS : "seated map (cascade)"
+    ZONES {
+        string id PK
+        string event_id FK
+        string zone_name
+        string zone_type "SEATED|STANDING"
+        numeric price_amount
+        string  price_currency
+        int total_capacity
+        int available_count
+        bigint version "ver"
+    }
+    SEATS {
+        string seat_id PK
+        string zone_id FK
+        string venue_zone_id FK "when owned by a venue zone"
+        string row_label
+        int seat_number
+        string status "AVAILABLE|RESERVED|SOLD"
+    }
+
+    VENUES ||--o{ VENUE_ZONE : "zones (cascade)"
+    VENUE_ZONE ||--o{ SEATS : "seats (cascade)"
+    VENUES {
+        uuid id PK
+        string company_id FK
+        string venue_name
+        bigint version "ver"
+    }
+    VENUE_ZONE {
+        string zone_id PK
+        string venue_id FK
+        string zone_name
+        string zone_type "SEATED|STANDING"
+        numeric price_amount
+        string  price_currency
+        int total_capacity
+    }
+
+    LOTTERIES ||--o{ LOTTERY_REGISTRATIONS : "entrants"
+    LOTTERIES ||--o{ LOTTERY_WINNERS : "winners"
+    LOTTERIES {
+        string id PK
+        string event_id FK
+        string status "REGISTRATION_OPEN|CLOSED|DRAWN"
+        timestamp draw_timestamp
+        bigint version "ver"
+    }
+    LOTTERY_REGISTRATIONS {
+        string lottery_id FK
+        string member_id "-> members.id"
+    }
+    LOTTERY_WINNERS {
+        string lottery_id FK
+        string member_id
+        string permission_code
+        timestamp code_expiry
+    }
+
+    ACTIVE_ORDERS ||--o{ ACTIVE_ORDER_ITEMS : "items"
+    ACTIVE_ORDERS {
+        string order_id PK
+        string type "MEMBER|GUEST"
+        string session_id
+        string member_id
+        string event_id
+        timestamp reservation_expiry
+        string status "ACTIVE|CHECKED_OUT|EXPIRED|CANCELLED"
+        bigint version "ver"
+    }
+    ACTIVE_ORDER_ITEMS {
+        string order_id FK
+        string zone_id
+        string seat_id
+        int quantity
+        numeric price_amount
+        string price_currency
+    }
+
+    VIRTUAL_QUEUES ||--o{ QUEUE_ENTRIES : "waiting"
+    VIRTUAL_QUEUES ||--o{ QUEUE_ADMISSIONS : "admitted"
+    VIRTUAL_QUEUES {
+        string queue_id PK
+        string event_id
+        string status "INACTIVE|ACTIVE"
+        int load_threshold
+        int max_concurrent_admissions
+        int next_position_counter
+        bigint version "ver"
+    }
+    QUEUE_ENTRIES {
+        string queue_id FK
+        string type
+        string session_id
+        string member_id
+        timestamp joined_at
+        int position_in_queue
+    }
+    QUEUE_ADMISSIONS {
+        string queue_id FK
+        string type
+        string session_id
+        string member_id
+        timestamp expires_at
+        boolean consumed
+    }
+
+    PURCHASE_RECORDS ||--o{ PURCHASE_RECORD_ITEMS : "line items"
+    PURCHASE_RECORDS ||--o{ PURCHASE_RECORD_DISCOUNTS : "applied discounts"
+    PURCHASE_RECORDS {
+        string record_id PK
+        string buyer_id
+        string display_name
+        string event_id
+        string event_name
+        string company_name
+        date   event_date
+        string location
+        numeric price_amount
+        string  price_currency
+        timestamp purchase_timestamp
+        string payment_confirmation_id
+        string ticket_issuance_confirmation_id
+    }
+    PURCHASE_RECORD_ITEMS {
+        string record_id FK
+        string zone_name
+        string seat_id
+        int quantity
+        numeric price_amount
+        string price_currency
+    }
+    PURCHASE_RECORD_DISCOUNTS {
+        string record_id FK
+        string discount_name
+        numeric price_amount
+        string price_currency
+    }
+
+    PURCHASE_POLICIES {
+        string id PK
+        string company_id FK
+        string policy_name
+        jsonb  policy_scope
+        jsonb  policy_tree "composite rule tree"
+        bigint version "ver"
+    }
+    DISCOUNT_POLICIES ||--o{ DISCOUNT_POLICY_DISCOUNTS : "discounts"
+    DISCOUNT_POLICIES {
+        string id PK
+        string company_id FK
+        jsonb  policy_scope
+        boolean stackable
+        boolean active
+        bigint version "ver"
+    }
+    DISCOUNT_POLICY_DISCOUNTS {
+        string discount_policy_id FK
+        string discount_name
+        numeric discount_percent
+        jsonb  discount_policy_tree
+        string visibility
+        date   end_date
+    }
