@@ -80,11 +80,13 @@ public class PurchaseHistoryController {
         List<Map<String,Object>> tickets = dto.items().stream().map(i -> {
             PurchasedItemDTO pit = i;
             Money price = pit.priceAtPurchase();
-            return Map.<String,Object>of(
-                    "zoneId", pit.zoneName(),
-                    "seatId", pit.seatId(),
-                    "price", price.amount()
-            );
+            // Standing (general-admission) tickets have no seatId, so build a null-safe map.
+            Map<String,Object> ticket = new java.util.HashMap<>();
+            ticket.put("zoneId", pit.zoneName());
+            ticket.put("seatId", pit.seatId());
+            ticket.put("quantity", pit.quantity());
+            ticket.put("price", price.amount());
+            return ticket;
         }).collect(Collectors.toList());
 
         String purchaseDate = dto.purchaseTimestamp().toString();

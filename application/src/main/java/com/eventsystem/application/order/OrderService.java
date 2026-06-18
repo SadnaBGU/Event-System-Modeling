@@ -13,6 +13,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
@@ -67,7 +68,9 @@ public class OrderService {
 
         Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
         
-        if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
+        if (existingOrder.isPresent()
+                && existingOrder.get().getStatus() == OrderStatus.ACTIVE
+                && !existingOrder.get().isExpired()) {
             logger.info("Found existing active order: {}", existingOrder.get().getOrderId());
             return ActiveOrderDTO.fromDomain(existingOrder.get());
         }
@@ -85,7 +88,9 @@ public class OrderService {
     public ActiveOrderDTO createNewOrderStrict(BuyerReference buyer, String eventId) {
         Optional<ActiveOrder> existingOrder = orderRepository.findByBuyerAndEvent(buyer, eventId);
         
-        if (existingOrder.isPresent() && !existingOrder.get().isExpired()) {
+        if (existingOrder.isPresent()
+                && existingOrder.get().getStatus() == OrderStatus.ACTIVE
+                && !existingOrder.get().isExpired()) {
             logger.warn("Reservation Rejected_Existing_Order: Buyer already has active order for event {}", eventId);
             throw new AlreadyExistsOrderException("An active order for this buyer and event already exists.");
         }

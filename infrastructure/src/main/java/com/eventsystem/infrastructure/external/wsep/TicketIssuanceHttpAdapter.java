@@ -4,11 +4,14 @@ import com.eventsystem.application.order.ITicketIssuancePort;
 import com.eventsystem.application.order.IssuanceResult;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.zone.IZoneRepository;
+import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.infrastructure.external.wsep.common.WsepAction;
 import com.eventsystem.infrastructure.external.wsep.common.WsepCommunicationException;
 import com.eventsystem.infrastructure.external.wsep.common.WsepHttpClient;
 import com.eventsystem.infrastructure.external.wsep.common.WsepResponseParser;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -27,9 +30,17 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
     private static final Logger log = LoggerFactory.getLogger(TicketIssuanceHttpAdapter.class);
 
     private final WsepHttpClient client;
+    private final IZoneRepository zoneRepository;
 
-    public TicketIssuanceHttpAdapter(WsepHttpClient client) {
+    @Autowired
+    public TicketIssuanceHttpAdapter(WsepHttpClient client, IZoneRepository zoneRepository) {
         this.client = client;
+        this.zoneRepository = zoneRepository;
+    }
+
+    /** Test convenience constructor: no zone lookup, falls back to label-based seat parsing. */
+    public TicketIssuanceHttpAdapter(WsepHttpClient client) {
+        this(client, null);
     }
 
     @Override
@@ -55,7 +66,7 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
 
             log.info("WSEP ticket issuance succeeded for eventId={}, activeOrderId={}, issuedTicketCount={}",
                     eventId, activeOrderId, issuedTicketIds.size());
-            return IssuanceResult.successful(issuedTicketIds);
+            return IssuanceResult.successful(String.join(",", issuedTicketIds));
 
         } catch (WsepCommunicationException e) {
             log.error(
@@ -143,8 +154,44 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
     }
 
     private String seatsJson(OrderItem item) {
+        // Preferred: resolve the real row label + seat number from the zone aggregate.
+        // The reserved seatId is a UUID, so WSEP needs the human-facing row/seat to issue.
+        String resolved = resolveRealSeatJson(item);
+        if (resolved != null) {
+            return resolved;
+        }
+        // Fallback: legacy "row:seat" / "row-seat" label parsing.
         SeatParts seatParts = SeatParts.fromSeatId(item.getSeatId());
         return "[{\"row\":" + seatParts.row() + ",\"seat\":" + seatParts.seat() + "}]";
+    }
+
+    /**
+     * Looks up the zone and seat by their persisted ids and renders the WSEP seats JSON
+     * using the seat's real row label and seat number, e.g. {@code [{"row":"A","seat":1}]}.
+     * Returns {@code null} when the seat cannot be resolved, so the caller can fall back.
+     */
+    private String resolveRealSeatJson(OrderItem item) {
+        if (zoneRepository == null || item.getZoneId() == null || item.getSeatId() == null) {
+            return null;
+        }
+        try {
+            return zoneRepository.findById(new ZoneId(item.getZoneId()))
+                    .flatMap(zone -> zone.rows().stream()
+                            .flatMap(row -> row.seats().stream())
+                            .filter(seat -> item.getSeatId().equals(seat.seatId().value()))
+                            .findFirst())
+                    .map(seat -> "[{\"row\":\"" + jsonEscape(seat.rowLabel())
+                            + "\",\"seat\":" + seat.seatNumber() + "}]")
+                    .orElse(null);
+        } catch (RuntimeException e) {
+            log.warn("Could not resolve real seat for zone={}, seatId={}: {}",
+                    item.getZoneId(), item.getSeatId(), e.getMessage());
+            return null;
+        }
+    }
+
+    private static String jsonEscape(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private String resolveCustomerId(BuyerReference buyer) {
