@@ -6,10 +6,11 @@ import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.zone.IZoneRepository;
+import com.eventsystem.domain.zone.SeatId;
+import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
-
+import com.eventsystem.domain.zone.ZoneType;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
@@ -55,14 +56,13 @@ public class CheckoutSagaIntegrationHappyPathTest {
         ITicketIssuancePort ticketIssuance = mock(ITicketIssuancePort.class);
         INotificationPort notificationPort = mock(INotificationPort.class);
         IZoneRepository zoneRepo = mock(IZoneRepository.class);
-        IMemberRepository memberRepo = mock(IMemberRepository.class);
         IEventQueryPort eventQuery = mock(IEventQueryPort.class);
         IPurchasePolicyValidationPort purchasePolicyPort  = mock(IPurchasePolicyValidationPort.class);
         IDiscountApplicationPort discountPort  = mock(IDiscountApplicationPort.class);
 
         
 
-        CheckoutSaga saga = new CheckoutSaga(orderRepo, purchaseRepo, paymentGateway, ticketIssuance, notificationPort, zoneRepo, memberRepo, purchasePolicyPort, discountPort, eventQuery);
+        CheckoutSaga saga = new CheckoutSaga(orderRepo, purchaseRepo, paymentGateway, ticketIssuance, notificationPort, zoneRepo,  purchasePolicyPort, discountPort, eventQuery);
 
         // create an active order with a single item
         OrderFactory factory = new OrderFactory();
@@ -84,8 +84,23 @@ public class CheckoutSagaIntegrationHappyPathTest {
                 .thenReturn(IssuanceResult.successful("ISS-1"));
 
         // execute
-        saga.executeCheckout(order.getOrderId(), "token-123", null);
+        doAnswer(invocation -> {
+                Runnable action = invocation.getArgument(1);
+                action.run();
+                return null;
+        }).when(zoneRepo).withLock(any(ZoneId.class), any(Runnable.class));
 
+        Zone mockZone = mock(Zone.class);
+        when(mockZone.zoneType()).thenReturn(ZoneType.SEATED);
+        when(zoneRepo.findById(new ZoneId("zone-1"))).thenReturn(Optional.of(mockZone));
+        CheckoutResult result = saga.executeCheckout(order.getOrderId(), "token-123", null);
+
+        //verify checkoutresult:
+        assertEquals(List.of("ISS-1"), result.issuedTicketCodes());
+        assertEquals(OrderStatus.CHECKED_OUT.name(), result.orderStatus());
+
+        verify(mockZone).markSold(new SeatId("seat-1"));
+        verify(zoneRepo).save(mockZone);
         // verify purchase record appended and notification sent
         ArgumentCaptor<PurchaseRecord> captor = ArgumentCaptor.forClass(PurchaseRecord.class);
         verify(purchaseRepo).append(captor.capture());
