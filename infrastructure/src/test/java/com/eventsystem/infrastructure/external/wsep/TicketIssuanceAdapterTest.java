@@ -39,6 +39,7 @@ class TicketIssuanceAdapterTest {
 
             assertTrue(result.success());
             assertEquals("TIX-GA-1", result.issuanceConfirmationId());
+            assertEquals(List.of("TIX-GA-1"), result.issuedTicketCodes());
 
             assertEquals(1, server.requestCount());
             assertEquals("issue_ticket", server.request(0).form().get("action_type"));
@@ -70,6 +71,7 @@ class TicketIssuanceAdapterTest {
 
             assertTrue(result.success());
             assertEquals("TIX-SEAT-1", result.issuanceConfirmationId());
+            assertEquals(List.of("TIX-SEAT-1"), result.issuedTicketCodes());
 
             assertEquals("issue_ticket", server.request(0).form().get("action_type"));
             assertEquals("VIP Balcony", server.request(0).form().get("zone"));
@@ -97,6 +99,7 @@ class TicketIssuanceAdapterTest {
 
             assertTrue(result.success());
             assertEquals("session-abc", server.request(0).form().get("customer_id"));
+            assertEquals(List.of("TIX-GUEST-1"), result.issuedTicketCodes());
         }
     }
 
@@ -117,7 +120,8 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertFalse(result.success());
-            assertNull(result.issuanceConfirmationId());
+            assertTrue(result.issuedTicketCodes().isEmpty());
+            assertEquals("", result.issuanceConfirmationId());
             assertTrue(result.errorMessage().contains("Ticket issuance rejected"));
             assertEquals(1, server.requestCount());
         }
@@ -144,6 +148,8 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertFalse(result.success());
+            assertTrue(result.issuedTicketCodes().isEmpty());
+
             assertEquals(3, server.requestCount());
 
             assertEquals("issue_ticket", server.request(0).form().get("action_type"));
@@ -201,6 +207,8 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertFalse(result.success());
+            assertTrue(result.issuedTicketCodes().isEmpty());
+
             assertEquals(3, server.requestCount());
             assertEquals("cancel_ticket", server.request(2).form().get("action_type"));
         }
@@ -219,6 +227,7 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertFalse(result.success());
+            assertTrue(result.issuedTicketCodes().isEmpty());
             assertEquals(0, server.requestCount());
         }
     }
@@ -238,6 +247,7 @@ class TicketIssuanceAdapterTest {
                     null);
 
             assertFalse(result.success());
+            assertTrue(result.issuedTicketCodes().isEmpty());
             assertEquals(0, server.requestCount());
         }
     }
@@ -260,6 +270,7 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertTrue(result.success());
+            assertEquals(List.of("TIX-SEAT-DASH"), result.issuedTicketCodes());
             assertEquals("true", server.request(0).form().get("is_seating"));
             assertEquals("[{\"row\":7,\"seat\":18}]", server.request(0).form().get("seats"));
         }
@@ -283,6 +294,7 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertTrue(result.success());
+            assertEquals(List.of("TIX-SEAT-KV"), result.issuedTicketCodes());
             assertEquals("true", server.request(0).form().get("is_seating"));
             assertEquals("[{\"row\":9,\"seat\":41}]", server.request(0).form().get("seats"));
         }
@@ -305,6 +317,7 @@ class TicketIssuanceAdapterTest {
                     MEMBER_BUYER);
 
             assertTrue(result.success());
+            assertEquals(List.of("TIX-SEAT-PLAIN"), result.issuedTicketCodes());
             assertEquals("true", server.request(0).form().get("is_seating"));
             assertEquals("[{\"row\":0,\"seat\":55}]", server.request(0).form().get("seats"));
         }

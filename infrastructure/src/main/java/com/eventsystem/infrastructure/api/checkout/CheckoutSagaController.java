@@ -1,8 +1,9 @@
 package com.eventsystem.infrastructure.api.checkout;
 
+import com.eventsystem.application.order.ActiveOrderDTO;
+import com.eventsystem.application.order.CheckoutResult;
 import com.eventsystem.application.order.CheckoutSaga;
 import com.eventsystem.application.order.OrderService;
-import com.eventsystem.application.order.ActiveOrderDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,19 +34,35 @@ public class CheckoutSagaController {
     }
 
     @PostMapping("")
-    @Operation(summary = "Start checkout", description = "Starts checkout orchestration for an active order")
+    @Operation(
+            summary = "Complete checkout",
+            description = "Synchronously completes checkout for an active order: validates policies, charges payment, issues ticket codes, finalizes the receipt, and checks out the order."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "Checkout accepted"),
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Checkout completed successfully",
+                    content = @Content(schema = @Schema(implementation = CheckoutResult.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request / payment failed / price calculation failed", content = @Content),
             @ApiResponse(responseCode = "404", description = "Order not found", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Order already checked out", content = @Content),
-            @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
+            @ApiResponse(responseCode = "409", description = "Order expired, violates policy, or ticket issuance failed after compensation", content = @Content)
     })
-    public ResponseEntity<Void> checkout(@RequestBody CheckoutRequest req) {
-        if (req == null) throw new IllegalArgumentException("request body is required");
+    public ResponseEntity<CheckoutResult> checkout(@RequestBody CheckoutRequest req) {
+        if (req == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+
         requireNonBlank(req.orderId, "orderId is required");
         requireNonBlank(req.paymentToken, "paymentToken is required");
-        checkoutSaga.executeCheckout(req.orderId, req.paymentToken, req.discountCode);
-        return ResponseEntity.accepted().build();
+
+        CheckoutResult result = checkoutSaga.executeCheckout(
+                req.orderId,
+                req.paymentToken,
+                req.discountCode
+        );
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{orderId}/status")
@@ -57,24 +74,40 @@ public class CheckoutSagaController {
     })
     public ResponseEntity<StatusResponse> status(@PathVariable String orderId) {
         requireNonBlank(orderId, "orderId is required");
+
         ActiveOrderDTO dto = orderService.getOrderById(orderId);
+
         return ResponseEntity.ok(new StatusResponse(dto.orderId(), dto.status().name()));
     }
-    
+
     @PostMapping("/{orderId}/callbacks")
-    @Operation(summary = "Accept checkout callback", description = "Accepts asynchronous callback events for an order")
+    @Operation(
+            summary = "Accept checkout callback",
+            description = "Accepts asynchronous callback events for an order. Currently acknowledged only; checkout is handled synchronously by the Saga endpoint."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "Callback accepted",
-                    content = @Content(schema = @Schema(implementation = CallbackAckResponse.class))),
+            @ApiResponse(
+                    responseCode = "202",
+                    description = "Callback accepted",
+                    content = @Content(schema = @Schema(implementation = CallbackAckResponse.class))
+            ),
             @ApiResponse(responseCode = "400", description = "Invalid callback request", content = @Content)
     })
-    public ResponseEntity<CallbackAckResponse> callback(@PathVariable String orderId,
-                                                        @RequestBody CallbackRequest req) {
+    public ResponseEntity<CallbackAckResponse> callback(
+            @PathVariable String orderId,
+            @RequestBody CallbackRequest req
+    ) {
         requireNonBlank(orderId, "orderId is required");
-        if (req == null) throw new IllegalArgumentException("request body is required");
+
+        if (req == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+
         requireNonBlank(req.type, "callback type is required");
         requireNonBlank(req.payload, "callback payload is required");
-        // For now accept and acknowledge callbacks; orchestration handled asynchronously by application services later
+
+        // Checkout is currently synchronous. We still keep this endpoint for future
+        // provider callbacks / asynchronous orchestration support.
         return ResponseEntity.accepted().body(new CallbackAckResponse(orderId, "ACCEPTED"));
     }
 
@@ -101,7 +134,7 @@ public class CheckoutSagaController {
             this.status = status;
         }
     }
-    
+
     public static class CallbackRequest {
         @Schema(description = "Callback type", example = "PAYMENT_SETTLED", requiredMode = Schema.RequiredMode.REQUIRED)
         public String type;
