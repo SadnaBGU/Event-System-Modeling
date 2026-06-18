@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
@@ -47,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyString;
  * the test database is unreachable.</p>
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @ExtendWith(PostgresAvailableCondition.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://127.0.0.1:5434/eventsdb",

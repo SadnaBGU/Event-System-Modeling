@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * stays green without it.</p>
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @ExtendWith(PostgresAvailableCondition.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://127.0.0.1:5434/eventsdb",
