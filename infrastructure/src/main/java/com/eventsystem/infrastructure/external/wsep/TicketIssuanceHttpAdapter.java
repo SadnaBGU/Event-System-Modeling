@@ -55,7 +55,7 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
 
             log.info("WSEP ticket issuance succeeded for eventId={}, activeOrderId={}, issuedTicketCount={}",
                     eventId, activeOrderId, issuedTicketIds.size());
-            return IssuanceResult.successful(String.join(",", issuedTicketIds));
+            return IssuanceResult.successful(issuedTicketIds);
 
         } catch (WsepCommunicationException e) {
             log.error(
