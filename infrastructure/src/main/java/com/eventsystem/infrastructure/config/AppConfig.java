@@ -401,7 +401,6 @@ public class AppConfig {
                                      ITicketIssuancePort ticketIssuance,
                                      INotificationPort notificationService,
                                      IZoneRepository zoneRepo,
-                                     IMemberRepository memberRepo,
                                      IPurchasePolicyValidationPort purchasePolicyPort,
                                      IDiscountApplicationPort discountPort,
                                      IEventQueryPort eventQueryPort) {
@@ -412,7 +411,6 @@ public class AppConfig {
                 ticketIssuance,
                 notificationService,
                 zoneRepo,
-                memberRepo,
                 purchasePolicyPort,
                 discountPort,
                 eventQueryPort
