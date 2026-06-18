@@ -1,0 +1,16 @@
+# Valid initial-state file used by InitFileStartupIntegrationTest.
+# Exercises the core use cases without touching external payment/ticket systems.
+register(rina, password123, Rina, Cohen, rina@example.com, 1990-05-20)
+register(moshe, password123, Moshe, Levi, moshe@example.com, 1988-03-15)
+login(rina, password123)
+open-production-company(rina, acme, "Acme Live", "Top live concerts", 4.5)
+appoint-manager(rina, acme, moshe, EVENT_INVENTORY_MANAGEMENT|MODIFY_POLICIES)
+accept-appointment(moshe, acme)
+create-event(rina, acme, summerfest, "Summer Fest", 2026-09-01T20:00, Festival, "Tel Aviv Park", "Annual summer festival")
+create-standing-zone(rina, summerfest, ga, "General Admission", 150.00, ILS, 500)
+create-seated-zone(rina, summerfest, vip, "VIP", 450.00, ILS, A:10|B:10)
+publish-event(rina, summerfest)
+set-purchase-policy(rina, acme, "Max 4 per order", MAX_TICKETS, 4)
+set-discount-policy(rina, acme, "Launch 10%", "Early Bird", 10)
+open-lottery(rina, summerfest, lottery1)
+register-lottery(moshe, lottery1)

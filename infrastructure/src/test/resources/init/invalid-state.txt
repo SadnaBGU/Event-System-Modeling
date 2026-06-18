@@ -1,0 +1,5 @@
+# Invalid initial-state file used by InitFileProcessorIntegrationTest.
+# Line 1 succeeds; line 2 fails because 'dana' was never logged in.
+# The whole transaction must roll back, leaving 'dana' unsaved.
+register(dana, password123, Dana, Ben, dana@example.com, 1991-01-01)
+open-production-company(dana, acme, "Acme", "desc", 4.0)
