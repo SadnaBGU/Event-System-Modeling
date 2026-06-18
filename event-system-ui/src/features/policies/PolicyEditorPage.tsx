@@ -3,14 +3,29 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { PolicyBundle, PurchaseNode } from '../../types/policies';
-import { policiesApi } from '../../api/endpoints/policies';
+import { policiesApi, type DiscountItemRequest } from '../../api/endpoints/policies';
 import { PurchaseNodeEditor, purchaseTemplates } from './PurchaseTreeEditor';
 import { previewPurchase } from './preview';
+import { friendlyError } from '../../lib/errors';
 import '../../components/common.css';
 import './policies.css';
 
 interface Props {
   scope: 'company' | 'event';
+}
+
+type DiscountKind = 'visible' | 'conditional' | 'coupon';
+interface DiscountDraft {
+  name: string;
+  percent: number;
+  kind: DiscountKind;
+  code: string;
+  minTickets: number;
+  endDate: string;
+}
+
+function newDiscount(): DiscountDraft {
+  return { name: '', percent: 10, kind: 'visible', code: '', minTickets: 2, endDate: '' };
 }
 
 export function PolicyEditorPage({ scope }: Props) {
@@ -35,8 +50,39 @@ export function PolicyEditorPage({ scope }: Props) {
       scope === 'company'
         ? policiesApi.putCompany(id, bundle)
         : policiesApi.putEvent(id, bundle),
-    onSuccess: () => toast.success('Policies saved'),
+    onSuccess: () => toast.success('Purchase policy saved'),
+    onError: (err) => toast.error(friendlyError(err, "Couldn't save the purchase policy.")),
   });
+
+  // ── Discount policy state ──────────────────────────────────────────────────
+  const [discounts, setDiscounts] = useState<DiscountDraft[]>([]);
+  const [stackable, setStackable] = useState(false);
+
+  const saveDiscounts = useMutation({
+    mutationFn: () => {
+      const payload = {
+        policyName: scope === 'company' ? 'Company discounts' : 'Event discounts',
+        stackable,
+        discounts: discounts.map<DiscountItemRequest>((d) => ({
+          name: d.name.trim(),
+          percent: d.percent,
+          code: d.kind === 'coupon' && d.code.trim() ? d.code.trim() : undefined,
+          minTickets: d.kind === 'conditional' ? d.minTickets : undefined,
+          endDate: d.endDate || undefined,
+        })),
+      };
+      return scope === 'company'
+        ? policiesApi.putCompanyDiscount(id, payload)
+        : policiesApi.putEventDiscount(id, payload);
+    },
+    onSuccess: () => toast.success('Discount policy saved'),
+    onError: (err) => toast.error(friendlyError(err, "Couldn't save the discount policy.")),
+  });
+
+  const discountsValid = discounts.length > 0 && discounts.every(
+    (d) => d.name.trim() && d.percent > 0 && d.percent <= 100 &&
+      (d.kind !== 'coupon' || d.code.trim()),
+  );
 
   if (query.isLoading) return <p>Loading…</p>;
 
@@ -53,12 +99,8 @@ export function PolicyEditorPage({ scope }: Props) {
         {scope === 'company' ? 'Company policies' : 'Event policies'}
       </h1>
 
-      <p className="meta">
-        The backend exposes only purchase-policy writes today. Discount policies and policy reads
-        will appear here once those endpoints exist.
-      </p>
-
       <h2 style={{ fontSize: '1.05rem', marginTop: '1rem' }}>Purchase policy</h2>
+      <p className="meta">Who may buy, and how many (e.g. max tickets per buyer, minimum age).</p>
       {bundle.purchase ? (
         <PurchaseNodeEditor
           node={bundle.purchase}
@@ -84,11 +126,124 @@ export function PolicyEditorPage({ scope }: Props) {
           onClick={() => save.mutate()}
           disabled={save.isPending || !bundle.purchase}
         >
-          {save.isPending ? 'Saving…' : 'Save policy'}
+          {save.isPending ? 'Saving…' : 'Save purchase policy'}
+        </button>
+      </div>
+
+      {/* ── Discount policy ── */}
+      <h2 style={{ fontSize: '1.05rem', marginTop: '2rem' }}>Discount policy</h2>
+      <p className="meta">
+        Visible discounts (e.g. Early Bird), conditional offers (buy N+), or hidden coupon codes.
+      </p>
+
+      {discounts.length === 0 && (
+        <p className="empty">No discounts yet.</p>
+      )}
+
+      {discounts.map((d, i) => (
+        <div key={i} className="zone-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <div className="form-stack">
+            <label>
+              Name
+              <input
+                value={d.name}
+                onChange={(e) => updateDiscount(setDiscounts, i, { name: e.target.value })}
+                placeholder="Early Bird"
+              />
+            </label>
+            <label>
+              Percent off (1–100)
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={d.percent}
+                onChange={(e) => updateDiscount(setDiscounts, i, { percent: Number(e.target.value) })}
+              />
+            </label>
+            <label>
+              Type
+              <select
+                value={d.kind}
+                onChange={(e) => updateDiscount(setDiscounts, i, { kind: e.target.value as DiscountKind })}
+              >
+                <option value="visible">Visible (applies to everyone)</option>
+                <option value="conditional">Conditional (min tickets)</option>
+                <option value="coupon">Coupon code (hidden)</option>
+              </select>
+            </label>
+            {d.kind === 'conditional' && (
+              <label>
+                Minimum tickets
+                <input
+                  type="number"
+                  min={1}
+                  value={d.minTickets}
+                  onChange={(e) => updateDiscount(setDiscounts, i, { minTickets: Number(e.target.value) })}
+                />
+              </label>
+            )}
+            {d.kind === 'coupon' && (
+              <label>
+                Coupon code
+                <input
+                  value={d.code}
+                  onChange={(e) => updateDiscount(setDiscounts, i, { code: e.target.value })}
+                  placeholder="PROMO10"
+                />
+              </label>
+            )}
+            <label>
+              Ends on (optional)
+              <input
+                type="date"
+                value={d.endDate}
+                onChange={(e) => updateDiscount(setDiscounts, i, { endDate: e.target.value })}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            className="btn ghost"
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() => setDiscounts((arr) => arr.filter((_, j) => j !== i))}
+          >
+            Remove discount
+          </button>
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => setDiscounts((arr) => [...arr, newDiscount()])}
+        >
+          + Add discount
+        </button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} />
+          Allow stacking multiple discounts
+        </label>
+        <button
+          type="button"
+          className="btn success"
+          onClick={() => saveDiscounts.mutate()}
+          disabled={saveDiscounts.isPending || !discountsValid}
+        >
+          {saveDiscounts.isPending ? 'Saving…' : 'Save discount policy'}
         </button>
       </div>
     </section>
   );
+}
+
+function updateDiscount(
+  setDiscounts: React.Dispatch<React.SetStateAction<DiscountDraft[]>>,
+  index: number,
+  patch: Partial<DiscountDraft>,
+) {
+  setDiscounts((arr) => arr.map((d, i) => (i === index ? { ...d, ...patch } : d)));
 }
 
 function EmptyTree<T>({

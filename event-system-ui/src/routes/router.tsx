@@ -14,6 +14,8 @@ import { CompaniesListPage } from '../features/companies/CompaniesListPage';
 import { CompanyDetailPage } from '../features/companies/CompanyDetailPage';
 import { RolesPage } from '../features/companies/RolesPage';
 import { CreateEventPage } from '../features/events-mgmt/CreateEventPage';
+import { EditEventPage } from '../features/events-mgmt/EditEventPage';
+import { ProfilePage } from '../features/profile/ProfilePage';
 import { PolicyEditorPage } from '../features/policies/PolicyEditorPage';
 import { AdminDashboardPage } from '../features/admin/AdminDashboardPage';
 import { SuspensionsPage } from '../features/admin/SuspensionsPage';
@@ -34,6 +36,7 @@ export const router = createBrowserRouter([
       { path: '/events', element: <CatalogPage /> },
       { path: '/events/:eventId', element: <EventDetailPage /> },
       { path: '/events/:eventId/queue', element: <QueuePage /> },
+      { path: '/events/:eventId/edit', element: <RequireAuth><EditEventPage /></RequireAuth> },
       { path: '/orders/:orderId', element: <OrderPage /> },
       {
         path: '/events/:eventId/policies',
@@ -46,6 +49,7 @@ export const router = createBrowserRouter([
       { path: '/history', element: <RequireAuth><HistoryPage /></RequireAuth> },
       { path: '/history/:recordId', element: <RequireAuth><ReceiptDetailPage /></RequireAuth> },
       { path: '/notifications', element: <RequireAuth><NotificationsPage /></RequireAuth> },
+      { path: '/profile', element: <RequireAuth><ProfilePage /></RequireAuth> },
 
       {
         path: '/companies',

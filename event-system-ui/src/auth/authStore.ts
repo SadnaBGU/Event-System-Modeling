@@ -14,6 +14,7 @@ interface JwtClaims {
 export interface Session {
   token: string;
   memberId: string;
+  username?: string;
   roles: Role[];
   expiresAt: string;
 }
