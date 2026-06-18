@@ -1,7 +1,5 @@
 package com.eventsystem.application.purchaserecorddto;
 
-import java.math.BigDecimal;
-
 import com.eventsystem.domain.shared.Money;
 
 public record PurchasedItemDTO(String zoneName, String seatId, int quantity, Money priceAtPurchase) {

@@ -1334,35 +1334,6 @@ class PolicyManagementServiceTest {
                 assertThat(saved.discounts().get(0).isVisible()).isFalse();
         }
 
-        // DP-10 / PRD-03:
-        // Event-set discount helper should verify all events belong to same company.
-        // This uses reflection because the helper is private.
-        @Test
-        void createNewDiscountPolicyForEvents_whenOneEventDoesNotBelongToCompany_shouldThrowSecurityException()
-                        throws Exception {
-                when(eventOwnershipChecker.companyOfEvent(any(EventId.class))).thenReturn(COMPANY_ID);
-
-                when(eventOwnershipChecker.isEventByCompany(OTHER_EVENT_ID, COMPANY_ID)).thenReturn(false);
-
-                var method = PolicyManagementService.class.getDeclaredMethod(
-                                "createNewDiscountPolicyForEvents",
-                                MemberId.class,
-                                Set.class,
-                                List.class,
-                                boolean.class);
-                method.setAccessible(true);
-
-                assertThatThrownBy(() -> method.invoke(
-                                service,
-                                ACTOR_ID,
-                                Set.of(EVENT_ID, OTHER_EVENT_ID),
-                                List.of(Discount.GeneralDiscount("Visible", BigDecimal.TEN, null)),
-                                false))
-                                .hasCauseInstanceOf(SecurityException.class);
-
-                verify(discountPolicyRepository, never()).save(any());
-        }
-
         // PRD-03 / PRD-15 / UC20 / UAT-61:
         // Manager with event-management permission may create an event-scoped purchase
         // policy,

@@ -2,9 +2,6 @@ package com.eventsystem.domain.member;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
-import java.io.Serializable;
-import java.util.Objects;
-import java.util.UUID;
 
 import jakarta.persistence.Embeddable;
 

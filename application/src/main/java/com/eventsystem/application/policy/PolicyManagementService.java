@@ -34,7 +34,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 @Service
 public class PolicyManagementService implements IPolicyManagementPort {
@@ -985,19 +984,6 @@ public class PolicyManagementService implements IPolicyManagementPort {
         }
     }
 
-    private void requireCompanyOwnsAllEventsInSet(CompanyId companyId, Set<EventId> eventIds) {
-        Objects.requireNonNull(companyId, "companyId must not be null");
-        Objects.requireNonNull(eventIds, "eventIds must not be null");
-
-        if (eventIds.isEmpty()) {
-            throw new IllegalArgumentException("events must be non empty");
-        }
-
-        for (EventId eventId : eventIds) {
-            requireCompanyOwnsEvent(companyId, eventId);
-        }
-    }
-
     private void requireManagePurchasePoliciesPermission(MemberId actorId, CompanyId companyId) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
@@ -1221,50 +1207,6 @@ public class PolicyManagementService implements IPolicyManagementPort {
         }
 
         saveDiscountPolicy(actorId, companyId, discountPolicy);
-        return discountPolicy.id();
-    }
-
-    private DiscountPolicyId createNewDiscountPolicyForEvents(
-            MemberId actorId,
-            Set<EventId> events,
-            List<Discount> discounts,
-            boolean stackable
-    ) {
-        Objects.requireNonNull(actorId, "actorId must not be null");
-        Objects.requireNonNull(events, "events must not be null");
-
-        if (events.isEmpty()) {
-            throw new IllegalArgumentException("events must be non empty");
-        }
-
-        for (EventId eventId : events) {
-            Objects.requireNonNull(eventId, "eventId must not be null");
-        }
-
-        Objects.requireNonNull(discounts, "discounts must not be null");
-        for (Discount discount : discounts) {
-            Objects.requireNonNull(discount, "discount must not be null");
-        }
-
-        EventId sampleEventId = events.stream()
-                .findAny()
-                .orElseThrow(() -> new IllegalArgumentException("No eventId found"));
-
-        CompanyId companyId = eventOwnershipChecker.companyOfEvent(sampleEventId);
-
-        requireCompanyOwnsAllEventsInSet(companyId, events);
-        requireManageEventDiscountPolicyPermission(actorId, companyId);
-
-        DiscountPolicy discountPolicy = DiscountPolicy.inactiveForEvents(companyId, events);
-        discountPolicy = DiscountPolicy.withDiscounts(discountPolicy, discounts);
-
-        if (stackable) {
-            discountPolicy.allowStacking();
-        }
-
-        requireDiscountPolicyCompatibleWithActivePurchasePolicies(discountPolicy);
-
-        discountPolicyRepository.save(discountPolicy);
         return discountPolicy.id();
     }
 

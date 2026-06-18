@@ -51,8 +51,10 @@ import java.util.Optional;
 public class IntegrationExtController {
 
     private final IProductionCompanyRepository companyRepository;
+    @SuppressWarnings("unused")
     private final ProductionCompanyService companyService;
     private final EventService eventService;
+    @SuppressWarnings("unused")
     private final IEventRepository eventRepository;
     private final IZoneRepository zoneRepository;
     private final IPurchasePolicyRepository purchasePolicyRepository;

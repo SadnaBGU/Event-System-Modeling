@@ -1,7 +1,6 @@
 package com.eventsystem.application.event;
 
 import com.eventsystem.domain.company.IProductionCompanyRepository;
-import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;

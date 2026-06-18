@@ -1,5 +1,16 @@
 package com.eventsystem.infrastructure.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.domain.company.CompanyDetails;
 import com.eventsystem.domain.company.CompanyId;
@@ -9,17 +20,6 @@ import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AppConfigBeansTest {
@@ -77,9 +77,18 @@ class AppConfigBeansTest {
         assertThatThrownBy(() -> port.getCompanyName(null)).isInstanceOf(NullPointerException.class);
     }
 
+    @SuppressWarnings("null")
     @Test
     void bootstrapPropertiesBean_InitializesCorrectly() {
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminUsername", "admin");
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminPassword", "changeme123");
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminFirstName", "Initial");
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminLastName", "Admin");
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminEmail", "admin@local");
+        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminDob", java.time.LocalDate.of(1990, 1, 1));
+
         BootstrapProperties properties = appConfig.bootstrapProperties();
+        
         assertThat(properties.admin().username()).isEqualTo("admin");
         assertThat(properties.queueLoadThreshold()).isEqualTo(100);
     }

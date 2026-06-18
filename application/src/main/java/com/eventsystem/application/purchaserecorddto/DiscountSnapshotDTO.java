@@ -1,7 +1,5 @@
 package com.eventsystem.application.purchaserecorddto;
 
-import java.math.BigDecimal;
-
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
 

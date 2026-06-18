@@ -7,12 +7,9 @@ import java.util.UUID;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
-import java.time.Instant;
 
 /**
  * Entity — a single notification queued in a member's inbox.

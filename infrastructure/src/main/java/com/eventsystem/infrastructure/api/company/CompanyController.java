@@ -6,13 +6,9 @@ import com.eventsystem.application.order.ReportService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.CompanyStatus;
 import com.eventsystem.domain.company.Permission;
-import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.event.EventDetails;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.member.MemberId;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

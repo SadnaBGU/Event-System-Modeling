@@ -1,8 +1,6 @@
 package com.eventsystem.application.order;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -56,9 +54,7 @@ import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
 
-import com.eventsystem.application.appexceptions.IssuanceFailedException;
 import com.eventsystem.domain.company.CompanyId;
-import com.eventsystem.domain.event.EventId;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutSagaTest {

@@ -22,7 +22,6 @@ import org.hibernate.type.SqlTypes;
 import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Objects;
 
 @Entity
 @Table(name = "discount_policies")

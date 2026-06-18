@@ -1,7 +1,6 @@
 package com.eventsystem.domain.queue;
 
 import java.time.Instant;
-import java.util.Objects;
 import jakarta.persistence.*;
 import com.eventsystem.domain.order.BuyerReference;
 

@@ -10,22 +10,17 @@ import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.lottery.LotteryService;
-import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.order.CheckoutSaga;
 import com.eventsystem.application.order.IPaymentGatewayPort;
 import com.eventsystem.application.order.ITicketIssuancePort;
-import com.eventsystem.application.order.IssuanceResult;
 import com.eventsystem.application.order.OrderService;
-import com.eventsystem.application.order.PaymentResult;
 import com.eventsystem.application.order.PurchaseHistoryService;
 import com.eventsystem.application.order.QueueService;
-import com.eventsystem.application.order.RefundResult;
 import com.eventsystem.application.order.ReportService;
 import com.eventsystem.application.policy.DiscountApplicationService;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
-import com.eventsystem.application.policy.IPolicyManagementPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.application.policy.PurchasePolicyValidationService;
@@ -40,10 +35,7 @@ import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.member.IMemberRepository;
-import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
-import com.eventsystem.domain.member.MemberStatus;
-import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.platform.IPlatformRepository;
@@ -51,25 +43,13 @@ import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.queue.IVirtualQueueRepository;
-import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.venue.IVenueRepository;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryActiveOrderRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryDiscountPolicyRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryEventRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryLotteryRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPlatformRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryProductionCompanyRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchasePolicyRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPurchaseRecordRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVenueRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryVirtualQueueRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryZoneRepository;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresActiveOrderRepository;
@@ -95,12 +75,11 @@ import com.eventsystem.infrastructure.persistence.springrepos.PostgresVirtualQue
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresVenueRepository;
 
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -112,29 +91,51 @@ import java.util.Objects;
 
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
-// @ComponentScan(basePackages = { 
-//     "com.eventsystem.domain.*", 
-//     "com.eventsystem.infrastructure.*" 
-// })
 @EntityScan(basePackages = {"com.eventsystem.domain"})
 public class AppConfig {
 
     // --- Configuration constants ---
-    private final String jwtSecret = "CHANGE_ME_DEV_ONLY_0123456789abcdef";
-    private final Duration tokenValidity = Duration.ofHours(1);
-    private final int bcryptStrength = 12;
+    // הוספנו ערכי ברירת מחדל אחרי הנקודתיים (:) עבור סביבת הטסטים
+    @Value("${eventsystem.security.jwt-secret:CHANGE_ME_DEV_ONLY_0123456789abcdef}")
+    private String jwtSecret;
+
+    @Value("${eventsystem.security.token-validity:PT1H}")
+    private Duration tokenValidity;
+
+    @Value("${eventsystem.security.bcrypt-strength:12}")
+    private int bcryptStrength;
+
     private final Duration lotteryCodeValidity = Duration.ofMinutes(15);
+
+    // --- Admin Config ---
+    @Value("${eventsystem.bootstrap.admin.username:admin}")
+    private String adminUsername;
+
+    @Value("${eventsystem.bootstrap.admin.password:changeme123}")
+    private String adminPassword;
+
+    @Value("${eventsystem.bootstrap.admin.first-name:Initial}")
+    private String adminFirstName;
+
+    @Value("${eventsystem.bootstrap.admin.last-name:Admin}")
+    private String adminLastName;
+
+    @Value("${eventsystem.bootstrap.admin.email:admin@eventsystem.local}")
+    private String adminEmail;
+
+    @Value("${eventsystem.bootstrap.admin.date-of-birth:1990-01-01}")
+    private LocalDate adminDob;
 
     @Bean
     public BootstrapProperties bootstrapProperties() {
         return new BootstrapProperties(
                 new BootstrapProperties.Admin(
-                        "admin",
-                        "changeme123",
-                        "Initial",
-                        "Admin",
-                        "admin@eventsystem.local",
-                        LocalDate.of(1990, 1, 1)),
+                        adminUsername,
+                        adminPassword,
+                        adminFirstName,
+                        adminLastName,
+                        adminEmail,
+                        adminDob),
                 Duration.ofMinutes(15),
                 100);
     }

@@ -27,3 +27,7 @@ Thumbs.db
 .DS_Store
 
 docker-compose.yml
+
+.env
+*.ps1
+*.sh

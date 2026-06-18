@@ -8,7 +8,6 @@ import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

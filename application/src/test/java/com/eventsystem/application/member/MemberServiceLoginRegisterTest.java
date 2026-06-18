@@ -5,7 +5,6 @@ import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
 import com.eventsystem.application.auth.RegisterMemberRequest;
-import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.application.security.ITokenService.TokenClaims;
@@ -18,7 +17,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 

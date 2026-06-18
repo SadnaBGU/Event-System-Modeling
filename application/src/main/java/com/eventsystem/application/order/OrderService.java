@@ -3,7 +3,6 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
-import com.eventsystem.application.event.IZoneServicePort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.ILotteryRepository;

@@ -9,9 +9,9 @@ spring:
     name: event-system
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/eventsystem_db
-    username: myuser
-    password: mypassword
+    url: ${DB_URL}${DB_IP}:${DB_PORT}/eventsystem_db?sslmode=require
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -27,7 +27,7 @@ eventsystem:
   security:
     # HMAC-SHA256 secret for signing JWTs. MUST be at least 32 bytes (256 bits).
     # Override via env var EVENTSYSTEM_SECURITY_JWT_SECRET in production.
-    jwt-secret: "CHANGE_ME_DEV_ONLY_0123456789abcdef"
+    jwt-secret: ${JWT_SECRET}
     # ISO-8601 duration. PT1H = 1 hour.
     token-validity: PT1H
     # BCrypt cost factor. 12 is the production default; tests use 4 for speed.
@@ -38,12 +38,12 @@ eventsystem:
     default-reservation-timeout: PT15M
     queue-load-threshold: 100
     admin:
-      username: admin
-      password: changeme123
-      first-name: Initial
-      last-name: Admin
-      email: admin@eventsystem.local
-      date-of-birth: 1990-01-01
+      username: ${ADMIN_USERNAME}
+      password: ${ADMIN_PASSWORD}
+      first-name: ${ADMIN_FIRST_NAME}
+      last-name: ${ADMIN_LAST_NAME}
+      email: ${ADMIN_EMAIL}
+      date-of-birth: ${ADMIN_DOB}
 
 logging:
   level:
