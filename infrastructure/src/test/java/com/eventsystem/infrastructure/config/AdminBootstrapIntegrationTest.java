@@ -6,12 +6,22 @@ import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
 import com.eventsystem.application.member.MemberService;
 import com.eventsystem.domain.platform.PlatformStatus;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryMemberRepository;
-import com.eventsystem.infrastructure.persistence.inmemoryrepos.InMemoryPlatformRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresMemberRepository;
+import com.eventsystem.infrastructure.persistence.springrepos.PostgresPlatformRepository;
+import com.eventsystem.infrastructure.persistence.springrepostests.BasePostgresTest;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+import com.eventsystem.infrastructure.testsupport.PostgresAvailableCondition;
+
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -19,25 +29,40 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class AdminBootstrapIntegrationTest {
+/**
+ * Integration tests for {@link AdminBootstrap}, now running against the real
+ * PostgreSQL test database (docker-compose service on {@code localhost:5434})
+ * via {@link BasePostgresTest} — the in-memory repositories were removed in V3
+ * (team task 2.2). Skipped automatically when the DB is unreachable so the build
+ * stays green.
+ */
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@EntityScan(basePackages = "com.eventsystem.domain")
+@Import({PostgresMemberRepository.class, PostgresPlatformRepository.class})
+@ExtendWith(PostgresAvailableCondition.class)
+class AdminBootstrapIntegrationTest extends BasePostgresTest {
 
     private static final String ADMIN_USERNAME = "testadmin";
     private static final String ADMIN_PASSWORD = "testadmin123";
 
-    private InMemoryPlatformRepository platformRepo;
-    private InMemoryMemberRepository memberRepo;
+    @Autowired
+    private PostgresMemberRepository memberRepo;
+
+    @Autowired
+    private PostgresPlatformRepository platformRepo;
+
+    @Autowired
+    private EntityManager em;
+
     private BCryptPasswordHasher hasher;
+    private JwtTokenService tokens;
     private BootstrapProperties props;
-    private MemberService memberService;
-    private AdminService adminService;
 
     @BeforeEach
     void setUp() {
-        memberRepo = new InMemoryMemberRepository();
-        platformRepo = new InMemoryPlatformRepository();
         hasher = new BCryptPasswordHasher(4);
-        JwtTokenService tokens = new JwtTokenService("test_test_test_test_test_test_te");
-
+        tokens = new JwtTokenService("test_test_test_test_test_test_te");
         props = new BootstrapProperties(
                 new BootstrapProperties.Admin(
                         ADMIN_USERNAME, ADMIN_PASSWORD,
@@ -46,15 +71,26 @@ class AdminBootstrapIntegrationTest {
                         LocalDate.of(1990, 1, 1)),
                 Duration.ofMinutes(15),
                 100);
+    }
 
-        new AdminBootstrap(platformRepo, memberRepo, hasher, props).run();
+    private void runBootstrap(BootstrapProperties p) {
+        new AdminBootstrap(platformRepo, memberRepo, hasher, p).run();
+        em.flush();
+        em.clear();
+    }
 
-        this.memberService = new MemberService(memberRepo, hasher, tokens, Duration.ofMinutes(5));
-        this.adminService = new AdminService(platformRepo, memberRepo);
+    private MemberService memberService() {
+        return new MemberService(memberRepo, hasher, tokens, Duration.ofMinutes(5));
+    }
+
+    private AdminService adminService() {
+        return new AdminService(platformRepo, memberRepo);
     }
 
     @Test
     void platformIsActive() {
+        runBootstrap(props);
+
         assertThat(platformRepo.findInstance()).isPresent();
         assertThat(platformRepo.findInstance().orElseThrow().getStatus())
                 .isEqualTo(PlatformStatus.ACTIVE);
@@ -62,72 +98,77 @@ class AdminBootstrapIntegrationTest {
 
     @Test
     void initialAdminMemberWasCreated() {
+        runBootstrap(props);
+
         assertThat(memberRepo.findByUsername(ADMIN_USERNAME)).isPresent();
     }
 
     @Test
     void initialAdminCanLogInAndIsRecognisedAsAdmin() {
-        LoginResponse resp = memberService.login(new LoginRequest(ADMIN_USERNAME, ADMIN_PASSWORD));
+        runBootstrap(props);
+
+        LoginResponse resp = memberService().login(new LoginRequest(ADMIN_USERNAME, ADMIN_PASSWORD));
         assertThat(resp.token()).isNotBlank();
 
-        PlatformDto dto = adminService.getPlatform(resp.memberId());
+        PlatformDto dto = adminService().getPlatform(resp.memberId());
         assertThat(dto.systemAdmins()).contains(resp.memberId());
     }
 
-    // =========================================================================
-    // בדיקות חדשות להשגת 100% כיסוי על AdminBootstrap
-    // =========================================================================
-
     @Test
     void run_skipsBootstrap_whenPlatformAlreadyInitialized() {
-        // אם נריץ שוב, הוא יזהה שהפלטפורמה כבר קיימת ויצא מיד בלי לשנות כלום
-        AdminBootstrap secondBootstrap = new AdminBootstrap(platformRepo, memberRepo, hasher, props);
-        secondBootstrap.run();
-        
-        assertThat(platformRepo.findInstance()).isPresent();
-    }
+        runBootstrap(props);
 
-    @Test
-    void run_reusesExistingAdminMember_whenUsernameAlreadyPresent() {
-        // ניצור פלטפורמה חדשה ריקה אבל נשאיר את המשתמש הקיים ברפוזיטורי
-        InMemoryPlatformRepository freshPlatformRepo = new InMemoryPlatformRepository();
-        
-        AdminBootstrap bootstrap = new AdminBootstrap(freshPlatformRepo, memberRepo, hasher, props);
-        bootstrap.run();
-        
-        assertThat(freshPlatformRepo.findInstance()).isPresent();
-        // מוודא שלא נוצר משתמש חדש נוסף באותו השם
+        // Re-running must detect the existing platform and exit without changes.
+        runBootstrap(props);
+
+        assertThat(platformRepo.findInstance()).isPresent();
         assertThat(memberRepo.findByUsername(ADMIN_USERNAME)).isPresent();
     }
 
     @Test
+    void run_reusesExistingAdminMember_whenUsernameAlreadyPresent() {
+        // First bootstrap creates the admin member + platform.
+        runBootstrap(props);
+
+        // Remove only the platform, keeping the existing admin member.
+        em.createQuery("DELETE FROM Platform").executeUpdate();
+        em.flush();
+        em.clear();
+        assertThat(platformRepo.findInstance()).isEmpty();
+
+        // Second bootstrap must reuse the existing member rather than create a duplicate.
+        runBootstrap(props);
+
+        assertThat(platformRepo.findInstance()).isPresent();
+        Long count = em.createQuery(
+                        "SELECT COUNT(m) FROM Member m WHERE m.username = :u", Long.class)
+                .setParameter("u", ADMIN_USERNAME)
+                .getSingleResult();
+        assertThat(count).isEqualTo(1L);
+    }
+
+    @Test
     void validate_throwsException_whenAdminConfigIsMissingOrBlank() {
-        InMemoryPlatformRepository freshPlatformRepo = new InMemoryPlatformRepository();
-        
-        // מקרה 1: אובייקט אדמין נאל
+        // No platform exists yet, so run() proceeds to validation.
         BootstrapProperties nullAdminProps = new BootstrapProperties(null, Duration.ofMinutes(15), 100);
-        assertThatThrownBy(() -> new AdminBootstrap(freshPlatformRepo, memberRepo, hasher, nullAdminProps).run())
+        assertThatThrownBy(() -> new AdminBootstrap(platformRepo, memberRepo, hasher, nullAdminProps).run())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Missing required bootstrap admin configuration");
 
-        // מקרה 2: שדה ריק (למשל שם פרטי ריק)
         BootstrapProperties blankFieldProps = new BootstrapProperties(
                 new BootstrapProperties.Admin("user", "password123", " ", "Last", "email@local", LocalDate.now()),
                 Duration.ofMinutes(15), 100);
-        assertThatThrownBy(() -> new AdminBootstrap(freshPlatformRepo, memberRepo, hasher, blankFieldProps).run())
+        assertThatThrownBy(() -> new AdminBootstrap(platformRepo, memberRepo, hasher, blankFieldProps).run())
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void validate_throwsException_whenPasswordIsTooShort() {
-        InMemoryPlatformRepository freshPlatformRepo = new InMemoryPlatformRepository();
-        
-        // סיסמה באורך 7 תווים (פחות מ-8)
         BootstrapProperties shortPasswordProps = new BootstrapProperties(
                 new BootstrapProperties.Admin("admin2", "short1", "First", "Last", "email@local", LocalDate.now()),
                 Duration.ofMinutes(15), 100);
-                
-        assertThatThrownBy(() -> new AdminBootstrap(freshPlatformRepo, memberRepo, hasher, shortPasswordProps).run())
+
+        assertThatThrownBy(() -> new AdminBootstrap(platformRepo, memberRepo, hasher, shortPasswordProps).run())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("password must be at least 8 characters");
     }
