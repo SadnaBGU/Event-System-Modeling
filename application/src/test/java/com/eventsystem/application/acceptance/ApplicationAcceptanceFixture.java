@@ -318,6 +318,40 @@ class ApplicationAcceptanceFixture {
         return zone;
     }
 
+    Zone createStandingZoneForCompany(
+            String eventId,
+            String zoneId,
+            String zoneName,
+            String price,
+            int capacity,
+            CompanyId companyId) {
+        Zone zone = Zone.createStanding(
+                zoneId(zoneId),
+                eventId(eventId),
+                zoneName,
+                usd(price),
+                capacity);
+
+        zones.save(zone);
+
+        String companyName = companies.findById(companyId)
+                .map(company -> company.companyDetails().name())
+                .orElse("Company");
+
+        events.registerEvent(
+                eventId,
+                "Concert",
+                companyName,
+                LocalDate.now().plusDays(30),
+                "Venue",
+                companyId);
+
+        eventManagement.registerEvent(companyId, eventId(eventId));
+        eventManagement.registerZone(eventId(eventId), zoneId(zoneId));
+
+        return zone;
+    }
+
     void reserveStanding(String orderId, String zoneId, int quantity) {
         orderService.addItemToOrder(orderId, zoneId, null, quantity);
     }
