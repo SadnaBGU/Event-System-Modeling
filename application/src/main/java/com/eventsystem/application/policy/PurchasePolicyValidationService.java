@@ -190,25 +190,6 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
     }
 
     @Override
-    @Deprecated
-    public boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        Objects.requireNonNull(buyer, "buyer must not be null");
-        Objects.requireNonNull(items, "items must not be null");
-
-        logger.warn(
-                "Using deprecated validatePurchasePolicy(eventId, buyer, items). " +
-                        "Prefer validatePurchasePolicyFor(PurchaseContext). eventId={}",
-                eventId);
-
-        EventId eid = new EventId(eventId);
-        List<PurchasePolicy> applicablePolicies = purchasePolicyRepository
-                .findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(eid), eid);
-
-        return applicablePolicies.isEmpty();
-    }
-
-    @Override
     public PurchaseContext createPurchaseContext(
             EventId eventId,
             BuyerReference buyerRef,

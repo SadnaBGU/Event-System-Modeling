@@ -608,13 +608,13 @@ class ApplicationAcceptanceFixture {
 
         @Override
         public PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items) {
-            return Test
+            return TestPurchaseContexts.contextFromOrderItems(
+                    eventId,
+                    new CompanyId("company-1"),
+                    items,
+                    null);
         }
 
-        @Override
-        public boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items) {
-            return result.isSuccess();
-        }
     }
 
     static final class FakeDiscountApplicationPort implements IDiscountApplicationPort {
@@ -648,12 +648,16 @@ class ApplicationAcceptanceFixture {
                 BuyerReference buyerRef,
                 List<OrderItem> items,
                 String discountCode) {
-            return PurchaseContext.fromPurchaseInfo(
+            return TestPurchaseContexts.contextFromOrderItems(
                     eventId,
                     new CompanyId("company-1"),
-                    items.stream().map(item -> new ZoneId(item.getZoneId())).toList(),
-                    LocalDate.now().minusYears(25),
+                    items,
                     discountCode);
+        }
+
+        @Override
+        public DiscountSnapshot discountSnapshotFromSummary(DiscountSummary summary, Money baseTotal) {
+            return DiscountPolicy.discountSnapshotFromSummary(summary, baseTotal);
         }
 
     }
@@ -861,7 +865,7 @@ class ApplicationAcceptanceFixture {
             return byId.containsKey(policyId);
         }
 
-                @Override
+        @Override
         public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
             return findByCompanyId(companyId).stream()
                     .filter(PurchasePolicy::isCompanyPolicy)
