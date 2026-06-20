@@ -47,12 +47,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class DiscountPolicyTest {
 
         private static PurchaseContext context(EventId eventId, CompanyId companyId, String code) {
-                return new PurchaseContext(
-                                eventId,
+                return PolicyTestFixtures.context(
                                 companyId,
-                                List.of(REGULAR_ZONE),
+                                eventId,
                                 LocalDate.now().minusYears(25),
-                                code);
+                                code,
+                                List.of(REGULAR_ZONE));
         }
 
         @Test
