@@ -246,7 +246,6 @@ class DiscountApplicationServiceTest {
                                 new OrderItem(REGULAR_ZONE.value(), null, 1, Money.of(BigDecimal.TEN, "ILS")));
 
                 when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
-                when(eventManagementPort.getZonesOfTicketsForEvent(EVENT_ID, items)).thenReturn(List.of(REGULAR_ZONE));
                 when(memberInformationPort.getMemberBirthdate(MEMBER_ID)).thenReturn(LocalDate.of(2000, 1, 1));
 
                 PurchaseContext context = service.createPurchaseContext(EVENT_ID, buyer, items, "SAVE20");
@@ -256,6 +255,10 @@ class DiscountApplicationServiceTest {
                 assertThat(context.zonesOfEachEventTicket()).containsExactly(REGULAR_ZONE);
                 assertThat(context.buyerBirthDate()).isEqualTo(LocalDate.of(2000, 1, 1));
                 assertThat(context.discountCode()).isEqualTo("SAVE20");
+                assertThat(context.ticketCount()).isEqualTo(1);
+                assertThat(context.ticketCountInZone(REGULAR_ZONE)).isEqualTo(1);
+                assertThat(context.subtotalForZone(REGULAR_ZONE).amount()).isEqualByComparingTo("10");
+                assertThat(context.baseTotal().amount()).isEqualByComparingTo("10");
         }
 
         @Test

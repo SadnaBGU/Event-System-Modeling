@@ -19,8 +19,7 @@ public record PurchaseContext(
         Map<ZoneId, ZonePurchaseContext> zones,
         LocalDate buyerBirthDate,
         LocalDate purchaseDate,
-        String discountCode
-) {
+        String discountCode) {
 
     private static final String DEFAULT_ZERO_CURRENCY = "ILS";
 
@@ -96,11 +95,9 @@ public record PurchaseContext(
     public List<ZoneId> zonesOfEachEventTicket() {
         return zones.values()
                 .stream()
-                .flatMap(zoneContext ->
-                        java.util.stream.IntStream
-                                .range(0, zoneContext.quantity())
-                                .mapToObj(i -> zoneContext.zoneId())
-                )
+                .flatMap(zoneContext -> java.util.stream.IntStream
+                        .range(0, zoneContext.quantity())
+                        .mapToObj(i -> zoneContext.zoneId()))
                 .toList();
     }
 
@@ -111,8 +108,7 @@ public record PurchaseContext(
                 zones,
                 buyerBirthDate,
                 purchaseDate,
-                code
-        );
+                code);
     }
 
     public PurchaseContext withPurchaseDate(LocalDate newPurchaseDate) {
@@ -122,8 +118,7 @@ public record PurchaseContext(
                 zones,
                 buyerBirthDate,
                 newPurchaseDate,
-                discountCode
-        );
+                discountCode);
     }
 
     public PurchaseContext onlyForZones(Iterable<ZoneId> affectedZones) {
@@ -146,8 +141,7 @@ public record PurchaseContext(
                 filteredZones,
                 buyerBirthDate,
                 purchaseDate,
-                discountCode
-        );
+                discountCode);
     }
 
     private Money zeroMoney() {
@@ -159,19 +153,22 @@ public record PurchaseContext(
     }
 
     private static void validateZones(Map<ZoneId, ZonePurchaseContext> zones) {
-        if (zones.containsKey(null)) {
-            throw new IllegalArgumentException("zones cannot contain null zone id");
-        }
+        for (Map.Entry<ZoneId, ZonePurchaseContext> entry : zones.entrySet()) {
+            ZoneId zoneId = entry.getKey();
+            ZonePurchaseContext zoneContext = entry.getValue();
 
-        if (zones.containsValue(null)) {
-            throw new IllegalArgumentException("zones cannot contain null zone context");
-        }
+            if (zoneId == null) {
+                throw new IllegalArgumentException("zones cannot contain null zone id");
+            }
 
-        zones.forEach((zoneId, zoneContext) -> {
+            if (zoneContext == null) {
+                throw new IllegalArgumentException("zones cannot contain null zone context");
+            }
+
             if (!zoneId.equals(zoneContext.zoneId())) {
                 throw new IllegalArgumentException("zone map key must match ZonePurchaseContext.zoneId");
             }
-        });
+        }
     }
 
     private static String normalizeDiscountCode(String discountCode) {

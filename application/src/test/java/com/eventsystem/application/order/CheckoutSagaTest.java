@@ -51,6 +51,7 @@ import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -140,7 +141,10 @@ class CheckoutSagaTest {
     }
 
     private void mockNoDiscount() {
-        when(discountPort.generateDiscountSnapshot(any(PurchaseContext.class), any(Money.class)))
+        when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class)))
+                .thenReturn(DiscountSummary.noDiscountSummary());
+
+        when(discountPort.discountSnapshotFromSummary(any(DiscountSummary.class), any(Money.class)))
                 .thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
     }
 
@@ -422,7 +426,8 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_DiscountEvaluationFails_ThrowsPriceCalcException() {
         mockSuccessfulPolicyValidation();
-        when(discountPort.discountSnapshotFromSummary(any(), any()))
+
+        when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class)))
                 .thenThrow(new RuntimeException("Discount service down"));
 
         assertThrows(PriceCalcException.class, () -> {

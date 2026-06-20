@@ -185,8 +185,6 @@ class PurchasePolicyValidationServiceTest {
                                 new OrderItem(REGULAR_ZONE.value(), null, 2, Money.of(BigDecimal.TEN, "ILS")));
 
                 when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
-                when(eventManagementPort.getZonesOfTicketsForEvent(EVENT_ID, items))
-                                .thenReturn(List.of(REGULAR_ZONE, REGULAR_ZONE));
                 when(memberInformationPort.getMemberBirthdate(MEMBER_ID)).thenReturn(LocalDate.of(2000, 1, 1));
 
                 PurchaseContext context = service.createPurchaseContext(EVENT_ID, buyer, items);
@@ -196,8 +194,11 @@ class PurchasePolicyValidationServiceTest {
                 assertThat(context.zonesOfEachEventTicket()).containsExactly(REGULAR_ZONE, REGULAR_ZONE);
                 assertThat(context.buyerBirthDate()).isEqualTo(LocalDate.of(2000, 1, 1));
                 assertThat(context.discountCode()).isNull();
+                assertThat(context.ticketCount()).isEqualTo(2);
+                assertThat(context.ticketCountInZone(REGULAR_ZONE)).isEqualTo(2);
+                assertThat(context.subtotalForZone(REGULAR_ZONE).amount()).isEqualByComparingTo("20");
+                assertThat(context.baseTotal().amount()).isEqualByComparingTo("20");
         }
-
 
         @Test
         void getByIdOrThrow_whenPresent_shouldReturnPolicy() {

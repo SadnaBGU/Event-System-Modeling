@@ -20,6 +20,7 @@ import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -74,8 +75,10 @@ public class CheckoutSagaIntegrationHappyPathTest {
                                 order.getItems())).thenReturn(context);
                 PolicyValidationResult successResult = new PolicyValidationResult(true, null);
                 when(purchasePolicyPort.evaluatePurchasePolicyFor(any())).thenReturn(successResult);
-                DiscountSnapshot discount = new DiscountSnapshot("NONE", Money.of(BigDecimal.ZERO, "USD"));
-                when(discountPort.discountSnapshotFromSummary(any(), any())).thenReturn(discount);
+                DiscountSummary summary = DiscountSummary.noDiscountSummary();
+                DiscountSnapshot discount = new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD"));
+                when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class))).thenReturn(summary);
+                when(discountPort.discountSnapshotFromSummary(any(DiscountSummary.class), any(Money.class))).thenReturn(discount);
                 when(eventQuery.getEventSnapshot(anyString())).thenReturn(
                                 new EventSnapshot("event-1", "Concert", "ProdCo", LocalDate.now(), "Venue"));
 

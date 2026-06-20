@@ -84,6 +84,11 @@ public record DiscountSummary(List<String> appliedDiscountsNames,
                 discountNames = discountNames.concat(" ; ");
             }
         }
+        if (discountNames.isEmpty())
+        {
+            discountNames = "No Discount";
+        }
+        
         return new DiscountSnapshot(discountNames, discountMoneyAmount);
     }
 
