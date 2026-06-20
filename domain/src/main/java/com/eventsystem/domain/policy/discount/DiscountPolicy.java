@@ -501,24 +501,13 @@ public final class DiscountPolicy {
                 .min(HUNDRED);
     }
 
-    public DiscountSnapshot generateDiscountSnapshot(DiscountSummary summary, Money baseCost) {
-
-        Objects.requireNonNull(baseCost, "baseCost must not be null");
-        Money discountMoneyAmount = new Money(summary.totalDiscount(), baseCost.currency());
-        int discountAmount = summary.appliedDiscountsNames().size();
-        String discountNames = "";
-        for (int i = 0; i < discountAmount; i++) {
-            discountNames = discountNames.concat(summary.appliedDiscountsNames().get(i));
-            if (i < discountAmount - 1) {
-                discountNames = discountNames.concat(" ; ");
-            }
-        }
-        return new DiscountSnapshot(discountNames, discountMoneyAmount);
+    public static DiscountSnapshot discountSnapshotFromSummary(DiscountSummary summary, Money baseCost) {
+        return summary.generateDiscountSnapshot(baseCost);
     }
 
     public DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseCost) {
         DiscountSummary summary = getFullDiscountSummary(context, baseCost);
-        return generateDiscountSnapshot(summary, baseCost);
+        return discountSnapshotFromSummary(summary, baseCost);
     }
 
     public List<DiscountInfo> getDiscountInfos() {

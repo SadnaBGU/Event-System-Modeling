@@ -31,12 +31,11 @@ public interface IDiscountApplicationPort {
 
     DiscountSummary calculateDiscountSummary(PurchaseContext context, Money baseCost);
 
+    DiscountSnapshot discountSnapshotFromSummary(DiscountSummary summary, Money baseTotal);
+
     DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseTotal);
 
     List<EventId> getEventIdsWithActiveVisibleDiscounts();
 
     PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items, String discountCode);
-
-    @Deprecated
-    DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal);
 }

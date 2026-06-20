@@ -1,5 +1,7 @@
 package com.eventsystem.application.event;
 
+import com.eventsystem.application.TestPurchaseContexts;
+
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.EventDomainException;
@@ -48,7 +50,8 @@ import static org.mockito.Mockito.*;
  * - UAT-26: Successful Checkout
  *
  * Notes about moved tests:
- * - Purchase-policy rule validation / UAT-27 belongs in PurchasePolicyServiceTest.
+ * - Purchase-policy rule validation / UAT-27 belongs in
+ * PurchasePolicyServiceTest.
  * - Discount/coupon application / UAT-47 belongs in DiscountPolicyServiceTest.
  *
  * Current EventPurchaseService responsibility:
@@ -89,8 +92,7 @@ class EventPurchaseServiceTest {
                 List.of(LocalDateTime.now().plusDays(10)),
                 "Category",
                 "Here",
-                "A test event"
-        );
+                "A test event");
     }
 
     private Event createDraftEvent() {
@@ -114,12 +116,12 @@ class EventPurchaseServiceTest {
         return zone;
     }
 
-
     // ─────────────────────────────────────────────────────────────────────
     // isPurchasable
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC7 / UAT-16: A published event is considered purchasable before ticket selection/reservation.
+    // UC7 / UAT-16: A published event is considered purchasable before ticket
+    // selection/reservation.
     @Test
     void isPurchasable_whenEventIsPublished_returnsTrue_UAT16() {
         Event event = createPublishedEvent();
@@ -130,7 +132,8 @@ class EventPurchaseServiceTest {
         assertThat(result).isTrue();
     }
 
-    // UC7 / UAT-16: A draft event is not purchasable and cannot be used for reservation.
+    // UC7 / UAT-16: A draft event is not purchasable and cannot be used for
+    // reservation.
     @Test
     void isPurchasable_whenEventIsDraft_returnsFalse_UAT16() {
         Event event = createDraftEvent();
@@ -141,7 +144,8 @@ class EventPurchaseServiceTest {
         assertThat(result).isFalse();
     }
 
-    // UC7 / UAT-16: A cancelled event is not purchasable and cannot be used for reservation.
+    // UC7 / UAT-16: A cancelled event is not purchasable and cannot be used for
+    // reservation.
     @Test
     void isPurchasable_whenEventIsCancelled_returnsFalse_UAT16() {
         Event event = createDraftEvent();
@@ -179,7 +183,8 @@ class EventPurchaseServiceTest {
     // requirePurchasable
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC7 / UAT-16: Allow reservation flow to continue when the event is published and purchasable.
+    // UC7 / UAT-16: Allow reservation flow to continue when the event is published
+    // and purchasable.
     @Test
     void requirePurchasable_whenPublished_doesNotThrow_UAT16() {
         Event event = createPublishedEvent();
@@ -189,7 +194,8 @@ class EventPurchaseServiceTest {
                 .doesNotThrowAnyException();
     }
 
-    // UC7 / UAT-22: Reject reservation flow when the event is not published/purchasable.
+    // UC7 / UAT-22: Reject reservation flow when the event is not
+    // published/purchasable.
     @Test
     void requirePurchasable_whenDraft_throws_UAT22() {
         Event event = createDraftEvent();
@@ -225,7 +231,8 @@ class EventPurchaseServiceTest {
     // areAllZonesFull
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC3 / UAT-09: Detect sold out while queued/reserving when all related zones have no availability.
+    // UC3 / UAT-09: Detect sold out while queued/reserving when all related zones
+    // have no availability.
     @Test
     void areAllZonesFull_whenAllZonesFull_returnsTrue_UAT09() {
         EventId eventId = EventId.random();
@@ -240,7 +247,8 @@ class EventPurchaseServiceTest {
         verifyNoInteractions(companyServicePort);
     }
 
-    // UC7 / UAT-16: Event still has availability when at least one zone has capacity.
+    // UC7 / UAT-16: Event still has availability when at least one zone has
+    // capacity.
     @Test
     void areAllZonesFull_whenOneZoneHasAvailability_returnsFalse_UAT16() {
         EventId eventId = EventId.random();
@@ -298,7 +306,8 @@ class EventPurchaseServiceTest {
         verifyNoInteractions(companyServicePort);
     }
 
-    // UC7 / UAT-16: Do not mark sold out when at least one zone still has availability.
+    // UC7 / UAT-16: Do not mark sold out when at least one zone still has
+    // availability.
     @Test
     void markSoldOutIfAllZonesFull_whenNotAllZonesFull_doesNotSave_UAT16() {
         Event event = createPublishedEvent();
@@ -368,7 +377,8 @@ class EventPurchaseServiceTest {
     // getZonesOfEvent
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC7 / UAT-16: Event adapter exposes event zones for purchase/order orchestration.
+    // UC7 / UAT-16: Event adapter exposes event zones for purchase/order
+    // orchestration.
     @Test
     void getZonesOfEvent_returnsEventZones_UAT16() {
         Event event = createDraftEvent();
@@ -408,7 +418,8 @@ class EventPurchaseServiceTest {
     // getEventForSnapshot
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC9 / UAT-26: Load the event so checkout can create a purchase-record snapshot.
+    // UC9 / UAT-26: Load the event so checkout can create a purchase-record
+    // snapshot.
     @Test
     void getEventForSnapshot_returnsLoadedEvent_UAT26() {
         Event event = createDraftEvent();
@@ -462,7 +473,8 @@ class EventPurchaseServiceTest {
         verifyNoInteractions(companyServicePort);
     }
 
-    // UC7 / UAT-22: Reject ticket selection when selected zone does not belong to the event.
+    // UC7 / UAT-22: Reject ticket selection when selected zone does not belong to
+    // the event.
     @Test
     void requireZoneBelongsToEvent_whenZoneDoesNotBelong_throws_UAT22() {
         Event event = createDraftEvent();
@@ -511,18 +523,19 @@ class EventPurchaseServiceTest {
     // validateContextAgainstEvent
     // ─────────────────────────────────────────────────────────────────────
 
-    // UC9 / UAT-26: Event-side validation passes when event is purchasable and zones belong to it.
+    // UC9 / UAT-26: Event-side validation passes when event is purchasable and
+    // zones belong to it.
     @Test
     void validateContextAgainstEvent_whenPublishedAndAllZonesBelong_returnsSuccess_UAT26() {
         ZoneId zoneId = ZoneId.random();
         Event event = createPublishedEventWithZone(zoneId);
-        PurchaseContext context = new PurchaseContext(
+        PurchaseContext context = TestPurchaseContexts.contextWithZones(
                 event.id(),
                 event.companyId(),
-                List.of(zoneId, zoneId),
                 LocalDate.now().minusYears(25),
-                null
-        );
+                null,
+                zoneId,
+                zoneId);
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
 
         PolicyValidationResult result = service.validateContextAgainstEvent(event.id(), context);
@@ -532,19 +545,20 @@ class EventPurchaseServiceTest {
         verifyNoInteractions(companyServicePort);
     }
 
-    // UC9 / UAT-27: Event-side validation fails before policy evaluation when event is not purchasable.
+    // UC9 / UAT-27: Event-side validation fails before policy evaluation when event
+    // is not purchasable.
     @Test
     void validateContextAgainstEvent_whenEventIsDraft_returnsFailure_UAT27() {
         Event event = createDraftEvent();
         ZoneId zoneId = ZoneId.random();
         event.addZone(zoneId);
-        PurchaseContext context = new PurchaseContext(
+        PurchaseContext context = TestPurchaseContexts.contextWithZones(
                 event.id(),
                 event.companyId(),
-                List.of(zoneId),
                 LocalDate.now().minusYears(25),
-                null
-        );
+                null,
+                zoneId,
+                zoneId);
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
 
         PolicyValidationResult result = service.validateContextAgainstEvent(event.id(), context);
@@ -554,19 +568,19 @@ class EventPurchaseServiceTest {
 
     }
 
-    // UC9 / UAT-27: Event-side validation fails before policy evaluation when a zone is invalid for event.
+    // UC9 / UAT-27: Event-side validation fails before policy evaluation when a
+    // zone is invalid for event.
     @Test
     void validateContextAgainstEvent_whenContextContainsZoneNotInEvent_returnsFailure_UAT27() {
         ZoneId realZone = ZoneId.random();
         ZoneId wrongZone = ZoneId.random();
         Event event = createPublishedEventWithZone(realZone);
-        PurchaseContext context = new PurchaseContext(
+        PurchaseContext context = TestPurchaseContexts.contextWithZones(
                 event.id(),
                 event.companyId(),
-                List.of(wrongZone),
                 LocalDate.now().minusYears(25),
-                null
-        );
+                null,
+                wrongZone);
         when(eventRepository.findById(event.id())).thenReturn(Optional.of(event));
 
         PolicyValidationResult result = service.validateContextAgainstEvent(event.id(), context);
@@ -580,19 +594,17 @@ class EventPurchaseServiceTest {
     @Test
     void validateContextAgainstEvent_eventNotFound_throws() {
         EventId unknownId = EventId.random();
-        PurchaseContext context = new PurchaseContext(
+        PurchaseContext context = TestPurchaseContexts.contextWithZones(
                 unknownId,
                 COMPANY_ID,
-                List.of(ZoneId.random()),
                 LocalDate.now().minusYears(25),
-                null
-        );
+                null,
+                ZoneId.random());
         when(eventRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> service.validateContextAgainstEvent(unknownId, context));
     }
-
 
     // ─────────────────────────────────────────────────────────────────────
     // getEventSnapshot

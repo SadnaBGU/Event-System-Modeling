@@ -551,7 +551,7 @@ class DiscountPolicyTest {
                 DiscountSummary summary = policy.getFullDiscountSummary(context(EVENT_ID, COMPANY_ID, null),
                                 baseCost100());
 
-                assertThat(policy.generateDiscountSnapshot(summary, baseCost100()).discountName())
+                assertThat(policy.discountSnapshotFromSummary(summary, baseCost100()).discountName())
                                 .isEqualTo("Early ; Student");
         }
 
@@ -716,7 +716,7 @@ class DiscountPolicyTest {
                 Money baseCost = Money.of(BigDecimal.valueOf(200), "ILS");
 
                 DiscountSummary summary = policy.getFullDiscountSummary(contextWithTickets(REGULAR_ZONE), baseCost);
-                DiscountSnapshot snapshot = policy.generateDiscountSnapshot(summary, baseCost);
+                DiscountSnapshot snapshot = policy.discountSnapshotFromSummary(summary, baseCost);
 
                 assertThat(snapshot.discountName()).isEqualTo("Early bird ; Member");
                 assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo("30");
@@ -728,7 +728,7 @@ class DiscountPolicyTest {
                 DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
                 DiscountSummary summary = DiscountSummary.noDiscountSummary();
 
-                assertThatThrownBy(() -> policy.generateDiscountSnapshot(summary, null))
+                assertThatThrownBy(() -> policy.discountSnapshotFromSummary(summary, null))
                                 .isInstanceOf(NullPointerException.class);
         }
 

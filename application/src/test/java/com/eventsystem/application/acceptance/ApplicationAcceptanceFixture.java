@@ -1,5 +1,7 @@
 package com.eventsystem.application.acceptance;
 
+import com.eventsystem.application.TestPurchaseContexts;
+
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
@@ -606,11 +608,7 @@ class ApplicationAcceptanceFixture {
 
         @Override
         public PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items) {
-            return PurchaseContext.fromPurchaseInfo(
-                    eventId,
-                    new CompanyId("company-1"),
-                    items.stream().map(item -> new ZoneId(item.getZoneId())).toList(),
-                    LocalDate.now().minusYears(25));
+            return Test
         }
 
         @Override
@@ -658,10 +656,6 @@ class ApplicationAcceptanceFixture {
                     discountCode);
         }
 
-        @Override
-        public DiscountSnapshot applyDiscount(String eventId, String discountCode, Money baseTotal) {
-            return snapshot;
-        }
     }
 
     static final class FakeEventQueryPort implements IEventQueryPort {
