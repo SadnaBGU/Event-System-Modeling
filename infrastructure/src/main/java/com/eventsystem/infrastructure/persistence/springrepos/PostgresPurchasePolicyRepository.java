@@ -30,6 +30,11 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
+    }
+
+    @Override
     public List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId) {
         // סינון בזיכרון לאחר שליפת הפוליסות של החברה
         return jpaRepository.findByCompanyId(companyId).stream()
@@ -40,7 +45,8 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     @Override
     public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
         return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(policy -> policy.scope().isListedIn(eventId) || policy.scope().companyWide())
+                .filter(PurchasePolicy::isActive)
+                .filter(policy -> policy.scope().appliesTo(eventId))
                 .toList();
     }
 
@@ -77,11 +83,6 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     @Override
     public boolean existsById(PurchasePolicyId policyId) {
         return jpaRepository.existsById(policyId);
-    }
-
-    @Override
-    public List<PurchasePolicy> findByEventId(EventId eventId) {
-        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
     }
 
 }

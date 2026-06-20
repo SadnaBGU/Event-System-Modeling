@@ -41,7 +41,6 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
         return jpaRepository.findByCompanyId(id).stream().filter(DiscountPolicy::isActive).toList();
     }
 
-
     @Override
     public List<DiscountPolicy> findApplicableToPurchase(CompanyId cId, EventId eId) {
         return jpaRepository.findByCompanyId(cId).stream()

@@ -34,6 +34,12 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        return policiesById.values().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
+    }
+
+    @Override
     public List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
@@ -98,8 +104,5 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .toList();
     }
 
-    @Override
-    public List<PurchasePolicy> findByEventId(EventId eventId) {
-        return policiesById.values().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
-    }
+
 }
