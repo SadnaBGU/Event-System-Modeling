@@ -281,6 +281,44 @@ class DiscountPolicyTest {
         }
 
         @Test
+        void companyOwnedSingleEventDiscountPolicyCanChangeScope() {
+                DiscountPolicy policy = DiscountPolicy.companyPolicy(
+                                COMPANY_ID,
+                                PolicyScope.forSingleEvent(EVENT_ID),
+                                List.of(Discount.GeneralDiscount("Visible", BigDecimal.TEN, null)),
+                                false,
+                                true);
+
+                policy.activateForEvent(OTHER_EVENT_ID);
+
+                assertThat(policy.isCompanyPolicy()).isTrue();
+                assertThat(policy.scope().eventIds())
+                                .containsExactlyInAnyOrder(EVENT_ID, OTHER_EVENT_ID);
+        }
+
+        @Test
+        void eventOwnedDiscountPolicyRejectsScopeChanges() {
+                DiscountPolicy policy = DiscountPolicy.eventPolicy(
+                                COMPANY_ID,
+                                EVENT_ID,
+                                List.of(Discount.GeneralDiscount("Visible", BigDecimal.TEN, null)),
+                                false,
+                                true);
+
+                assertThatThrownBy(() -> policy.activateForEvent(OTHER_EVENT_ID))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("Event-owned discount policy scope cannot be changed");
+
+                assertThatThrownBy(policy::setCompanyWide)
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("Event-owned discount policy scope cannot be changed");
+
+                assertThatThrownBy(() -> policy.changeScope(PolicyScope.companyWideScope()))
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("Event-owned discount policy scope cannot be changed");
+        }
+
+        @Test
         void fullDiscountSummaryReturnsNoDiscountWhenPolicyDoesNotApply() {
                 DiscountPolicy policy = DiscountPolicy.inactiveCompanyWide(COMPANY_ID);
                 policy.addDiscount(GeneralNoExpiryDiscount("Early bird", BigDecimal.valueOf(20)));
