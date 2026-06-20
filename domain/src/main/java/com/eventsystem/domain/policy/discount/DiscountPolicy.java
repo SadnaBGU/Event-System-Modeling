@@ -555,13 +555,5 @@ public final class DiscountPolicy {
         return latest;
     }
 
-    public boolean isSpecificFor(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        return !scope.isCompanyWide() && scope.eventIds().contains(eventId) && scope.eventIds().size() == 1;
-    }
-
-    public boolean isSingleEventPolicy() {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1;
-    }
 
 }

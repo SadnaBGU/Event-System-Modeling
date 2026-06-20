@@ -457,27 +457,6 @@ class PurchasePolicyTest {
         }
 
         @Test
-        void isSingleEventPolicy_returnsTrueOnlyWhenExactlyOneEvent() {
-                PurchasePolicy policy = PurchasePolicy.emptyScope(COMPANY_ID, "Event Count Test",
-                                new MaxTicketPolicy(1));
-
-                // 0 events -> false
-                assertThat(policy.isSingleEventPolicy()).isFalse();
-
-                // 1 event -> true
-                policy.activateForEvent(EVENT_ID);
-                assertThat(policy.isSingleEventPolicy()).isTrue();
-
-                // 2 events -> false
-                policy.activateForEvent(OTHER_EVENT_ID);
-                assertThat(policy.isSingleEventPolicy()).isFalse();
-
-                // Company wide -> false
-                policy.setCompanyWide();
-                assertThat(policy.isSingleEventPolicy()).isFalse();
-        }
-
-        @Test
         void companyOwnedSingleEventPolicyCanChangeScope() {
                 PurchasePolicy policy = PurchasePolicy.companyPolicy(
                                 COMPANY_ID,
@@ -527,25 +506,6 @@ class PurchasePolicyTest {
                                                 "Event-owned purchase policy must be scoped to exactly one event");
         }
 
-        @Test
-        void isSpecificFor_returnsTrueOnlyWhenExactlyThatEvent() {
-                PurchasePolicy policy = PurchasePolicy.emptyScope(COMPANY_ID, "Specific Event Test",
-                                new MaxTicketPolicy(1));
-
-                assertThat(policy.isSpecificFor(EVENT_ID)).isFalse();
-
-                policy.activateForEvent(EVENT_ID);
-                assertThat(policy.isSpecificFor(EVENT_ID)).isTrue();
-                assertThat(policy.isSpecificFor(OTHER_EVENT_ID)).isFalse();
-
-                // Add another event - no longer specific to ONE event
-                policy.activateForEvent(OTHER_EVENT_ID);
-                assertThat(policy.isSpecificFor(EVENT_ID)).isFalse();
-
-                // Company wide
-                policy.setCompanyWide();
-                assertThat(policy.isSpecificFor(EVENT_ID)).isFalse();
-        }
 
         @Test
         void purchasePolicyId_rejectsNullAndBlank() {

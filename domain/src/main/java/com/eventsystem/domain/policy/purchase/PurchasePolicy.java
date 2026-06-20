@@ -236,14 +236,6 @@ public class PurchasePolicy {
         return scope.appliesTo(eventId);
     }
 
-    public boolean isSingleEventPolicy() {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1;
-    }
-
-    public boolean isSpecificFor(EventId eventId) {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1 && scope.isListedIn(eventId);
-    }
-
     public boolean isCompanyPolicy() {
         return ownerType == PolicyOwnerType.COMPANY;
     }
