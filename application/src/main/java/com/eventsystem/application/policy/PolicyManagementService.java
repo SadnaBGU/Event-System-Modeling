@@ -551,7 +551,7 @@ public class PolicyManagementService implements IPolicyManagementPort {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
         return !purchasePolicyRepository.findActiveByCompanyId(companyId).isEmpty()
-                || !purchasePolicyRepository.findApplicableToEvent(eventId).isEmpty();
+                || !purchasePolicyRepository.findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(eventId), eventId).isEmpty();
     }
 
     // ---------------------------------------------------------------------

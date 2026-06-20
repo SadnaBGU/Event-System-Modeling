@@ -81,19 +81,6 @@ public final class DiscountPolicy {
         requireValidDiscountPolicy();
     }
 
-    private DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope,
-            List<Discount> discounts, boolean isStackable, boolean isActive) {
-        this.id = Objects.requireNonNull(id, "id must not be null");
-        this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
-        this.scope = Objects.requireNonNull(scope, "scope must not be null");
-        this.discounts = new ArrayList<>(Objects.requireNonNull(discounts, "discounts must not be null"));
-        if (discounts.stream().anyMatch(discount -> discount == null)) {
-            throw new DiscountPolicyException("Given discounts cannot be null");
-        }
-        this.stackable = isStackable;
-        this.active = isActive; // inactive by default
-    }
-
     public DiscountPolicy(CompanyId companyId, PolicyScope scope,
             List<Discount> discounts, boolean isStackable, boolean isActive) {
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
@@ -127,6 +114,7 @@ public final class DiscountPolicy {
         this.discounts = new ArrayList<>();
         this.stackable = false;
         this.active = false; // inactive by default
+        this.ownerType = PolicyOwnerType.COMPANY;
     }
 
     public DiscountPolicy(CompanyId cid) {
@@ -145,7 +133,7 @@ public final class DiscountPolicy {
         return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forEvents(eventIds));
     }
 
-    public static DiscountPolicy inactiveEventPolicy(CompanyId companyId, EventId eventId) {
+    public static DiscountPolicy inactiveEventOwnedPolicy(CompanyId companyId, EventId eventId) {
         return new DiscountPolicy(DiscountPolicyId.random(), companyId, eventId, PolicyOwnerType.EVENT);
     }
 
@@ -159,22 +147,6 @@ public final class DiscountPolicy {
                                             boolean stackable, boolean active) {
         return new DiscountPolicy(DiscountPolicyId.random(), companyId, scope,
                                     discounts, stackable, active, PolicyOwnerType.COMPANY);
-    }
-
-    public static DiscountPolicy withDiscounts(DiscountPolicy discountPolicy, List<Discount> toAdd) {
-        Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
-        Objects.requireNonNull(toAdd, "discounts to add must not be null");
-
-        List<Discount> joinedDiscounts = new ArrayList<>(discountPolicy.discounts());
-        joinedDiscounts.addAll(toAdd);
-
-        return new DiscountPolicy(
-                discountPolicy.id(),
-                discountPolicy.companyId,
-                discountPolicy.scope(),
-                joinedDiscounts,
-                discountPolicy.isStackable(),
-                discountPolicy.isActive());
     }
 
     public DiscountPolicyId id() {
@@ -261,7 +233,7 @@ public final class DiscountPolicy {
             return false;
         }
 
-        return scope.isListedIn(context.eventId());
+        return scope.appliesTo(context.eventId());
     }
 
     public void setCompanyWide() {

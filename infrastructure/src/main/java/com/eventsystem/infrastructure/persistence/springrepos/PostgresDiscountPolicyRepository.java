@@ -26,7 +26,7 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
     }
 
     @Override
-    public List<DiscountPolicy> findActive() {
+    public List<DiscountPolicy> findAllActive() {
         return jpaRepository.findAll().stream().filter(DiscountPolicy::isActive).toList();
     }
 
@@ -41,31 +41,12 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
         return jpaRepository.findByCompanyId(id).stream().filter(DiscountPolicy::isActive).toList();
     }
 
-    @Override
-    public List<DiscountPolicy> findApplicableToEvent(EventId id) {
-        return jpaRepository.findAll().stream()
-                .filter(p -> p.isActive() && p.scope().isListedIn(id))
-                .toList();
-    }
 
     @Override
     public List<DiscountPolicy> findApplicableToPurchase(CompanyId cId, EventId eId) {
         return jpaRepository.findByCompanyId(cId).stream()
-                .filter(p -> p.isActive() && p.scope().isListedIn(eId))
-                .toList();
-    }
-
-    @Override
-    public List<DiscountPolicy> findSpecificForEvent(EventId eventId) {
-        return jpaRepository.findAll().stream()
-                .filter(p -> p.isActive() && p.isSpecificFor(eventId))
-                .toList();
-    }
-
-    @Override
-    public List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(DiscountPolicy::isSingleEventPolicy)
+                .filter(p -> p.isActive())
+                .filter(p -> p.scope().appliesTo(eId))
                 .toList();
     }
 
@@ -102,6 +83,11 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
     @Override
     public boolean existsById(DiscountPolicyId id) {
         return jpaRepository.existsById(id);
+    }
+
+    @Override
+    public List<DiscountPolicy> findByEventId(EventId eventId) {
+        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
     }
 
 }

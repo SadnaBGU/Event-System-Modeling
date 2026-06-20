@@ -120,7 +120,7 @@ class DiscountPolicyTest {
 
         @Test
         void eventSpecificDiscountAppliesOnlyToActivatedEvent_UAT45() {
-                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveEventOwnedPolicy(COMPANY_ID, EVENT_ID);
                 policy.addDiscount(GeneralNoExpiryDiscount("Event only", BigDecimal.valueOf(10)));
 
                 assertDoesNotThrow(() -> {
@@ -472,7 +472,7 @@ class DiscountPolicyTest {
 
         @Test
         void clearAllEventsFromScope_whenCompanyWide_preservesActiveCompanyWidePolicy() {
-                DiscountPolicy policy = activeEventPolicy(EVENT_ID);
+                DiscountPolicy policy = activeCompanyOwnedEventScopedPolicy(EVENT_ID);
                 policy.addDiscount(GeneralNoExpiryDiscount("Visible", BigDecimal.TEN));
                 policy.setCompanyWide();
 
@@ -485,7 +485,7 @@ class DiscountPolicyTest {
 
         @Test
         void activate_whenNoDiscounts_throwsDiscountPolicyException() {
-                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveEventOwnedPolicy(COMPANY_ID, EVENT_ID);
 
                 assertThatThrownBy(policy::activate)
                                 .isInstanceOf(DiscountPolicyException.class)
@@ -601,7 +601,7 @@ class DiscountPolicyTest {
 
         @Test
         void clearAllEventsFromScopeDeactivatesEventOnlyPolicy() {
-                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveForEvents(COMPANY_ID, Set.of(EVENT_ID));
                 policy.addDiscount(GeneralNoExpiryDiscount("Event only", BigDecimal.valueOf(12)));
                 policy.activate();
 
@@ -611,6 +611,17 @@ class DiscountPolicyTest {
                 assertThat(policy.scope().isScopedToEventsOrCompany()).isFalse();
                 assertThat(policy.appliesTo(contextForCompanyAndEvent(COMPANY_ID, EVENT_ID, null, REGULAR_ZONE)))
                                 .isFalse();
+        }
+
+        @Test
+        void clearAllEventsFromScopeOnEventOwnedPolicyThrows() {
+                DiscountPolicy policy = DiscountPolicy.inactiveEventOwnedPolicy(COMPANY_ID, EVENT_ID);
+                policy.addDiscount(GeneralNoExpiryDiscount("Event owned", BigDecimal.valueOf(12)));
+                policy.activate();
+
+                assertThatThrownBy(policy::clearAllEventsFromScope)
+                                .isInstanceOf(DiscountPolicyException.class)
+                                .hasMessageContaining("Event-owned discount policy scope cannot be changed");
         }
 
         @Test
@@ -828,7 +839,7 @@ class DiscountPolicyTest {
                                 AlwaysTruePolicy.INSTANCE,
                                 true,
                                 LocalDate.now().minusDays(1)));
-                assertThat(! policy.visibleDiscounts(LocalDate.now().minusDays(1)).isEmpty());
+                assertThat(!policy.visibleDiscounts(LocalDate.now().minusDays(1)).isEmpty());
                 assertThat(policy.visibleDiscounts()).isEmpty();
                 assertThat(policy.visibleDiscounts(LocalDate.now())).isEmpty();
                 assertThat(policy.doesHaveVisibleDiscounts()).isFalse();
@@ -978,7 +989,9 @@ class DiscountPolicyTest {
 
                 assertThat(summary.appliedDiscountsNames()).containsExactly("Twenty");
                 assertThat(summary.appliedDiscountPercents()).containsExactly(BigDecimal.valueOf(20));
-                assertThat(summary.actualDiscountAmount()).usingComparatorForType(BigDecimal::compareTo, BigDecimal.class).containsExactly(BigDecimal.valueOf(40));
+                assertThat(summary.actualDiscountAmount())
+                                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                                .containsExactly(BigDecimal.valueOf(40));
                 assertThat(summary.totalDiscount()).isEqualByComparingTo("40");
         }
 
@@ -1100,23 +1113,6 @@ class DiscountPolicyTest {
                                 .hasMessageContaining("No matching discounts");
         }
 
-        // DP-10:
-        // withDiscounts should not mutate original policy and should preserve
-        // identity/scope.
-        @Test
-        void withDiscounts_shouldReturnNewPolicyWithAddedDiscountsWithoutMutatingOriginal() {
-                DiscountPolicy original = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
-                Discount discount = Discount.GeneralDiscount("Visible", BigDecimal.TEN, null);
-
-                DiscountPolicy updated = DiscountPolicy.withDiscounts(original, List.of(discount));
-
-                assertThat(original.discounts()).isEmpty();
-                assertThat(updated.discounts()).containsExactly(discount);
-                assertThat(updated.id()).isEqualTo(original.id());
-                assertThat(updated.companyId()).isEqualTo(COMPANY_ID);
-                assertThat(updated.scope()).isEqualTo(original.scope());
-        }
-
         // DDD safety:
         // Public constructor should defensively copy the supplied discount list.
         // This test will fail until you fix the public constructor copy issue.
@@ -1139,11 +1135,22 @@ class DiscountPolicyTest {
         }
 
         private static DiscountPolicy eventPolicy(EventId eventId) {
-                return DiscountPolicy.inactiveEventPolicy(COMPANY_ID, eventId);
+                return DiscountPolicy.inactiveEventOwnedPolicy(COMPANY_ID, eventId);
         }
 
         private static DiscountPolicy activeEventPolicy(EventId eventId) {
                 DiscountPolicy policy = eventPolicy(eventId);
+                policy.addDiscount(GeneralNoExpiryDiscount("Base", BigDecimal.ONE));
+                policy.activate();
+                return policy;
+        }
+
+        private static DiscountPolicy companyOwnedEventScopedPolicy(EventId eventId) {
+                return DiscountPolicy.inactiveForEvents(COMPANY_ID, Set.of(eventId));
+        }
+
+        private static DiscountPolicy activeCompanyOwnedEventScopedPolicy(EventId eventId) {
+                DiscountPolicy policy = companyOwnedEventScopedPolicy(eventId);
                 policy.addDiscount(GeneralNoExpiryDiscount("Base", BigDecimal.ONE));
                 policy.activate();
                 return policy;

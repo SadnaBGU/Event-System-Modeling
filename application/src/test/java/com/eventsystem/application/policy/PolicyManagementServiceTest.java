@@ -463,7 +463,7 @@ class PolicyManagementServiceTest {
         void doesHaveActivePurchasePolicy_shouldDelegateToRepositories() {
                 when(purchasePolicyRepository.findActiveByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of());
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID))
+                when(purchasePolicyRepository.findByEventId(EVENT_ID))
                                 .thenReturn(List.of(activePurchasePolicy(EVENT_ID, 4)));
 
                 boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
@@ -835,13 +835,13 @@ class PolicyManagementServiceTest {
                 boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
 
                 assertThat(result).isTrue();
-                verify(purchasePolicyRepository, never()).findApplicableToEvent(any());
+                verify(purchasePolicyRepository, never()).findApplicableToPurchase(any(), any());
         }
 
         @Test
         void doesHaveActivePurchasePolicy_whenNoCompanyOrEventPolicies_shouldReturnFalse() {
                 when(purchasePolicyRepository.findActiveByCompanyId(COMPANY_ID)).thenReturn(List.of());
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of());
 
                 boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
 

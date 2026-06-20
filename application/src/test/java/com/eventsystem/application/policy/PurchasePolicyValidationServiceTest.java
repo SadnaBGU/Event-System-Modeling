@@ -202,11 +202,11 @@ class PurchasePolicyValidationServiceTest {
                 BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, MEMBER_ID.value());
                 List<OrderItem> items = List.of();
 
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID,EVENT_ID)).thenReturn(List.of());
 
                 assertThat(service.validatePurchasePolicy(EVENT_ID.value(), buyer, items)).isTrue();
 
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(maxTicketPolicy(4)));
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of(maxTicketPolicy(4)));
 
                 assertThat(service.validatePurchasePolicy(EVENT_ID.value(), buyer, items)).isFalse();
         }
@@ -242,7 +242,7 @@ class PurchasePolicyValidationServiceTest {
         void findApplicableToEvent_shouldDelegateToRepository() {
                 PurchasePolicy policy = maxTicketPolicy(4);
 
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(policy));
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of(policy));
 
                 assertThat(service.findApplicableToEvent(EVENT_ID)).containsExactly(policy);
         }

@@ -38,31 +38,9 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
-    public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
-        // שליפת הכל וסינון לפי הלוגיקה של ה-Domain
-        return jpaRepository.findAll().stream()
-                .filter(policy -> policy.isActiveForEvent(eventId))
-                .toList();
-    }
-
-    @Override
     public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
         return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(policy -> policy.isActiveForEvent(eventId))
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(PurchasePolicy::isSingleEventPolicy)
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-        return jpaRepository.findAll().stream()
-                .filter(policy -> policy.isSpecificFor(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId) || policy.scope().companyWide())
                 .toList();
     }
 
@@ -99,6 +77,11 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     @Override
     public boolean existsById(PurchasePolicyId policyId) {
         return jpaRepository.existsById(policyId);
+    }
+
+    @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
     }
 
 }

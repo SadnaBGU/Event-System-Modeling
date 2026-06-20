@@ -359,30 +359,6 @@ class PurchasePolicyTest {
         }
 
         @Test
-        void allowAllFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
-                PurchasePolicyId id = PurchasePolicyId.random();
-
-                PurchasePolicy policy = PurchasePolicy.allowAll(id, COMPANY_ID, "Allow all");
-
-                assertThat(policy.id()).isEqualTo(id);
-                assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
-                assertThat(policy.policyName()).isEqualTo("Allow all");
-                assertThat(policy.isActive()).isFalse();
-        }
-
-        @Test
-        void notAllowedFactoryWithExplicitIdCreatesInactiveClearScopePolicy() {
-                PurchasePolicyId id = PurchasePolicyId.random();
-
-                PurchasePolicy policy = PurchasePolicy.notAllowed(id, COMPANY_ID, "Never allow");
-
-                assertThat(policy.id()).isEqualTo(id);
-                assertThat(policy.companyId()).isEqualTo(COMPANY_ID);
-                assertThat(policy.policyName()).isEqualTo("Never allow");
-                assertThat(policy.isActive()).isFalse();
-        }
-
-        @Test
         void newNeverAllowedPolicyRejectsPurchaseAfterActivation() {
                 PurchasePolicy policy = PurchasePolicy.newNeverAllowedPolicy(COMPANY_ID, "Closed sale");
                 policy.activateForEvent(EVENT_ID);
@@ -417,36 +393,6 @@ class PurchasePolicyTest {
                 assertThat(policy.isActive()).isFalse();
                 assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE))).isTrue();
                 assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isFalse();
-        }
-
-        // PP-01:
-        // allowAll explicit-id factory should preserve identity and allow purchase.
-        @Test
-        void allowAllFactory_shouldPreserveIdAndAllowPurchase() {
-                PurchasePolicyId id = PurchasePolicyId.random();
-
-                PurchasePolicy policy = PurchasePolicy.allowAll(id, COMPANY_ID, "Allow all");
-                policy.activateForEvent(EVENT_ID);
-
-                assertThat(policy.id()).isEqualTo(id);
-                assertThat(policy.policyName()).isEqualTo("Allow all");
-                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
-                assertThat(policy.isPurchaseAllowedInContext(contextWithTickets(REGULAR_ZONE, VIP_ZONE))).isTrue();
-        }
-
-        // PP-01:
-        // notAllowed explicit-id factory should preserve identity and reject purchase.
-        @Test
-        void notAllowedFactory_shouldPreserveIdAndRejectPurchase() {
-                PurchasePolicyId id = PurchasePolicyId.random();
-
-                PurchasePolicy policy = PurchasePolicy.notAllowed(id, COMPANY_ID, "Closed");
-                policy.activateForEvent(EVENT_ID);
-
-                assertThat(policy.id()).isEqualTo(id);
-                assertThat(policy.policyName()).isEqualTo("Closed");
-                assertThat(policy.isActiveForEvent(EVENT_ID)).isTrue();
-                assertThat(policy.evaluate(contextWithTickets(REGULAR_ZONE)).isSuccess()).isFalse();
         }
 
         // PP-06 / UAT-44:

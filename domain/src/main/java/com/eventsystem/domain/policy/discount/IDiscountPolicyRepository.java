@@ -12,23 +12,19 @@ public interface IDiscountPolicyRepository {
 
     List<DiscountPolicy> findByCompanyId(CompanyId companyId);
 
-    List<DiscountPolicy> findActive();
+    List<DiscountPolicy> findByEventId(EventId eventId);
+
+    List<DiscountPolicy> findCompanyOwnedPolicies(CompanyId companyId);
+
+    List<DiscountPolicy> findEventOwnedPolicy(EventId eventId);
+
+    List<DiscountPolicy> findAllActive();
 
     List<DiscountPolicy> findActiveWithVisibleDiscounts();
 
     List<DiscountPolicy> findActiveByCompanyId(CompanyId companyId);
 
-    List<DiscountPolicy> findApplicableToEvent(EventId eventId);
-
     List<DiscountPolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
-
-    List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId);
-
-    List<DiscountPolicy> findSpecificForEvent(EventId eventId);
-
-    List<DiscountPolicy> findCompanyOwnedPolicies(CompanyId companyId);
-
-    List<DiscountPolicy> findEventOwnedPolicy(EventId eventId);
 
 
     void save(DiscountPolicy discountPolicy);

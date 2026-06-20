@@ -45,17 +45,6 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
-    public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-
-        return policiesById.values()
-                .stream()
-                .filter(PurchasePolicy::isActive)
-                .filter(policy -> policy.scope().isListedIn(eventId))
-                .toList();
-    }
-
-    @Override
     public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
@@ -64,7 +53,7 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .stream()
                 .filter(PurchasePolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
-                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId) || policy.scope().companyWide())
                 .toList();
     }
 
@@ -88,27 +77,6 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
 
         return policiesById.containsKey(policyId);
     }
-
-    @Override
-    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
-        Objects.requireNonNull(companyId, "companyId must not be null");
-        return policiesById.values()
-                .stream()
-                .filter(policy -> policy.companyId().equals(companyId))
-                .filter(policy -> policy.scope().isForSingleEvent())
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        return policiesById.values()
-                .stream()
-                .filter(policy -> policy.scope().isListedIn(eventId))
-                .filter(policy -> policy.scope().isForSingleEvent())
-                .toList();
-    }
-
     
     @Override
     public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
@@ -128,5 +96,10 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .filter(policy -> policy.scope().isListedIn(eventId))
                 .filter(policy -> policy.isEventPolicy())
                 .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        return policiesById.values().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
     }
 }

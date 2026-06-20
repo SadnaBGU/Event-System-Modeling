@@ -64,7 +64,7 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
     void findMethods_filterStreamsCorrectly() {
         assertThat(repository.findByCompanyId(companyId)).hasSize(3);
         
-        List<DiscountPolicy> active = repository.findActive();
+        List<DiscountPolicy> active = repository.findAllActive();
         assertThat(active).hasSize(2);
         
         List<DiscountPolicy> activeWithDiscounts = repository.findActiveWithVisibleDiscounts();

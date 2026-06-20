@@ -845,28 +845,6 @@ class ApplicationAcceptanceFixture {
         }
 
         @Override
-        public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
-            return byId.values().stream()
-                    .filter(PurchasePolicy::isActive)
-                    .filter(policy -> policy.isActiveForEvent(eventId))
-                    .toList();
-        }
-
-        @Override
-        public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
-            return findByCompanyId(companyId).stream()
-                    .filter(PurchasePolicy::isSingleEventPolicy)
-                    .toList();
-        }
-
-        @Override
-        public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-            return byId.values().stream()
-                    .filter(policy -> policy.isSpecificFor(eventId))
-                    .toList();
-        }
-
-        @Override
         public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
             return findByCompanyId(companyId).stream()
                     .filter(PurchasePolicy::isActive)
@@ -903,6 +881,12 @@ class ApplicationAcceptanceFixture {
                     .filter(PurchasePolicy::isEventPolicy)
                     .toList();
         }
+
+        @Override
+        public List<PurchasePolicy> findByEventId(EventId eventId) {
+            return byId.values().stream().filter(p -> p.scope().isListedIn(eventId)).toList();
+
+        }
     }
 
     static final class FakeDiscountPolicyRepository implements IDiscountPolicyRepository {
@@ -921,7 +905,7 @@ class ApplicationAcceptanceFixture {
         }
 
         @Override
-        public List<DiscountPolicy> findActive() {
+        public List<DiscountPolicy> findAllActive() {
             return byId.values().stream()
                     .filter(DiscountPolicy::isActive)
                     .toList();
@@ -929,7 +913,7 @@ class ApplicationAcceptanceFixture {
 
         @Override
         public List<DiscountPolicy> findActiveWithVisibleDiscounts() {
-            return findActive().stream()
+            return findAllActive().stream()
                     .filter(DiscountPolicy::doesHaveVisibleDiscounts)
                     .toList();
         }
@@ -942,32 +926,10 @@ class ApplicationAcceptanceFixture {
         }
 
         @Override
-        public List<DiscountPolicy> findApplicableToEvent(EventId eventId) {
-            return byId.values().stream()
-                    .filter(DiscountPolicy::isActive)
-                    .filter(policy -> policy.scope().isListedIn(eventId))
-                    .toList();
-        }
-
-        @Override
         public List<DiscountPolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
             return findByCompanyId(companyId).stream()
                     .filter(DiscountPolicy::isActive)
-                    .filter(policy -> policy.scope().isListedIn(eventId))
-                    .toList();
-        }
-
-        @Override
-        public List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId) {
-            return findByCompanyId(companyId).stream()
-                    .filter(DiscountPolicy::isSingleEventPolicy)
-                    .toList();
-        }
-
-        @Override
-        public List<DiscountPolicy> findSpecificForEvent(EventId eventId) {
-            return byId.values().stream()
-                    .filter(policy -> policy.isSpecificFor(eventId))
+                    .filter(policy -> policy.scope().appliesTo(eventId))
                     .toList();
         }
 
@@ -999,6 +961,11 @@ class ApplicationAcceptanceFixture {
                     .filter(policy -> policy.scope().isListedIn(eventId))
                     .filter(DiscountPolicy::isEventPolicy)
                     .toList();
+        }
+
+        @Override
+        public List<DiscountPolicy> findByEventId(EventId eventId) {
+            return byId.values().stream().filter(p -> p.scope().isListedIn(eventId)).toList();
         }
     }
 }

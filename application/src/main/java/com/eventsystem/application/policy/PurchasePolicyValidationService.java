@@ -91,7 +91,7 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
 
         logger.debug("Finding purchase policies applicable to event. eventId={}", eventId.value());
 
-        return purchasePolicyRepository.findApplicableToEvent(eventId);
+        return purchasePolicyRepository.findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(eventId), eventId);
     }
 
     public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
@@ -210,8 +210,9 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
                 eventId
         );
 
+        EventId eid = new EventId(eventId);
         List<PurchasePolicy> applicablePolicies =
-                purchasePolicyRepository.findApplicableToEvent(new EventId(eventId));
+                purchasePolicyRepository.findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(eid),eid);
 
         return applicablePolicies.isEmpty();
     }

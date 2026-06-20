@@ -97,8 +97,8 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
                 "Finding discount policies applicable to event. eventId={}",
                 eventId.value()
         );
-
-        return discountPolicyRepository.findApplicableToEvent(eventId);
+        
+        return discountPolicyRepository.findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(eventId), eventId);
     }
 
     public List<DiscountPolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
@@ -117,7 +117,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
     public Set<EventId> getAllActiveDiscountEvents() {
         logger.debug("Finding all EventIds with active discount policies");
 
-        List<DiscountPolicy> activeDiscountPolicies = discountPolicyRepository.findActive();
+        List<DiscountPolicy> activeDiscountPolicies = discountPolicyRepository.findAllActive();
 
         List<EventId> eventIdsFromScopes = activeDiscountPolicies.stream()
                 .flatMap(policy -> policy.scope().eventIds().stream())
@@ -263,7 +263,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
         EventId parsedEventId = new EventId(eventId);
 
         List<DiscountPolicy> applicablePolicies =
-                discountPolicyRepository.findApplicableToEvent(parsedEventId);
+                discountPolicyRepository.findApplicableToPurchase(eventOwnershipChecker.companyOfEvent(parsedEventId), parsedEventId);
 
         if (applicablePolicies.isEmpty()) {
             return new DiscountSnapshot(

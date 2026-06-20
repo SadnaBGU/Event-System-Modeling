@@ -182,16 +182,8 @@ public class PurchasePolicy {
         return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName, PolicyScope.clearScope(), policies);
     }
 
-    public static PurchasePolicy allowAll(PurchasePolicyId id, CompanyId companyId, String policyName) {
-        return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(), AlwaysTruePolicy.INSTANCE);
-    }
-
     public static PurchasePolicy newAllowAllPolicy(CompanyId companyId, String policyName) {
         return PurchasePolicy.emptyScope(companyId, policyName, AlwaysTruePolicy.INSTANCE);
-    }
-
-    public static PurchasePolicy notAllowed(PurchasePolicyId id, CompanyId companyId, String policyName) {
-        return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(), NeverAllowPolicy.INSTANCE);
     }
 
     public static PurchasePolicy newNeverAllowedPolicy(CompanyId companyId, String policyName) {
@@ -241,7 +233,7 @@ public class PurchasePolicy {
     }
 
     public boolean isActiveForEvent(EventId eventId) {
-        return scope.isListedIn(eventId);
+        return scope.appliesTo(eventId);
     }
 
     public boolean isSingleEventPolicy() {
@@ -258,6 +250,16 @@ public class PurchasePolicy {
 
     public boolean isEventPolicy() {
         return ownerType == PolicyOwnerType.EVENT;
+    }
+
+    public boolean appliesTo(PurchaseContext context) {
+        Objects.requireNonNull(context, "context must not be null");
+
+        if (!companyId.equals(context.companyId())) {
+            return false;
+        }
+
+        return scope.appliesTo(context.eventId());
     }
 
     private void requireMutableScope() {

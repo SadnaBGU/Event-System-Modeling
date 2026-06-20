@@ -231,7 +231,7 @@ class DiscountApplicationServiceTest {
                                 new Discount("Company discount", BigDecimal.TEN, AlwaysTruePolicy.INSTANCE));
                 companyPolicy.activate();
 
-                when(discountPolicyRepository.findActive()).thenReturn(List.of(eventPolicy, companyPolicy));
+                when(discountPolicyRepository.findAllActive()).thenReturn(List.of(eventPolicy, companyPolicy));
                 when(eventManagementPort.allEventsOfCompany(COMPANY_ID)).thenReturn(List.of(OTHER_EVENT_ID));
 
                 Set<EventId> result = service.getAllActiveDiscountEvents();
@@ -297,7 +297,7 @@ class DiscountApplicationServiceTest {
                                 EVENT_ID,
                                 new Discount("Visible 10", BigDecimal.TEN, AlwaysTruePolicy.INSTANCE));
 
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(policy));
+                when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of(policy));
 
                 assertThat(service.findApplicableToPurchase(EVENT_ID)).containsExactly(policy);
         }
@@ -342,7 +342,7 @@ class DiscountApplicationServiceTest {
         void applyDiscount_whenNoLegacyPolicies_shouldReturnNoDiscountSnapshot() {
                 Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
 
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
+                when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of());
 
                 DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
 
@@ -363,7 +363,7 @@ class DiscountApplicationServiceTest {
                                 EVENT_ID,
                                 Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20), null));
 
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID))
+                when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of(tenPercent, twentyPercent));
 
                 DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
@@ -381,7 +381,7 @@ class DiscountApplicationServiceTest {
                                 EVENT_ID,
                                 new Discount("Secret coupon", BigDecimal.valueOf(30), new CodePolicy("SAVE30")));
 
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID))
+                when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of(couponPolicy));
 
                 DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), "WRONG", baseTotal);

@@ -12,24 +12,20 @@ public interface IPurchasePolicyRepository {
 
     List<PurchasePolicy> findByCompanyId(CompanyId companyId);
 
-    List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId);
-
-    List<PurchasePolicy> findApplicableToEvent(EventId eventId);
-
-    List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId);
-
-    List<PurchasePolicy> findSpecificForEvent(EventId eventId);
-
-    List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
-
+    List<PurchasePolicy> findByEventId(EventId eventId);
+    
     List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId);
 
     List<PurchasePolicy> findEventOwnedPolicy(EventId eventId);
+
+    List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId);
+
+    List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
 
     void save(PurchasePolicy discountPolicy);
 
     void deleteById(PurchasePolicyId policyId);
 
     boolean existsById(PurchasePolicyId policyId);
-    
+
 }
