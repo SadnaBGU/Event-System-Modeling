@@ -51,7 +51,7 @@ public interface IPolicyManagementPort {
 
     void createNotAllowedPurchasePolicy(MemberId actorId, CompanyId companyId, EventId eventId );
 
-    boolean doesHaveActivePurchasePolicy(EventId eventId, CompanyId companyId);
+    boolean isAffectedByActivePurchasePolicy(EventId eventId, CompanyId companyId);
 
     // ---------------------------------------------------------------------
     // Discount policy management
