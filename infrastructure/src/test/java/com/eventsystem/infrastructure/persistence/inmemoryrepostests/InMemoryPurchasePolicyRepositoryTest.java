@@ -34,7 +34,7 @@ class InMemoryPurchasePolicyRepositoryTest {
     // TST-06 / PP-03: purchase policies may be company-wide or event-specific.
     @Test
     void save_thenFindById_andExistsById_work() {
-        PurchasePolicy policy = eventScopedPolicy(companyId, eventId);
+        PurchasePolicy policy = eventOwnedPolicy(companyId, eventId);
 
         repository.save(policy);
 
@@ -52,73 +52,94 @@ class InMemoryPurchasePolicyRepositoryTest {
 
     @Test
     void findByCompanyId_returnsOnlyPoliciesOfThatCompany() {
-        PurchasePolicy companyEventPolicy = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy companyWidePolicy = companyWidePolicy(companyId);
-        PurchasePolicy otherCompanyPolicy = eventScopedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy companyOwnedEvent = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy companyWide = companyOwnedCompanyWidePolicy(companyId);
+        PurchasePolicy eventOwned = eventOwnedPolicy(companyId, eventId);
+        PurchasePolicy otherCompany = eventOwnedPolicy(CompanyId.random(), eventId);
 
-        repository.save(companyEventPolicy);
-        repository.save(companyWidePolicy);
-        repository.save(otherCompanyPolicy);
+        repository.save(companyOwnedEvent);
+        repository.save(companyWide);
+        repository.save(eventOwned);
+        repository.save(otherCompany);
 
         List<PurchasePolicy> found = repository.findByCompanyId(companyId);
 
-        assertThat(found).containsExactlyInAnyOrder(companyEventPolicy, companyWidePolicy);
+        assertThat(found)
+                .containsExactlyInAnyOrder(companyOwnedEvent, companyWide, eventOwned)
+                .doesNotContain(otherCompany);
     }
 
     @Test
     void findActiveByCompanyId_returnsOnlyScopedPoliciesOfThatCompany() {
-        PurchasePolicy active = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy inactive = inactivePolicy(companyId);
-        PurchasePolicy otherCompanyActive = eventScopedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy companyOwnedActive = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy eventOwnedActive = eventOwnedPolicy(companyId, eventId);
+        PurchasePolicy inactive = inactiveCompanyOwnedPolicy(companyId);
+        PurchasePolicy otherCompanyActive = eventOwnedPolicy(CompanyId.random(), eventId);
 
-        repository.save(active);
+        repository.save(companyOwnedActive);
+        repository.save(eventOwnedActive);
         repository.save(inactive);
         repository.save(otherCompanyActive);
 
         List<PurchasePolicy> found = repository.findActiveByCompanyId(companyId);
 
-        assertThat(found).containsExactly(active);
+        assertThat(found)
+                .containsExactlyInAnyOrder(companyOwnedActive, eventOwnedActive)
+                .doesNotContain(inactive, otherCompanyActive);
     }
 
     @Test
-    void findApplicableToEvent_includesCompanyWideAndMatchingEventPoliciesOnly() {
-        PurchasePolicy eventPolicy = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy companyWidePolicy = companyWidePolicy(companyId);
-        PurchasePolicy wrongEventPolicy = eventScopedPolicy(companyId, EventId.random());
-        PurchasePolicy inactive = inactivePolicy(companyId);
+    void findByEventId_returnsPoliciesListedForEventRegardlessOfOwnerOrActiveState() {
+        PurchasePolicy companyOwnedEvent = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy eventOwned = eventOwnedPolicy(companyId, eventId);
+        PurchasePolicy inactiveListed = PurchasePolicy.companyPolicy(
+                companyId,
+                "Inactive listed",
+                PolicyScope.forSingleEvent(eventId),
+                new MaxTicketPolicy(4));
+        PurchasePolicy companyWide = companyOwnedCompanyWidePolicy(companyId);
+        PurchasePolicy wrongEvent = companyOwnedEventPolicy(companyId, EventId.random());
 
-        repository.save(eventPolicy);
-        repository.save(companyWidePolicy);
-        repository.save(wrongEventPolicy);
-        repository.save(inactive);
+        repository.save(companyOwnedEvent);
+        repository.save(eventOwned);
+        repository.save(inactiveListed);
+        repository.save(companyWide);
+        repository.save(wrongEvent);
 
-        List<PurchasePolicy> found = repository.findApplicableToEvent(eventId);
+        List<PurchasePolicy> found = repository.findByEventId(eventId);
 
-        assertThat(found).containsExactlyInAnyOrder(eventPolicy, companyWidePolicy);
+        assertThat(found)
+                .containsExactlyInAnyOrder(companyOwnedEvent, eventOwned, inactiveListed)
+                .doesNotContain(companyWide, wrongEvent);
     }
 
     @Test
     void findApplicableToPurchase_filtersByActiveScopeCompanyAndEvent() {
-        PurchasePolicy match = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy companyWideMatch = companyWidePolicy(companyId);
-        PurchasePolicy wrongEvent = eventScopedPolicy(companyId, EventId.random());
-        PurchasePolicy wrongCompanySameEvent = eventScopedPolicy(CompanyId.random(), eventId);
-        PurchasePolicy inactive = inactivePolicy(companyId);
+        PurchasePolicy companyOwnedEventMatch = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy companyWideMatch = companyOwnedCompanyWidePolicy(companyId);
+        PurchasePolicy eventOwnedMatch = eventOwnedPolicy(companyId, eventId);
 
-        repository.save(match);
+        PurchasePolicy wrongEvent = companyOwnedEventPolicy(companyId, EventId.random());
+        PurchasePolicy wrongCompanySameEvent = eventOwnedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy inactive = inactiveCompanyOwnedPolicy(companyId);
+
+        repository.save(companyOwnedEventMatch);
         repository.save(companyWideMatch);
+        repository.save(eventOwnedMatch);
         repository.save(wrongEvent);
         repository.save(wrongCompanySameEvent);
         repository.save(inactive);
 
         List<PurchasePolicy> found = repository.findApplicableToPurchase(companyId, eventId);
 
-        assertThat(found).containsExactlyInAnyOrder(match, companyWideMatch);
+        assertThat(found)
+                .containsExactlyInAnyOrder(companyOwnedEventMatch, companyWideMatch, eventOwnedMatch)
+                .doesNotContain(wrongEvent, wrongCompanySameEvent, inactive);
     }
 
     @Test
     void deleteById_removesPolicy() {
-        PurchasePolicy policy = eventScopedPolicy(companyId, eventId);
+        PurchasePolicy policy = eventOwnedPolicy(companyId, eventId);
         repository.save(policy);
 
         repository.deleteById(policy.id());
@@ -127,60 +148,50 @@ class InMemoryPurchasePolicyRepositoryTest {
         assertThat(repository.existsById(policy.id())).isFalse();
     }
 
-    // PP-02 / PRD-03 / UC16:
-    // Repository can query policies scoped exactly to one event for a company,
-    // excluding company-wide and multi-event policies.
     @Test
-    void findSingleEventPolicies_returnsOnlySingleEventPoliciesOfCompany() {
-        EventId secondEventId = EventId.random();
+    void findCompanyOwnedPolicies_returnsOnlyCompanyOwnedPoliciesOfCompany() {
+        PurchasePolicy companyOwnedEvent = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy companyWide = companyOwnedCompanyWidePolicy(companyId);
+        PurchasePolicy inactiveCompanyOwned = inactiveCompanyOwnedPolicy(companyId);
 
-        PurchasePolicy singleEvent = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy anotherSingleEvent = eventScopedPolicy(companyId, secondEventId);
-        PurchasePolicy multiEvent = multiEventPolicy(companyId, eventId, secondEventId);
-        PurchasePolicy companyWide = companyWidePolicy(companyId);
-        PurchasePolicy otherCompanySingleEvent = eventScopedPolicy(CompanyId.random(), eventId);
-        PurchasePolicy inactive = inactivePolicy(companyId);
+        PurchasePolicy eventOwned = eventOwnedPolicy(companyId, eventId);
+        PurchasePolicy otherCompanyOwned = companyOwnedEventPolicy(CompanyId.random(), eventId);
 
-        repository.save(singleEvent);
-        repository.save(anotherSingleEvent);
-        repository.save(multiEvent);
+        repository.save(companyOwnedEvent);
         repository.save(companyWide);
-        repository.save(otherCompanySingleEvent);
-        repository.save(inactive);
+        repository.save(inactiveCompanyOwned);
+        repository.save(eventOwned);
+        repository.save(otherCompanyOwned);
 
-        List<PurchasePolicy> found = repository.findSingleEventPolicies(companyId);
+        List<PurchasePolicy> found = repository.findCompanyOwnedPolicies(companyId);
 
         assertThat(found)
-                .containsExactlyInAnyOrder(singleEvent, anotherSingleEvent)
-                .doesNotContain(multiEvent, companyWide, otherCompanySingleEvent, inactive);
+                .containsExactlyInAnyOrder(companyOwnedEvent, companyWide, inactiveCompanyOwned)
+                .doesNotContain(eventOwned, otherCompanyOwned);
     }
 
-    // PP-02 / PRD-03 / UC16:
-    // Repository can query policies scoped specifically and only to one event,
-    // excluding company-wide and multi-event policies that also apply to the event.
     @Test
-    void findSpecificForEvent_returnsOnlyPoliciesScopedExactlyToThatEvent() {
-        EventId secondEventId = EventId.random();
+    void findEventOwnedPolicy_returnsOnlyEventOwnedPoliciesForEvent() {
+        EventId otherEventId = EventId.random();
 
-        PurchasePolicy singleEvent = eventScopedPolicy(companyId, eventId);
-        PurchasePolicy otherCompanySingleEvent = eventScopedPolicy(CompanyId.random(), eventId);
-        PurchasePolicy multiEvent = multiEventPolicy(companyId, eventId, secondEventId);
-        PurchasePolicy companyWide = companyWidePolicy(companyId);
-        PurchasePolicy wrongSingleEvent = eventScopedPolicy(companyId, secondEventId);
-        PurchasePolicy inactive = inactivePolicy(companyId);
+        PurchasePolicy eventOwned = eventOwnedPolicy(companyId, eventId);
+        PurchasePolicy eventOwnedOtherCompany = eventOwnedPolicy(CompanyId.random(), eventId);
+        PurchasePolicy eventOwnedOtherEvent = eventOwnedPolicy(companyId, otherEventId);
 
-        repository.save(singleEvent);
-        repository.save(otherCompanySingleEvent);
-        repository.save(multiEvent);
+        PurchasePolicy companyOwnedSingleEvent = companyOwnedEventPolicy(companyId, eventId);
+        PurchasePolicy companyWide = companyOwnedCompanyWidePolicy(companyId);
+
+        repository.save(eventOwned);
+        repository.save(eventOwnedOtherCompany);
+        repository.save(eventOwnedOtherEvent);
+        repository.save(companyOwnedSingleEvent);
         repository.save(companyWide);
-        repository.save(wrongSingleEvent);
-        repository.save(inactive);
 
-        List<PurchasePolicy> found = repository.findSpecificForEvent(eventId);
+        List<PurchasePolicy> found = repository.findEventOwnedPolicy(eventId);
 
         assertThat(found)
-                .containsExactlyInAnyOrder(singleEvent, otherCompanySingleEvent)
-                .doesNotContain(multiEvent, companyWide, wrongSingleEvent, inactive);
+                .containsExactlyInAnyOrder(eventOwned, eventOwnedOtherCompany)
+                .doesNotContain(eventOwnedOtherEvent, companyOwnedSingleEvent, companyWide);
     }
 
     @Test
@@ -188,44 +199,56 @@ class InMemoryPurchasePolicyRepositoryTest {
         assertThatThrownBy(() -> repository.findById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findByCompanyId(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.findActiveByCompanyId(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToEvent(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null))
-                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(null, eventId)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findApplicableToPurchase(companyId, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findCompanyOwnedPolicies(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findEventOwnedPolicy(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.findByEventId(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.save(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.deleteById(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> repository.existsById(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findSingleEventPolicies(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> repository.findSpecificForEvent(null)).isInstanceOf(NullPointerException.class);
     }
 
-    private static PurchasePolicy inactivePolicy(CompanyId companyId) {
-        return PurchasePolicy.newAllowAllPolicy(companyId, "Allow all");
-    }
-
-    private static PurchasePolicy eventScopedPolicy(CompanyId companyId, EventId eventId) {
-        PurchasePolicy policy = inactivePolicy(companyId);
-        policy.activateForEvent(eventId);
-        return policy;
-    }
-
-    private static PurchasePolicy companyWidePolicy(CompanyId companyId) {
-        PurchasePolicy policy = inactivePolicy(companyId);
-        policy.setCompanyWide();
-        return policy;
-    }
-
-    private static PurchasePolicy multiEventPolicy(
-            CompanyId companyId,
-            EventId firstEventId,
-            EventId secondEventId) {
-        return new PurchasePolicy(
-                PurchasePolicyId.random(),
+    private static PurchasePolicy inactiveCompanyOwnedPolicy(CompanyId companyId) {
+        return PurchasePolicy.companyPolicy(
                 companyId,
-                "Multi event max tickets",
-                PolicyScope.forEvents(Set.of(firstEventId, secondEventId)),
+                "Inactive company policy",
+                PolicyScope.clearScope(),
                 new MaxTicketPolicy(4));
     }
 
+    private static PurchasePolicy companyOwnedEventPolicy(CompanyId companyId, EventId eventId) {
+        return PurchasePolicy.companyPolicy(
+                companyId,
+                "Company-owned event policy",
+                PolicyScope.forSingleEvent(eventId),
+                new MaxTicketPolicy(4));
+    }
+
+    private static PurchasePolicy companyOwnedCompanyWidePolicy(CompanyId companyId) {
+        return PurchasePolicy.companyPolicy(
+                companyId,
+                "Company-wide policy",
+                PolicyScope.companyWideScope(),
+                new MaxTicketPolicy(4));
+    }
+
+    private static PurchasePolicy eventOwnedPolicy(CompanyId companyId, EventId eventId) {
+        return PurchasePolicy.eventPolicy(
+                companyId,
+                eventId,
+                "Event-owned policy",
+                new MaxTicketPolicy(4));
+    }
+
+    private static PurchasePolicy companyOwnedMultiEventPolicy(
+            CompanyId companyId,
+            EventId firstEventId,
+            EventId secondEventId) {
+        return PurchasePolicy.companyPolicy(
+                companyId,
+                "Multi-event company policy",
+                PolicyScope.forEvents(Set.of(firstEventId, secondEventId)),
+                new MaxTicketPolicy(4));
+    }
 }
