@@ -131,8 +131,8 @@ class InMemoryDiscountPolicyRepositoryTest {
 
     @Test
     void findActive_returnsEmptyListWhenNoActivePoliciesExist() {
-        DiscountPolicy inactive1 = activeEventOwnedPolicy(companyId, eventId);
-        DiscountPolicy inactive2 = activeEventOwnedPolicy(CompanyId.random(), EventId.random());
+        DiscountPolicy inactive1 = inactiveEventOwnedPolicy(companyId, eventId);
+        DiscountPolicy inactive2 = inactiveEventOwnedPolicy(CompanyId.random(), EventId.random());
 
         repository.save(inactive1);
         repository.save(inactive2);

@@ -16,7 +16,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Set;
 
 class InMemoryPurchasePolicyRepositoryTest {
 
@@ -241,14 +240,4 @@ class InMemoryPurchasePolicyRepositoryTest {
                 new MaxTicketPolicy(4));
     }
 
-    private static PurchasePolicy companyOwnedMultiEventPolicy(
-            CompanyId companyId,
-            EventId firstEventId,
-            EventId secondEventId) {
-        return PurchasePolicy.companyPolicy(
-                companyId,
-                "Multi-event company policy",
-                PolicyScope.forEvents(Set.of(firstEventId, secondEventId)),
-                new MaxTicketPolicy(4));
-    }
 }

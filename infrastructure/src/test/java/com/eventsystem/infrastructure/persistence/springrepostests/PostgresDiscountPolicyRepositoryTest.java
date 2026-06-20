@@ -48,7 +48,7 @@ class PostgresDiscountPolicyRepositoryTest extends BasePostgresTest {
 
         DiscountPolicy inactiveCompanyOwned = DiscountPolicy.companyPolicy(
                 companyId,
-                PolicyScope.clearScope(),
+                PolicyScope.companyWideScope(),
                 List.of(Discount.GeneralDiscount("Inactive company-owned", BigDecimal.valueOf(5), null)),
                 false,
                 false);
