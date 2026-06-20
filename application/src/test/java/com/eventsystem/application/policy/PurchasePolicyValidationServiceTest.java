@@ -56,6 +56,7 @@ class PurchasePolicyValidationServiceTest {
                                 purchasePolicyRepository,
                                 eventManagementPort,
                                 memberInformationPort);
+        lenient().when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
         }
 
         private PurchaseContext contextWithTickets(int ticketCount) {

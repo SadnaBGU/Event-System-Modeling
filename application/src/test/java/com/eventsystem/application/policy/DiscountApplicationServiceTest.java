@@ -296,7 +296,7 @@ class DiscountApplicationServiceTest {
                 DiscountPolicy policy = activePolicyForEvent(
                                 EVENT_ID,
                                 new Discount("Visible 10", BigDecimal.TEN, AlwaysTruePolicy.INSTANCE));
-
+                when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
                 when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of(policy));
 
                 assertThat(service.findApplicableToPurchase(EVENT_ID)).containsExactly(policy);
@@ -342,6 +342,7 @@ class DiscountApplicationServiceTest {
         void applyDiscount_whenNoLegacyPolicies_shouldReturnNoDiscountSnapshot() {
                 Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
 
+                when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
                 when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of());
 
                 DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
@@ -363,9 +364,11 @@ class DiscountApplicationServiceTest {
                                 EVENT_ID,
                                 Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20), null));
 
+                when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+                
                 when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of(tenPercent, twentyPercent));
-
+                        
                 DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
 
                 assertThat(snapshot.discountName()).contains("Twenty");
@@ -380,7 +383,8 @@ class DiscountApplicationServiceTest {
                 DiscountPolicy couponPolicy = activePolicyForEvent(
                                 EVENT_ID,
                                 new Discount("Secret coupon", BigDecimal.valueOf(30), new CodePolicy("SAVE30")));
-
+                                
+                when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
                 when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of(couponPolicy));
 

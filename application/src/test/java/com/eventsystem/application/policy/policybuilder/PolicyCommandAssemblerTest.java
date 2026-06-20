@@ -272,7 +272,7 @@ class PolicyCommandAssemblerTest {
 
         assertThat(scope.isCompanyWide()).isTrue();
         assertThat(scope.eventIds()).isEmpty();
-        assertThat(scope.isListedIn(EVENT_ID)).isTrue();
+        assertThat(scope.appliesTo(EVENT_ID)).isTrue();
     }
 
     // PP-03 / DP-03: Policy scope can be event-specific.
