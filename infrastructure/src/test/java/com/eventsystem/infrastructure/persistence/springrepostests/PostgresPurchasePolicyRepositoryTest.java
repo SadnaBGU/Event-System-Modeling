@@ -4,10 +4,15 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresPurchasePolicyRepository;
+
 import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -27,83 +32,171 @@ class PostgresPurchasePolicyRepositoryTest extends BasePostgresTest {
 
     @Autowired
     private PostgresPurchasePolicyRepository repository;
+
     @Autowired
     private EntityManager em;
 
     private CompanyId companyId;
     private EventId eventId;
+    private EventId otherEventId;
 
     @BeforeEach
     void setUp() {
         companyId = new CompanyId("COMP-1");
         eventId = new EventId("EV-1");
+        otherEventId = new EventId("EV-2");
 
-        // נשמור 3 סוגי פוליסות כדי לכסות את כל סינוני ה-Streams (true/false)
-        PurchasePolicy inactive = PurchasePolicy.newMaxTicketPolicy(companyId, "Inactive", 5);
-        
-        PurchasePolicy activeCompanyWide = PurchasePolicy.newMaxTicketPolicy(companyId, "Active CW", 5);
-        activeCompanyWide.setCompanyWide();
-        
-        PurchasePolicy activeEventSpecific = PurchasePolicy.newMaxTicketPolicy(companyId, "Active Event", 5);
-        activeEventSpecific.activateForEvent(eventId);
+        PurchasePolicy inactiveCompanyOwned = PurchasePolicy.companyPolicy(
+                companyId,
+                "Inactive company-owned",
+                PolicyScope.clearScope(),
+                new MaxTicketPolicy(5));
 
-        repository.save(inactive);
+        PurchasePolicy activeCompanyWide = PurchasePolicy.companyPolicy(
+                companyId,
+                "Active company-wide",
+                PolicyScope.companyWideScope(),
+                new MaxTicketPolicy(5));
+
+        PurchasePolicy activeCompanyOwnedEvent = PurchasePolicy.companyPolicy(
+                companyId,
+                "Active company-owned event",
+                PolicyScope.forSingleEvent(eventId),
+                new MaxTicketPolicy(5));
+
+        PurchasePolicy activeEventOwned = PurchasePolicy.eventPolicy(
+                companyId,
+                eventId,
+                "Active event-owned",
+                new MaxTicketPolicy(5));
+
+        PurchasePolicy otherEventOwned = PurchasePolicy.eventPolicy(
+                companyId,
+                otherEventId,
+                "Other event-owned",
+                new MaxTicketPolicy(5));
+
+        repository.save(inactiveCompanyOwned);
         repository.save(activeCompanyWide);
-        repository.save(activeEventSpecific);
-        
+        repository.save(activeCompanyOwnedEvent);
+        repository.save(activeEventOwned);
+        repository.save(otherEventOwned);
+
         em.flush();
         em.clear();
     }
 
     @Test
-    void findMethods_filterStreamsCorrectly() {
-        // findByCompanyId - אמור להחזיר את כולם (3 פוליסות)
-        List<PurchasePolicy> allCompany = repository.findByCompanyId(companyId);
-        assertThat(allCompany).hasSize(3);
+    void findMethods_filterByCompanyScopeActivityAndOwnershipCorrectly() {
+        List<PurchasePolicy> allCompanyPolicies = repository.findByCompanyId(companyId);
 
-        // findActiveByCompanyId - מסנן את הלא-פעילים (אמור להחזיר 2)
-        List<PurchasePolicy> activeOnly = repository.findActiveByCompanyId(companyId);
-        assertThat(activeOnly).hasSize(2).allMatch(PurchasePolicy::isActive);
+        assertThat(allCompanyPolicies).hasSize(5);
 
-        // findApplicableToEvent - מחזיר את הכלל חברתי ואת הספציפי לאירוע (2)
-        List<PurchasePolicy> applicableToEv1 = repository.findApplicableToEvent(eventId);
-        assertThat(applicableToEv1).hasSize(2);
-        
-        // findApplicableToEvent לאירוע אחר - יחזיר רק את הכלל חברתי (1)
-        List<PurchasePolicy> applicableToEv2 = repository.findApplicableToEvent(new EventId("EV-2"));
-        assertThat(applicableToEv2).hasSize(1);
+        assertThat(repository.findActiveByCompanyId(companyId))
+                .hasSize(4)
+                .allMatch(PurchasePolicy::isActive);
 
-        // findApplicableToPurchase - מחזיר את הכלל חברתי ואת הספציפי לאירוע השייכים לחברה
-        List<PurchasePolicy> applicablePurchase = repository.findApplicableToPurchase(companyId, eventId);
-        assertThat(applicablePurchase).hasSize(2);
+        assertThat(repository.findApplicableToPurchase(companyId, eventId))
+                .hasSize(3)
+                .allMatch(PurchasePolicy::isActive)
+                .allSatisfy(policy -> assertThat(policy.scope().appliesTo(eventId)).isTrue());
 
-        // findSingleEventPolicies - מחזיר רק את הספציפי לאירוע בודד
-        List<PurchasePolicy> singleEvent = repository.findSingleEventPolicies(companyId);
-        assertThat(singleEvent).hasSize(1);
-        assertThat(singleEvent.get(0).policyName()).isEqualTo("Active Event");
+        assertThat(repository.findApplicableToPurchase(companyId, otherEventId))
+                .hasSize(2)
+                .allMatch(PurchasePolicy::isActive)
+                .allSatisfy(policy -> assertThat(policy.scope().appliesTo(otherEventId)).isTrue());
 
-        // findSpecificForEvent - מחזיר רק את הפוליסה הספציפית לאירוע הזה (לא את הכלל חברתי)
-        List<PurchasePolicy> specificEvent = repository.findSpecificForEvent(eventId);
-        assertThat(specificEvent).hasSize(1);
+        assertThat(repository.findCompanyOwnedPolicies(companyId))
+                .hasSize(3)
+                .allMatch(PurchasePolicy::isCompanyPolicy);
+
+        assertThat(repository.findEventOwnedPolicy(eventId))
+                .hasSize(1)
+                .allMatch(PurchasePolicy::isEventPolicy)
+                .allSatisfy(policy -> assertThat(policy.scope().isListedIn(eventId)).isTrue());
+
+        assertThat(repository.findByEventId(eventId))
+                .hasSize(2)
+                .allSatisfy(policy -> assertThat(policy.scope().isListedIn(eventId)).isTrue());
+    }
+
+    @Test
+    void findApplicableToPurchase_shouldNotReturnInactivePolicies() {
+        List<PurchasePolicy> applicable = repository.findApplicableToPurchase(companyId, eventId);
+
+        assertThat(applicable)
+                .extracting(PurchasePolicy::policyName)
+                .containsExactlyInAnyOrder(
+                        "Active company-wide",
+                        "Active company-owned event",
+                        "Active event-owned")
+                .doesNotContain("Inactive company-owned");
+    }
+
+    @Test
+    void findCompanyOwnedPolicies_shouldIncludeInactiveCompanyOwnedAndExcludeEventOwned() {
+        List<PurchasePolicy> companyOwned = repository.findCompanyOwnedPolicies(companyId);
+
+        assertThat(companyOwned)
+                .extracting(PurchasePolicy::policyName)
+                .containsExactlyInAnyOrder(
+                        "Inactive company-owned",
+                        "Active company-wide",
+                        "Active company-owned event")
+                .doesNotContain(
+                        "Active event-owned",
+                        "Other event-owned");
+
+        assertThat(companyOwned).allMatch(PurchasePolicy::isCompanyPolicy);
+    }
+
+    @Test
+    void findEventOwnedPolicy_shouldReturnOnlyEventOwnedPoliciesForThatEvent() {
+        List<PurchasePolicy> eventOwned = repository.findEventOwnedPolicy(eventId);
+
+        assertThat(eventOwned)
+                .extracting(PurchasePolicy::policyName)
+                .containsExactly("Active event-owned");
+
+        assertThat(eventOwned).allMatch(PurchasePolicy::isEventPolicy);
+        assertThat(eventOwned).allSatisfy(policy ->
+                assertThat(policy.scope().isListedIn(eventId)).isTrue());
+    }
+
+    @Test
+    void findByEventId_shouldReturnAllPoliciesExplicitlyListedForEventRegardlessOfOwnership() {
+        List<PurchasePolicy> eventPolicies = repository.findByEventId(eventId);
+
+        assertThat(eventPolicies)
+                .extracting(PurchasePolicy::policyName)
+                .containsExactlyInAnyOrder(
+                        "Active company-owned event",
+                        "Active event-owned")
+                .doesNotContain(
+                        "Active company-wide",
+                        "Inactive company-owned",
+                        "Other event-owned");
     }
 
     @Test
     void crudOperations_workCorrectly() {
         PurchasePolicyId id = repository.findByCompanyId(companyId).get(0).id();
-        
+
         assertThat(repository.findById(id)).isPresent();
         assertThat(repository.existsById(id)).isTrue();
-        
+
         repository.deleteById(id);
+
         em.flush();
         em.clear();
-        
+
         assertThat(repository.findById(id)).isEmpty();
         assertThat(repository.existsById(id)).isFalse();
     }
 
     @Test
     void save_null_throwsException() {
-        assertThatThrownBy(() -> repository.save(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> repository.save(null))
+                .isInstanceOf(NullPointerException.class);
     }
 }

@@ -31,17 +31,7 @@ public interface IPurchasePolicyValidationPort {
 
     PurchaseContext createPurchaseContext(EventId eventId, BuyerReference buyerRef, List<OrderItem> items);
 
-    /**
-     * Temporary compatibility method for the existing purchase/order flow.
-     *
-     * <p>New code should use {@link #validatePurchasePolicyFor(PurchaseContext)}
-     * or {@link #evaluatePurchasePolicyFor(PurchaseContext)} instead.</p>
-     *
-     * @deprecated use {@link #validatePurchasePolicyFor(PurchaseContext)}
-     * or {@link #evaluatePurchasePolicyFor(PurchaseContext)} instead.
-     */
-    @Deprecated
-    boolean validatePurchasePolicy(String eventId, BuyerReference buyer, List<OrderItem> items);
+
 
 
 }

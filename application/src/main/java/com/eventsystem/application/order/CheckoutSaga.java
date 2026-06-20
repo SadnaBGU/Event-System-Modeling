@@ -14,6 +14,7 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderItem;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.BuyerSnapshot;
@@ -132,7 +133,8 @@ public class CheckoutSaga {
         DiscountSnapshot discount;
         try {
             Money baseTotal = order.calculateBaseTotal();
-            discount = discountPort.generateDiscountSnapshot(context.withCode(discountCode), baseTotal);
+            DiscountSummary summ = discountPort.calculateDiscountSummary(context.withCode(discountCode), baseTotal);
+            discount = discountPort.discountSnapshotFromSummary(summ, baseTotal);
             finalAmount = baseTotal.subtract(discount.discountAmount());
         } catch (Exception e) {
             logger.error("Error during discount application: {}", e.getMessage());
