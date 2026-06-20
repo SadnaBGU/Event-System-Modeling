@@ -120,7 +120,7 @@ class DiscountPolicyTest {
 
         @Test
         void eventSpecificDiscountAppliesOnlyToActivatedEvent_UAT45() {
-                DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
                 policy.addDiscount(GeneralNoExpiryDiscount("Event only", BigDecimal.valueOf(10)));
 
                 assertDoesNotThrow(() -> {
@@ -485,7 +485,7 @@ class DiscountPolicyTest {
 
         @Test
         void activate_whenNoDiscounts_throwsDiscountPolicyException() {
-                DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
 
                 assertThatThrownBy(policy::activate)
                                 .isInstanceOf(DiscountPolicyException.class)
@@ -601,7 +601,7 @@ class DiscountPolicyTest {
 
         @Test
         void clearAllEventsFromScopeDeactivatesEventOnlyPolicy() {
-                DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, EVENT_ID);
+                DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
                 policy.addDiscount(GeneralNoExpiryDiscount("Event only", BigDecimal.valueOf(12)));
                 policy.activate();
 
@@ -1105,7 +1105,7 @@ class DiscountPolicyTest {
         // identity/scope.
         @Test
         void withDiscounts_shouldReturnNewPolicyWithAddedDiscountsWithoutMutatingOriginal() {
-                DiscountPolicy original = DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, EVENT_ID);
+                DiscountPolicy original = DiscountPolicy.inactiveEventPolicy(COMPANY_ID, EVENT_ID);
                 Discount discount = Discount.GeneralDiscount("Visible", BigDecimal.TEN, null);
 
                 DiscountPolicy updated = DiscountPolicy.withDiscounts(original, List.of(discount));
@@ -1139,7 +1139,7 @@ class DiscountPolicyTest {
         }
 
         private static DiscountPolicy eventPolicy(EventId eventId) {
-                return DiscountPolicy.inactiveForSingleEvent(COMPANY_ID, eventId);
+                return DiscountPolicy.inactiveEventPolicy(COMPANY_ID, eventId);
         }
 
         private static DiscountPolicy activeEventPolicy(EventId eventId) {

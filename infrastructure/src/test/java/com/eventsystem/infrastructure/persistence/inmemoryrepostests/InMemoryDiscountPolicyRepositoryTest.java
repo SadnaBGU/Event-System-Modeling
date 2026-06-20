@@ -288,11 +288,11 @@ class InMemoryDiscountPolicyRepositoryTest {
     }
 
     private static DiscountPolicy inactivePolicyForEvent(CompanyId companyId, EventId eventId) {
-        return DiscountPolicy.inactiveForSingleEvent(companyId, eventId);
+        return DiscountPolicy.inactiveEventPolicy(companyId, eventId);
     }
 
     private static DiscountPolicy activePolicyForEvent(CompanyId companyId, EventId eventId) {
-        DiscountPolicy policy = DiscountPolicy.inactiveForSingleEvent(companyId, eventId);
+        DiscountPolicy policy = DiscountPolicy.inactiveEventPolicy(companyId, eventId);
         policy.addDiscount(mock(Discount.class));
         policy.activate();
         return policy;

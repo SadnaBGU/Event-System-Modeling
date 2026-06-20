@@ -888,6 +888,21 @@ class ApplicationAcceptanceFixture {
         public boolean existsById(PurchasePolicyId policyId) {
             return byId.containsKey(policyId);
         }
+
+                @Override
+        public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+            return findByCompanyId(companyId).stream()
+                    .filter(PurchasePolicy::isCompanyPolicy)
+                    .toList();
+        }
+
+        @Override
+        public List<PurchasePolicy> findEventOwnedPolicy(EventId eventId) {
+            return byId.values().stream()
+                    .filter(policy -> policy.scope().isListedIn(eventId))
+                    .filter(PurchasePolicy::isEventPolicy)
+                    .toList();
+        }
     }
 
     static final class FakeDiscountPolicyRepository implements IDiscountPolicyRepository {
@@ -930,7 +945,7 @@ class ApplicationAcceptanceFixture {
         public List<DiscountPolicy> findApplicableToEvent(EventId eventId) {
             return byId.values().stream()
                     .filter(DiscountPolicy::isActive)
-                    .filter(policy -> policy.scope().appliesTo(eventId))
+                    .filter(policy -> policy.scope().isListedIn(eventId))
                     .toList();
         }
 
@@ -938,7 +953,7 @@ class ApplicationAcceptanceFixture {
         public List<DiscountPolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
             return findByCompanyId(companyId).stream()
                     .filter(DiscountPolicy::isActive)
-                    .filter(policy -> policy.scope().appliesTo(eventId))
+                    .filter(policy -> policy.scope().isListedIn(eventId))
                     .toList();
         }
 
@@ -969,6 +984,21 @@ class ApplicationAcceptanceFixture {
         @Override
         public boolean existsById(DiscountPolicyId policyId) {
             return byId.containsKey(policyId);
+        }
+
+        @Override
+        public List<DiscountPolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+            return findByCompanyId(companyId).stream()
+                    .filter(DiscountPolicy::isCompanyPolicy)
+                    .toList();
+        }
+
+        @Override
+        public List<DiscountPolicy> findEventOwnedPolicy(EventId eventId) {
+            return byId.values().stream()
+                    .filter(policy -> policy.scope().isListedIn(eventId))
+                    .filter(DiscountPolicy::isEventPolicy)
+                    .toList();
         }
     }
 }

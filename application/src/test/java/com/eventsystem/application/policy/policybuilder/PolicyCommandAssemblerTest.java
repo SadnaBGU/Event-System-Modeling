@@ -272,7 +272,7 @@ class PolicyCommandAssemblerTest {
 
         assertThat(scope.isCompanyWide()).isTrue();
         assertThat(scope.eventIds()).isEmpty();
-        assertThat(scope.appliesTo(EVENT_ID)).isTrue();
+        assertThat(scope.isListedIn(EVENT_ID)).isTrue();
     }
 
     // PP-03 / DP-03: Policy scope can be event-specific.
@@ -282,8 +282,8 @@ class PolicyCommandAssemblerTest {
 
         assertThat(scope.isCompanyWide()).isFalse();
         assertThat(scope.eventIds()).containsExactlyInAnyOrder(new EventId("event-1"), new EventId("event-2"));
-        assertThat(scope.appliesTo(new EventId("event-1"))).isTrue();
-        assertThat(scope.appliesTo(new EventId("event-3"))).isFalse();
+        assertThat(scope.isListedIn(new EventId("event-1"))).isTrue();
+        assertThat(scope.isListedIn(new EventId("event-3"))).isFalse();
     }
 
     // DP-04: Simple discount can have no extra predicate beyond scope/activation.

@@ -51,7 +51,7 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
         return policiesById.values()
                 .stream()
                 .filter(PurchasePolicy::isActive)
-                .filter(policy -> policy.scope().appliesTo(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId))
                 .toList();
     }
 
@@ -64,7 +64,7 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .stream()
                 .filter(PurchasePolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
-                .filter(policy -> policy.scope().appliesTo(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId))
                 .toList();
     }
 
@@ -104,8 +104,29 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
         Objects.requireNonNull(eventId, "eventId must not be null");
         return policiesById.values()
                 .stream()
-                .filter(policy -> policy.scope().appliesTo(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId))
                 .filter(policy -> policy.scope().isForSingleEvent())
+                .toList();
+    }
+
+    
+    @Override
+    public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+        Objects.requireNonNull(companyId, "companyId must not be null");
+        return policiesById.values()
+                .stream()
+                .filter(policy -> policy.companyId().equals(companyId))
+                .filter(policy -> policy.isCompanyPolicy())
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findEventOwnedPolicy(EventId eventId) {
+        Objects.requireNonNull(eventId, "companyId must not be null");
+        return policiesById.values()
+                .stream()
+                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.isEventPolicy())
                 .toList();
     }
 }

@@ -53,6 +53,37 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
+    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId).stream()
+                .filter(PurchasePolicy::isSingleEventPolicy)
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
+        return jpaRepository.findAll().stream()
+                .filter(policy -> policy.isSpecificFor(eventId))
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId)
+                .stream()
+                .filter(policy -> policy.companyId().equals(companyId))
+                .filter(policy -> policy.isCompanyPolicy())
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findEventOwnedPolicy(EventId eventId) {
+        return jpaRepository.findAll().stream()
+                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.isEventPolicy())
+                .toList();
+    }
+
+    @Override
     public void save(PurchasePolicy purchasePolicy) {
         Objects.requireNonNull(purchasePolicy, "purchasePolicy must not be null");
         jpaRepository.save(purchasePolicy);
@@ -70,17 +101,4 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
         return jpaRepository.existsById(policyId);
     }
 
-    @Override
-    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(PurchasePolicy::isSingleEventPolicy)
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-        return jpaRepository.findAll().stream()
-                .filter(policy -> policy.isSpecificFor(eventId))
-                .toList();
-    }
 }

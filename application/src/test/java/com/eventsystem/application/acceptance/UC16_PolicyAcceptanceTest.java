@@ -4,6 +4,7 @@ import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.order.CheckoutResult;
 import com.eventsystem.application.policy.policybuilder.DiscountCommand;
 import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyOwnerCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
@@ -58,7 +59,8 @@ class UC16_PolicyAcceptanceTest {
                 "Max " + max + " tickets",
                 eventScope(eventId.value()),
                 maxTickets(max),
-                true);
+                true,
+        PolicyOwnerCommand.EVENT );
     }
 
     private static DiscountPolicyCommand couponPolicyCommand(
@@ -79,7 +81,8 @@ class UC16_PolicyAcceptanceTest {
                         "HIDDEN",
                         null)),
                 false,
-                true);
+                true,
+        PolicyOwnerCommand.COMPANY);
     }
 
     private static PolicyRuleCommand allowAllRule() {
@@ -125,7 +128,8 @@ class UC16_PolicyAcceptanceTest {
                                 "VISIBLE",
                                 null)),
                 true,
-                true);
+                true,
+                PolicyOwnerCommand.EVENT);
     }
 
     // REQ: PP-04, PP-07, PRD-03
@@ -287,7 +291,8 @@ class UC16_PolicyAcceptanceTest {
                         "VISIBLE",
                         null)),
                 false,
-                true);
+                true, 
+        PolicyOwnerCommand.EVENT);
 
         assertThatThrownBy(() -> app.policyManagementService.createDiscountPolicy(conflictingDiscount))
                 .isInstanceOf(PolicyException.class)
@@ -321,7 +326,8 @@ class UC16_PolicyAcceptanceTest {
                 "Company max 4",
                 companyWideScope(),
                 maxTickets(4),
-                true);
+                true,
+        PolicyOwnerCommand.COMPANY);
 
         assertThatThrownBy(() -> app.policyManagementService.createPurchasePolicy(companyWidePolicy))
                 .isInstanceOf(SecurityException.class)

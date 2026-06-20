@@ -1,5 +1,6 @@
 package com.eventsystem.application.acceptance;
 
+import com.eventsystem.application.policy.policybuilder.PolicyOwnerCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
@@ -26,7 +27,8 @@ class UC17_20_RolesPermissionsAcceptanceTest {
                 "Company max 4",
                 new PolicyScopeCommand(true, Set.of()),
                 new PolicyRuleCommand("MAX_TICKETS", 4, null, null, null, null),
-                true
+                true,
+                PolicyOwnerCommand.COMPANY
         );
     }
 

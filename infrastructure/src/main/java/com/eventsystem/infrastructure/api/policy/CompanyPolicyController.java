@@ -41,7 +41,7 @@ public class CompanyPolicyController {
                                                  @PathVariable String companyId,
                                                  @RequestBody JsonNode requestBody) {
         IPolicy policy = parsePolicyTree(requestBody);
-        policyManagementService.createCompanyWidePurchasePolicy(actor, new CompanyId(companyId), "API policy", policy);
+        policyManagementService.createNewCompanyWidePurchasePolicy(actor, new CompanyId(companyId), "API policy", policy);
         return ResponseEntity.ok().build();
     }
 
@@ -50,7 +50,7 @@ public class CompanyPolicyController {
                                                @PathVariable String eventId,
                                                @RequestBody JsonNode requestBody) {
         IPolicy policy = parsePolicyTree(requestBody);
-        policyManagementService.createEventScopedPurchasePolicy(actor, new EventId(eventId), "API policy", policy);
+        policyManagementService.createNewEventOwnedPurchasePolicy(actor, new EventId(eventId), "API policy", policy);
         return ResponseEntity.ok().build();
     }
 

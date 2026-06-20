@@ -43,13 +43,13 @@ public interface IPolicyManagementPort {
 
     void deactivateAllCompanyPurchasePolicies(MemberId actorId, CompanyId companyId);
 
-    void removeEventFromAllPurchasePolicyScopes(MemberId actorId, CompanyId companyId, EventId eventId);
+    void removeEventFromAllCompanyPurchasePolicies(MemberId actorId, CompanyId companyId, EventId eventId);
 
-    void clearEventsFromAllPurchasePolicies(MemberId actorId, CompanyId companyId);
+    void clearEventsFromAllCompanyPurchasePolicies(MemberId actorId, CompanyId companyId);
 
     void createNewAllowAllPurchasePolicy(MemberId actorId, CompanyId companyId, EventId eventId );
 
-    void setNotAllowedPurchasePolicy(MemberId actorId, CompanyId companyId, EventId eventId );
+    void createNotAllowedPurchasePolicy(MemberId actorId, CompanyId companyId, EventId eventId );
 
     boolean doesHaveActivePurchasePolicy(EventId eventId, CompanyId companyId);
 
@@ -87,7 +87,6 @@ public interface IPolicyManagementPort {
 
     void deactivateAllCompanyDiscounts(MemberId actorId, CompanyId companyId);
 
-    void removeEventFromAllDiscountScopes(MemberId actorId, CompanyId companyId, EventId eventId);
+    void removeEventFromAllCompanyDiscountScopes(MemberId actorId, CompanyId companyId, EventId eventId);
 
-    void clearEventsFromAllDiscounts(MemberId actorId, CompanyId companyId);
 }

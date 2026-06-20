@@ -22,6 +22,10 @@ public interface IPurchasePolicyRepository {
 
     List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId);
 
+    List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId);
+
+    List<PurchasePolicy> findEventOwnedPolicy(EventId eventId);
+
     void save(PurchasePolicy discountPolicy);
 
     void deleteById(PurchasePolicyId policyId);
