@@ -1,0 +1,42 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Sample initial-state file (V3 §2.a.ii)
+#
+# Each non-blank, non-comment line is a single use-case invocation executed in
+# order against the APPLICATION layer. The whole file runs as ONE transaction:
+# if any line fails, nothing is persisted and the server refuses to start.
+#
+# Lines starting with '#' or '//' are comments. A trailing ';' is optional.
+# Quote an argument with "double quotes" to embed spaces or commas.
+#
+# Enable with:  INIT_ENABLED=true  INIT_STATE_FILE=config/initial-state.sample.txt
+# (or set eventsystem.init.enabled / eventsystem.init.state-file)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# 1. Register members (alias = username)
+register(rina, password123, Rina, Cohen, rina@example.com, 1990-05-20)
+register(moshe, password123, Moshe, Levi, moshe@example.com, 1988-03-15)
+
+# 2. Log a member in (needed before any owner/manager action)
+login(rina, password123)
+
+# 3. Open a production company (alias 'acme'); rina becomes founder
+open-production-company(rina, acme, "Acme Live", "Top live concerts", 4.5)
+
+# 4. Appoint moshe as a manager, then have him accept the appointment
+appoint-manager(rina, acme, moshe, EVENT_INVENTORY_MANAGEMENT|MODIFY_POLICIES)
+accept-appointment(moshe, acme)
+
+# 5. Create an event (alias 'summerfest') with one standing and one seated zone
+create-event(rina, acme, summerfest, "Summer Fest", 2026-09-01T20:00, Festival, "Tel Aviv Park", "Annual summer festival")
+create-standing-zone(rina, summerfest, ga, "General Admission", 150.00, ILS, 500)
+create-seated-zone(rina, summerfest, vip, "VIP", 450.00, ILS, A:10|B:10)
+publish-event(rina, summerfest)
+
+# 6. Define company-wide purchase & discount policies
+set-purchase-policy(rina, acme, "Max 4 per order", MAX_TICKETS, 4)
+set-discount-policy(rina, acme, "Launch 10%", "Early Bird", 10)
+
+# 7. Run a lottery for the event
+open-lottery(rina, summerfest, lottery1)
+register-lottery(moshe, lottery1)
+draw-lottery(rina, lottery1, 1)
