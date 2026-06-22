@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { eventsApi } from '../../api/endpoints/events';
 import { lotteryApi } from '../../api/endpoints/lottery';
 import { useAuthStore } from '../../auth/authStore';
+import { useCompanyPermissions } from '../../auth/useCompanyPermissions';
+import { friendlyError } from '../../lib/errors';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { getGuestSessionId } from '../../utils/sessionHelper';
 import '../../components/common.css';
@@ -22,23 +24,33 @@ export function EventDetailPage() {
     enabled: !!eventId,
   });
 
+  // What the current member may do inside the company that owns this event.
+  // Guests / plain members get canManage = false, so organiser UI stays hidden.
+  const perms = useCompanyPermissions(ev.data?.companyId);
+
+  const lotteryQ = useQuery({
+    queryKey: ['lottery', eventId],
+    queryFn: () => lotteryApi.status(eventId),
+    enabled: !!eventId,
+  });
+
   const openOrder = useMutation({
     mutationFn: async () => {
       const isMember = !!memberId;
       const payload = {
         eventId: eventId,
-        buyerType: isMember ? "MEMBER" : "GUEST",
+        buyerType: isMember ? 'MEMBER' : 'GUEST',
         sessionId: isMember ? null : getGuestSessionId(),
-        memberId: isMember ? memberId : null
+        memberId: isMember ? memberId : null,
       };
 
       const res = await fetch('/api/orders/active', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(isMember ? { 'Authorization': `Bearer ${session.token}` } : {})
+          ...(isMember ? { Authorization: `Bearer ${session.token}` } : {}),
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -48,36 +60,49 @@ export function EventDetailPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast.success('Cart opened');
       navigate(`/orders/${data.orderId}`);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       if (err.message === 'QUEUE') {
-        toast.info('האירוע עמוס, מעביר אותך לתור הווירטואלי...');
+        toast.info('This event is busy — sending you to the virtual queue.');
         navigate(`/events/${eventId}/queue`);
       } else {
-        toast.error(err.message);
+        toast.error("Couldn't open your cart. Please try again.");
       }
-    }
+    },
   });
 
   const enterLottery = useMutation({
     mutationFn: () => lotteryApi.register(eventId),
-    onSuccess: () => toast.success('Registered for the lottery'),
+    onSuccess: () => toast.success("You're entered in the lottery."),
+    onError: (err) => toast.error(friendlyError(err, "Couldn't register for the lottery.")),
+  });
+
+  const createLottery = useMutation({
+    mutationFn: () => lotteryApi.open(eventId),
+    onSuccess: () => {
+      toast.success('Lottery created.');
+      qc.invalidateQueries({ queryKey: ['lottery', eventId] });
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't create the lottery.")),
   });
 
   const publish = useMutation({
     mutationFn: () => eventsApi.publish(eventId),
     onSuccess: () => {
-      toast.success('Event published');
+      toast.success('Event published.');
       qc.invalidateQueries({ queryKey: ['event', eventId] });
       qc.invalidateQueries({ queryKey: ['events'] });
     },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't publish the event.")),
   });
 
   const [zoneName, setZoneName] = useState('');
   const [zonePrice, setZonePrice] = useState<string>('');
+  const [zoneType, setZoneType] = useState<'STANDING' | 'SEATED'>('STANDING');
   const [zoneCapacity, setZoneCapacity] = useState<string>('100');
+  const [rows, setRows] = useState<string>('5');
+  const [seatsPerRow, setSeatsPerRow] = useState<string>('10');
 
   const addZone = useMutation({
     mutationFn: () =>
@@ -85,15 +110,19 @@ export function EventDetailPage() {
         zoneName: zoneName.trim(),
         price: Number(zonePrice),
         currency: 'USD',
-        capacity: Number(zoneCapacity),
+        zoneType,
+        capacity: zoneType === 'SEATED' ? Number(rows) * Number(seatsPerRow) : Number(zoneCapacity),
+        rows: zoneType === 'SEATED' ? Number(rows) : undefined,
+        seatsPerRow: zoneType === 'SEATED' ? Number(seatsPerRow) : undefined,
       }),
     onSuccess: () => {
-      toast.success('Zone added');
+      toast.success('Zone added.');
       setZoneName('');
       setZonePrice('');
       setZoneCapacity('100');
       qc.invalidateQueries({ queryKey: ['event', eventId] });
     },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't add the zone.")),
   });
 
   if (ev.isLoading) return <p>Loading…</p>;
@@ -102,6 +131,11 @@ export function EventDetailPage() {
   const e = ev.data;
   const firstDate = e.dates[0];
   const isDraft = e.status === 'DRAFT' || e.status === 'INITIALIZED';
+  const canManage = perms.canManage;
+  const canManageInventory = perms.can('EVENT_INVENTORY_MANAGEMENT');
+  const canManagePolicies = perms.can('MODIFY_POLICIES');
+  const lotteryExists = lotteryQ.data?.exists ?? false;
+  const lotteryOpen = lotteryQ.data?.status === 'REGISTRATION_OPEN';
 
   return (
     <section>
@@ -129,21 +163,32 @@ export function EventDetailPage() {
         </div>
       ))}
 
-      {isDraft && (
+      {/* ── Organiser-only controls (hidden entirely from guests/plain members) ── */}
+      {isDraft && canManageInventory && (
         <details style={{ marginTop: '1rem' }}>
-          <summary className="meta">Add a standing zone (organiser)</summary>
+          <summary className="meta">Add a zone (organiser)</summary>
           <form
             className="form-stack"
             style={{ marginTop: '0.75rem' }}
             onSubmit={(ev2) => {
               ev2.preventDefault();
-              if (!zoneName || !zonePrice || !zoneCapacity) return;
+              if (!zoneName || !zonePrice) return;
               addZone.mutate();
             }}
           >
             <label>
+              Zone type
+              <select
+                value={zoneType}
+                onChange={(ev2) => setZoneType(ev2.target.value as 'STANDING' | 'SEATED')}
+              >
+                <option value="STANDING">Standing (general admission)</option>
+                <option value="SEATED">Seated (selectable seat map)</option>
+              </select>
+            </label>
+            <label>
               Zone name
-              <input value={zoneName} onChange={(ev2) => setZoneName(ev2.target.value)} placeholder="Floor" required />
+              <input value={zoneName} onChange={(ev2) => setZoneName(ev2.target.value)} placeholder="Floor / Section A" required />
             </label>
             <label>
               Price (USD)
@@ -156,16 +201,30 @@ export function EventDetailPage() {
                 required
               />
             </label>
-            <label>
-              Capacity
-              <input
-                type="number"
-                min={1}
-                value={zoneCapacity}
-                onChange={(ev2) => setZoneCapacity(ev2.target.value)}
-                required
-              />
-            </label>
+            {zoneType === 'STANDING' ? (
+              <label>
+                Capacity
+                <input
+                  type="number"
+                  min={1}
+                  value={zoneCapacity}
+                  onChange={(ev2) => setZoneCapacity(ev2.target.value)}
+                  required
+                />
+              </label>
+            ) : (
+              <>
+                <label>
+                  Rows
+                  <input type="number" min={1} max={26} value={rows} onChange={(ev2) => setRows(ev2.target.value)} required />
+                </label>
+                <label>
+                  Seats per row
+                  <input type="number" min={1} value={seatsPerRow} onChange={(ev2) => setSeatsPerRow(ev2.target.value)} required />
+                </label>
+                <p className="meta">{Number(rows) * Number(seatsPerRow)} seats total</p>
+              </>
+            )}
             <button type="submit" className="btn" disabled={addZone.isPending}>
               {addZone.isPending ? 'Adding…' : 'Add zone'}
             </button>
@@ -174,6 +233,7 @@ export function EventDetailPage() {
       )}
 
       <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+        {/* ── Buyer actions (everyone) ── */}
         <button
           type="button"
           className="btn success"
@@ -183,15 +243,49 @@ export function EventDetailPage() {
           {openOrder.isPending ? 'Opening…' : 'Start order'}
         </button>
         <Link to={`/events/${eventId}/queue`} className="btn ghost">Virtual queue</Link>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => enterLottery.mutate()}
-          disabled={enterLottery.isPending}
-        >
-          {enterLottery.isPending ? 'Registering…' : 'Enter lottery'}
-        </button>
-        {isDraft && (
+
+        {/* Participants can enter only when a lottery is open. */}
+        {lotteryExists && lotteryOpen && (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => {
+              if (!session) {
+                toast.info('Please sign in to enter the lottery.');
+                navigate('/login', { state: { from: `/events/${eventId}` } });
+                return;
+              }
+              enterLottery.mutate();
+            }}
+            disabled={enterLottery.isPending}
+          >
+            {enterLottery.isPending ? 'Entering…' : '🎟️ Enter lottery'}
+          </button>
+        )}
+
+        {/* ── Organiser actions (hidden from guests/plain members) ── */}
+        {canManagePolicies && (
+          <Link to={`/events/${eventId}/policies`} className="btn ghost">Edit policies</Link>
+        )}
+        {canManageInventory && (
+          <Link to={`/events/${eventId}/edit`} className="btn ghost">Edit event</Link>
+        )}
+        {canManageInventory && !lotteryExists && (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => createLottery.mutate()}
+            disabled={createLottery.isPending}
+          >
+            {createLottery.isPending ? 'Creating…' : '➕ Create lottery'}
+          </button>
+        )}
+        {canManage && lotteryExists && (
+          <span className="meta" style={{ alignSelf: 'center' }}>
+            Lottery: {lotteryQ.data?.status?.toLowerCase().replace('_', ' ')}
+          </span>
+        )}
+        {isDraft && canManageInventory && (
           <button
             type="button"
             className="btn"

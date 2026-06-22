@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ordersApi } from '../../api/endpoints/orders';
 import { eventsApi } from '../../api/endpoints/events';
+import { friendlyError } from '../../lib/errors';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { InteractiveSeatMap } from '../../components/InteractiveSeatMap';
 import '../../components/common.css';
@@ -28,18 +29,32 @@ export function OrderPage() {
   const [zoneId, setZoneId] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState('');
-  const [payment, setPayment] = useState('tok_visa_mock');
+  // WSEP expects the payment token to be JSON with card_number, month, year, holder, cvv, id.
+  const [payment, setPayment] = useState(
+    JSON.stringify({
+      card_number: '4111111111111111',
+      month: '12',
+      year: '2030',
+      holder: 'Test Buyer',
+      cvv: '123',
+      id: '123456789',
+    }),
+  );
 
   const refetchOrder = () => qc.invalidateQueries({ queryKey: ['order', orderId] });
+  const refetchSeats = () => qc.invalidateQueries({ queryKey: ['zone-seats'] });
 
   const addItem = useMutation({
     mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.addItem(orderId, item),
-    onSuccess: () => {
-      toast.success('Added to cart');
+    onSuccess: (_data, item) => {
+      const n = item.quantity ?? 1;
+      toast.success(n > 1 ? `${n} tickets added to cart` : 'Added to cart');
       refetchOrder();
+      refetchSeats();
     },
     onError: (err) => {
-      toast.error(`Failed to add item: ${(err as Error).message}`);
+      toast.error(friendlyError(err, "Couldn't add the ticket. It may already be taken."));
+      refetchSeats();
     }
   });
 
@@ -47,9 +62,10 @@ export function OrderPage() {
     mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.removeItem(orderId, item),
     onSuccess: () => {
       refetchOrder();
+      refetchSeats();
     },
     onError: (err) => {
-      toast.error(`Failed to remove item: ${(err as Error).message}`);
+      toast.error(friendlyError(err, "Couldn't remove the ticket."));
     }
   });
 
@@ -61,10 +77,13 @@ export function OrderPage() {
         discountCode: discount || undefined,
       }),
     onSuccess: () => {
-      toast.success('Checkout submitted');
+      toast.success('Purchase submitted — check your receipts.');
       qc.invalidateQueries({ queryKey: ['history'] });
       // Backend processes checkout asynchronously; bounce to receipts so the user can poll.
       navigate('/history');
+    },
+    onError: (err) => {
+      toast.error(friendlyError(err, "Checkout couldn't be completed."));
     },
   });
 
@@ -178,25 +197,56 @@ export function OrderPage() {
             }}
          />
         ) : (
-          <div className="form-stack" style={{ marginTop: '1.5rem', maxWidth: '300px' }}>
-             <p className="meta">Standing Zone choose tickets quantity (available: {selectedZone.availableCount}) </p>
+          <div className="form-stack" style={{ marginTop: '1.5rem', maxWidth: '320px' }}>
+             <p className="meta">
+               General admission — choose how many tickets to buy at once
+               (available: {selectedZone.availableCount}).
+             </p>
              <label>
-               Quantity
-               <input 
-                 type="number" 
-                 min="1" 
-                 max={selectedZone.availableCount} 
-                 value={quantity} 
-                 onChange={e => setQuantity(Number(e.target.value))} 
-               />
+               Tickets
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
+                 <button
+                   type="button"
+                   className="btn ghost"
+                   aria-label="Decrease quantity"
+                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                   disabled={quantity <= 1}
+                 >
+                   −
+                 </button>
+                 <input
+                   type="number"
+                   min={1}
+                   max={selectedZone.availableCount}
+                   value={quantity}
+                   onChange={(e) => {
+                     const n = Number(e.target.value);
+                     if (Number.isNaN(n)) return;
+                     setQuantity(Math.min(Math.max(1, n), selectedZone.availableCount));
+                   }}
+                   style={{ width: '5rem', textAlign: 'center' }}
+                 />
+                 <button
+                   type="button"
+                   className="btn ghost"
+                   aria-label="Increase quantity"
+                   onClick={() => setQuantity((q) => Math.min(selectedZone.availableCount, q + 1))}
+                   disabled={quantity >= selectedZone.availableCount}
+                 >
+                   +
+                 </button>
+               </div>
              </label>
-             <button 
-               className="btn" 
-               type="button" 
+             <p className="meta">
+               Subtotal for selection: {formatMoney(selectedZone.price * quantity, selectedZone.currency)}
+             </p>
+             <button
+               className="btn"
+               type="button"
                onClick={() => addItem.mutate({ zoneId, quantity })}
-               disabled={addItem.isPending}
+               disabled={addItem.isPending || selectedZone.availableCount < 1}
              >
-               {addItem.isPending ? 'Adding…' : 'Add to cart'}
+               {addItem.isPending ? 'Adding…' : `Add ${quantity} ${quantity > 1 ? 'tickets' : 'ticket'} to cart`}
              </button>
           </div>
         )

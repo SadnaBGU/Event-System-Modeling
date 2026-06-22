@@ -35,13 +35,19 @@ export function CompaniesListPage() {
   return (
     <section>
       <h1 className="page-title">Companies</h1>
+      <p className="meta" style={{ marginTop: '-0.75rem', marginBottom: '1.5rem' }}>
+        You only see companies you own or manage. Create one below to get started.
+      </p>
 
-      {list.isLoading && <p>Loading…</p>}
+      {list.isLoading && <p className="meta">Loading…</p>}
       {list.data && list.data.length === 0 && (
-        <p className="empty">No companies yet. Create one below.</p>
+        <p className="empty">
+          You don't own or manage any companies yet.<br />
+          Create one below — you'll become its owner automatically.
+        </p>
       )}
       {list.data && list.data.length > 0 && (
-        <table className="table" style={{ marginBottom: '1.5rem' }}>
+        <table className="table" style={{ marginBottom: '2rem' }}>
           <thead>
             <tr>
               <th>Name</th>
@@ -52,9 +58,9 @@ export function CompaniesListPage() {
           <tbody>
             {list.data.map((c) => (
               <tr key={c.companyId}>
-                <td>{c.companyName}</td>
-                <td><code>{c.status}</code></td>
-                <td>
+                <td style={{ fontWeight: 500 }}>{c.companyName}</td>
+                <td><span className={`pill ${c.status}`}>{c.status}</span></td>
+                <td style={{ textAlign: 'right' }}>
                   <Link to={`/companies/${c.companyId}`} className="btn ghost">
                     Manage
                   </Link>
@@ -65,27 +71,33 @@ export function CompaniesListPage() {
         </table>
       )}
 
-      <h2 style={{ fontSize: '1rem' }}>Create a new company</h2>
-      <form
-        className="form-stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!name) return;
-          create.mutate();
-        }}
-      >
-        <label>
-          Company name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-        <label>
-          Contact details (optional)
-          <input value={contact} onChange={(e) => setContact(e.target.value)} />
-        </label>
-        <button type="submit" className="btn success" disabled={create.isPending}>
-          {create.isPending ? 'Creating…' : 'Create company'}
-        </button>
-      </form>
+      <div className="panel" style={{ maxWidth: 480 }}>
+        <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.75rem' }}>Create a new company</h2>
+        <form
+          className="form-stack"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!name) return;
+            create.mutate();
+          }}
+        >
+          <label>
+            Company name
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <label>
+            Contact details (optional)
+            <input
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Email, phone, or short description"
+            />
+          </label>
+          <button type="submit" className="btn success" disabled={create.isPending}>
+            {create.isPending ? 'Creating…' : 'Create company'}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

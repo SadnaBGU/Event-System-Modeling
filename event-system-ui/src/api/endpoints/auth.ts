@@ -6,6 +6,13 @@ import type {
   RegisterRequest,
 } from '../../types/api';
 
+export interface UpdateMemberDetailsRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  dateOfBirth: string; // yyyy-MM-dd
+}
+
 export const authApi = {
   login: (body: LoginRequest) =>
     api.post<LoginResponse>('/auth/login', body).then((r) => r.data),
@@ -15,6 +22,9 @@ export const authApi = {
 
   getMember: (memberId: string) =>
     api.get<MemberDto>(`/members/${memberId}`).then((r) => r.data),
+
+  updateMemberDetails: (memberId: string, body: UpdateMemberDetailsRequest) =>
+    api.put<MemberDto>(`/members/${memberId}/details`, body).then((r) => r.data),
 
   deleteMember: (memberId: string) =>
     api.delete<void>(`/members/${memberId}`).then((r) => r.data),
