@@ -1,7 +1,10 @@
 package com.eventsystem.infrastructure.api.event;
 
 import com.eventsystem.application.lottery.LotteryService;
+import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
+import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.security.AuthenticationInterceptor;
@@ -33,6 +36,15 @@ class EventLotteryControllerTest {
 
     @MockBean
     private LotteryService lotteryService;
+
+    @MockBean
+    private ILotteryRepository lotteryRepository;
+
+    @MockBean
+    private IEventRepository eventRepository;
+
+    @MockBean
+    private ICompanyPermissionServicePort companyPermissionServicePort;
 
     @MockBean
     private ITokenService tokenService;

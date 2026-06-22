@@ -204,24 +204,30 @@ public class OrderService {
         
         int count = 0;
         for (ActiveOrder order : expiredOrders) {
-            List<OrderItem> expiredItems = order.expire();
-            orderRepository.save(order);
-            
-            for (OrderItem item : expiredItems) {
-                ZoneId zId = new ZoneId(item.getZoneId());
-                zoneRepository.withLock(zId, () -> {
-                    zoneRepository.findById(zId).ifPresent(zone -> {
-                        if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
-                            zone.releaseStanding(item.getQuantity());
-                        } else {
-                            zone.releaseSeat(new SeatId(item.getSeatId()));
-                        }
-                        zoneRepository.save(zone);
+            // Isolate each order: a failure releasing one order's inventory must not
+            // abort the whole recovery batch, so the next order still gets swept.
+            try {
+                List<OrderItem> expiredItems = order.expire();
+                orderRepository.save(order);
+
+                for (OrderItem item : expiredItems) {
+                    ZoneId zId = new ZoneId(item.getZoneId());
+                    zoneRepository.withLock(zId, () -> {
+                        zoneRepository.findById(zId).ifPresent(zone -> {
+                            if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.STANDING) {
+                                zone.releaseStanding(item.getQuantity());
+                            } else {
+                                zone.releaseSeat(new SeatId(item.getSeatId()));
+                            }
+                            zoneRepository.save(zone);
+                        });
                     });
-                });
+                }
+                logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
+                count++;
+            } catch (RuntimeException e) {
+                logger.error("Failed to sweep expired order {}; continuing with remaining orders", order.getOrderId(), e);
             }
-            logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
-            count++;
         }
         logger.info("Completed background sweep. Total expired orders processed: {}", count);
     }

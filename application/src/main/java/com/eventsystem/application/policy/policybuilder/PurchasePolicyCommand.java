@@ -6,6 +6,7 @@ public record PurchasePolicyCommand(
         String policyName,
         PolicyScopeCommand scope,
         PolicyRuleCommand rule,
-        boolean activate
+        boolean activate,
+        PolicyOwnerCommand ownerType
 ) {
 }

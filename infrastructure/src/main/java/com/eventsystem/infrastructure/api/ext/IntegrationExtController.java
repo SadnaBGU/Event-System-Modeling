@@ -14,6 +14,7 @@ import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.Zone;
@@ -40,12 +41,12 @@ import java.util.Optional;
 
 /**
  * Additive endpoints that fill the integration gaps the React UI hit against the existing
- * REST surface. All methods here are pure wrappers around already-public application services
- * and repository methods — they don't touch the domain or change existing controllers.
+ * REST surface. All methods here are wrappers around already-public application services
+ * and repository methods. They do not change the domain.
  *
- * Paths intentionally stay under their natural prefixes (e.g. /api/companies, /api/events) so
- * the UI client doesn't need to know whether a given endpoint came from the original surface
- * or from this controller.
+ * Paths intentionally stay under their natural prefixes, for example /api/companies
+ * and /api/events, so the UI client does not need to know whether a given endpoint
+ * came from the original surface or from this extension controller.
  */
 @RestController
 @RequestMapping("/api")
@@ -59,12 +60,13 @@ public class IntegrationExtController {
     private final IZoneRepository zoneRepository;
     private final IPurchasePolicyRepository purchasePolicyRepository;
 
-    public IntegrationExtController(IProductionCompanyRepository companyRepository,
-                                    ProductionCompanyService companyService,
-                                    EventService eventService,
-                                    IEventRepository eventRepository,
-                                    IZoneRepository zoneRepository,
-                                    IPurchasePolicyRepository purchasePolicyRepository) {
+    public IntegrationExtController(
+            IProductionCompanyRepository companyRepository,
+            ProductionCompanyService companyService,
+            EventService eventService,
+            IEventRepository eventRepository,
+            IZoneRepository zoneRepository,
+            IPurchasePolicyRepository purchasePolicyRepository) {
         this.companyRepository = companyRepository;
         this.companyService = companyService;
         this.eventService = eventService;
@@ -76,17 +78,22 @@ public class IntegrationExtController {
     // ── Events ────────────────────────────────────────────────────────────────
 
     @PostMapping("/events/{eventId}/publish")
-    public ResponseEntity<Void> publishEvent(@RequestAttribute("authenticatedMemberId") MemberId actor,
-                                             @PathVariable String eventId) {
+    public ResponseEntity<Void> publishEvent(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String eventId) {
         eventService.publish(actor, new EventId(eventId));
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/events/{eventId}/zones")
-    public ResponseEntity<Map<String, Object>> addZone(@RequestAttribute("authenticatedMemberId") MemberId actor,
-                                                       @PathVariable String eventId,
-                                                       @RequestBody AddZoneRequest request) {
-        if (request == null || request.zoneName() == null || request.zoneName().isBlank()) {
+    public ResponseEntity<Map<String, Object>> addZone(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String eventId,
+            @RequestBody AddZoneRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (request.zoneName() == null || request.zoneName().isBlank()) {
             throw new IllegalArgumentException("zoneName is required");
         }
         if (request.capacity() < 1) {
@@ -95,11 +102,17 @@ public class IntegrationExtController {
         if (request.price() == null) {
             throw new IllegalArgumentException("price is required");
         }
-        String currency = (request.currency() == null || request.currency().isBlank()) ? "USD" : request.currency();
+        if (request.price().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
+
+        String currency = request.currency() == null || request.currency().isBlank()
+                ? "USD"
+                : request.currency().trim();
 
         EventId eId = new EventId(eventId);
         ZoneId zoneId = ZoneId.random();
-        Money price = new Money(BigDecimal.valueOf(request.price()), currency);
+        Money price = Money.of(request.price(), currency);
 
         boolean seated = "SEATED".equalsIgnoreCase(request.zoneType());
         Zone zone;
@@ -130,8 +143,10 @@ public class IntegrationExtController {
         payload.put("zoneName", zone.zoneName());
         payload.put("zoneType", zone.zoneType().name());
         payload.put("price", price.amount());
-        payload.put("currency", currency);
+        payload.put("currency", price.currency());
         payload.put("totalCapacity", zone.totalCapacity());
+        payload.put("availableCount", zone.getAvailableCount());
+
         return ResponseEntity.ok(payload);
     }
 
@@ -211,6 +226,7 @@ public class IntegrationExtController {
                 .filter(c -> c.isOwner(actor) || c.isManager(actor))
                 .map(IntegrationExtController::companyToMap)
                 .toList();
+
         return ResponseEntity.ok(items);
     }
 
@@ -218,6 +234,7 @@ public class IntegrationExtController {
     public ResponseEntity<Map<String, Object>> getCompany(@PathVariable String companyId) {
         ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
                 .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
+
         return ResponseEntity.ok(companyToMap(company));
     }
 
@@ -225,32 +242,42 @@ public class IntegrationExtController {
     public ResponseEntity<List<Map<String, Object>>> listRoles(@PathVariable String companyId) {
         ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
                 .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
+
         return ResponseEntity.ok(collectRoles(company));
     }
 
-    // ── Policies (read) ──────────────────────────────────────────────────────
+    // ── Policies read endpoints ──────────────────────────────────────────────
 
     @GetMapping("/companies/{companyId}/policies")
     public ResponseEntity<Map<String, Object>> getCompanyPolicies(@PathVariable String companyId) {
-        List<PurchasePolicy> active = purchasePolicyRepository.findActiveByCompanyId(new CompanyId(companyId));
-        return ResponseEntity.ok(policiesPayload(active));
+        CompanyId cId = new CompanyId(companyId);
+
+        List<PurchasePolicy> policies = purchasePolicyRepository.findCompanyOwnedPolicies(cId);
+
+        return ResponseEntity.ok(policiesPayload(policies));
     }
 
     @GetMapping("/events/{eventId}/policies")
     public ResponseEntity<Map<String, Object>> getEventPolicies(@PathVariable String eventId) {
-        List<PurchasePolicy> active = purchasePolicyRepository.findApplicableToEvent(new EventId(eventId));
-        return ResponseEntity.ok(policiesPayload(active));
+        EventId eId = new EventId(eventId);
+        CompanyId companyId = eventService.companyOfEvent(eId);
+
+        List<PurchasePolicy> policies = purchasePolicyRepository.findApplicableToPurchase(companyId, eId);
+
+        return ResponseEntity.ok(policiesPayload(policies));
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static Map<String, Object> companyToMap(ProductionCompany c) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("companyId", c.companyId().value());
-        m.put("companyName", c.companyDetails().name());
-        m.put("status", mapStatus(c.status()));
-        m.put("contactDetails", c.companyDetails().description());
-        return m;
+    private static Map<String, Object> companyToMap(ProductionCompany company) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("companyId", company.companyId().value());
+        payload.put("companyName", company.companyDetails().name());
+        payload.put("status", mapStatus(company.status()));
+        payload.put("contactDetails", company.companyDetails().description());
+
+        return payload;
     }
 
     private static String mapStatus(CompanyStatus status) {
@@ -264,74 +291,117 @@ public class IntegrationExtController {
     private static List<Map<String, Object>> collectRoles(ProductionCompany company) {
         List<Map<String, Object>> result = new ArrayList<>();
         Deque<OwnerNode> ownerQueue = new ArrayDeque<>();
-        // We can't reach the appointment tree directly via the domain accessor list, so we
-        // walk it by using the public sub-tree API starting from the founder.
+
         OwnerNode founderNode = findOwnerNode(company).orElse(null);
         if (founderNode == null) {
             return result;
         }
+
         ownerQueue.add(founderNode);
+
         while (!ownerQueue.isEmpty()) {
             OwnerNode current = ownerQueue.removeFirst();
+
             result.add(roleEntry(current.memberId().value(), "OWNER", List.of()));
-            for (ManagerNode mgr : current.appointedManagers()) {
-                walkManager(mgr, result);
+
+            for (ManagerNode manager : current.appointedManagers()) {
+                walkManager(manager, result);
             }
+
             ownerQueue.addAll(current.appointedOwners());
         }
+
         return result;
     }
 
     private static Optional<OwnerNode> findOwnerNode(ProductionCompany company) {
-        // appointmentTree is package-private; the only way in from outside is via the
-        // existing public API. We try to find the founder as an owner — every company has one.
         try {
-            // Reflectively reach the tree; safer than mutating the domain.
-            java.lang.reflect.Field f = ProductionCompany.class.getDeclaredField("appointmentTree");
-            f.setAccessible(true);
-            Object tree = f.get(company);
-            java.lang.reflect.Method m = tree.getClass().getMethod("root");
-            return Optional.ofNullable((OwnerNode) m.invoke(tree));
+            java.lang.reflect.Field field = ProductionCompany.class.getDeclaredField("appointmentTree");
+            field.setAccessible(true);
+
+            Object tree = field.get(company);
+            if (tree == null) {
+                return Optional.empty();
+            }
+
+            java.lang.reflect.Method rootMethod = tree.getClass().getMethod("root");
+            return Optional.ofNullable((OwnerNode) rootMethod.invoke(tree));
         } catch (ReflectiveOperationException ex) {
             return Optional.empty();
         }
     }
 
     private static void walkManager(ManagerNode node, List<Map<String, Object>> out) {
-        List<String> perms = node.permissions().stream().map(Permission::name).toList();
-        out.add(roleEntry(node.memberId().value(), "MANAGER", perms));
+        List<String> permissions = node.permissions()
+                .stream()
+                .map(Permission::name)
+                .toList();
+
+        out.add(roleEntry(node.memberId().value(), "MANAGER", permissions));
+
         for (ManagerNode child : node.appointedManagers()) {
             walkManager(child, out);
         }
     }
 
-    private static Map<String, Object> roleEntry(String memberId, String roleType, List<String> permissions) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("memberId", memberId);
-        m.put("roleType", roleType);
-        m.put("permissions", permissions);
-        return m;
+    private static Map<String, Object> roleEntry(
+            String memberId,
+            String roleType,
+            List<String> permissions) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("memberId", memberId);
+        payload.put("roleType", roleType);
+        payload.put("permissions", permissions);
+
+        return payload;
     }
 
-    private static Map<String, Object> policiesPayload(List<PurchasePolicy> active) {
+    private static Map<String, Object> policiesPayload(List<PurchasePolicy> policies) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (PurchasePolicy policy : active) {
-            Map<String, Object> p = new LinkedHashMap<>();
-            p.put("policyId", policy.id().value());
-            p.put("policyName", policy.policyName());
-            p.put("scope", policy.scope() == null ? null : policy.scope().getClass().getSimpleName());
-            p.put("summary", policy.policy() == null ? null : policy.policy().toString());
-            items.add(p);
-        }
+
+        List<Map<String, Object>> items = policies.stream()
+                .map(IntegrationExtController::policyToMap)
+                .toList();
+
         payload.put("items", items);
         return payload;
     }
 
-    public record AddZoneRequest(String zoneName, Double price, String currency, int capacity,
+    private static Map<String, Object> policyToMap(PurchasePolicy policy) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("policyId", policy.id().value());
+        payload.put("policyName", policy.policyName());
+        payload.put("companyId", policy.companyId().value());
+        payload.put("active", policy.isActive());
+        payload.put("ownerType", policy.isEventPolicy() ? "EVENT" : "COMPANY");
+        payload.put("scope", scopeToMap(policy.scope()));
+        payload.put("summary", policy.policy() == null ? null : policy.policy().toString());
+
+        return payload;
+    }
+
+    private static Map<String, Object> scopeToMap(PolicyScope scope) {
+        if (scope == null) {
+            return null;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("companyWide", scope.isCompanyWide());
+        payload.put("eventIds", scope.eventIds()
+                .stream()
+                .map(EventId::value)
+                .toList());
+
+        return payload;
+    }
+
+    public record AddZoneRequest(String zoneName, BigDecimal price, String currency, int capacity,
                                  String zoneType, Integer rows, Integer seatsPerRow) {
         /** Backward-compatible constructor: standing zone with no seat layout. */
-        public AddZoneRequest(String zoneName, Double price, String currency, int capacity) {
+        public AddZoneRequest(String zoneName, BigDecimal price, String currency, int capacity) {
             this(zoneName, price, currency, capacity, "STANDING", null, null);
         }
     }

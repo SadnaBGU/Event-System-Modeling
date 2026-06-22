@@ -16,14 +16,18 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
 
     @SuppressWarnings("null")
     @Override
-    public Optional<DiscountPolicy> findById(DiscountPolicyId id) { return jpaRepository.findById(id); }
+    public Optional<DiscountPolicy> findById(DiscountPolicyId id) {
+        return jpaRepository.findById(id);
+    }
 
     @Override
-    public List<DiscountPolicy> findByCompanyId(CompanyId id) { return jpaRepository.findByCompanyId(id); }
+    public List<DiscountPolicy> findByCompanyId(CompanyId id) {
+        return jpaRepository.findByCompanyId(id);
+    }
 
     @Override
-    public List<DiscountPolicy> findActive() { 
-        return jpaRepository.findAll().stream().filter(DiscountPolicy::isActive).toList(); 
+    public List<DiscountPolicy> findAllActive() {
+        return jpaRepository.findAll().stream().filter(DiscountPolicy::isActive).toList();
     }
 
     @Override
@@ -38,41 +42,51 @@ public class PostgresDiscountPolicyRepository implements IDiscountPolicyReposito
     }
 
     @Override
-    public List<DiscountPolicy> findApplicableToEvent(EventId id) {
-        return jpaRepository.findAll().stream()
-                .filter(p -> p.isActive() && p.scope().appliesTo(id))
-                .toList();
-    }
-
-    @Override
     public List<DiscountPolicy> findApplicableToPurchase(CompanyId cId, EventId eId) {
         return jpaRepository.findByCompanyId(cId).stream()
-                .filter(p -> p.isActive() && p.scope().appliesTo(eId))
+                .filter(p -> p.isActive())
+                .filter(p -> p.scope().appliesTo(eId))
                 .toList();
     }
 
     @Override
-    public List<DiscountPolicy> findSpecificForEvent(EventId eventId) {
+    public List<DiscountPolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId)
+                .stream()
+                .filter(policy -> policy.companyId().equals(companyId))
+                .filter(policy -> policy.isCompanyPolicy())
+                .toList();
+    }
+
+    @Override
+    public List<DiscountPolicy> findEventOwnedPolicy(EventId eventId) {
         return jpaRepository.findAll().stream()
-                .filter(p -> p.isActive() && p.isSpecificFor(eventId))
-                .toList();
-    }
-
-    public List<DiscountPolicy> findSingleEventPolicies(CompanyId companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(DiscountPolicy::isSingleEventPolicy)
+                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.isEventPolicy())
                 .toList();
     }
 
     @SuppressWarnings("null")
     @Override
-    public void save(DiscountPolicy p) { jpaRepository.save(p); }
+    public void save(DiscountPolicy p) {
+        jpaRepository.save(p);
+    }
 
     @SuppressWarnings("null")
     @Override
-    public void deleteById(DiscountPolicyId id) { jpaRepository.deleteById(id); }
+    public void deleteById(DiscountPolicyId id) {
+        jpaRepository.deleteById(id);
+    }
 
     @SuppressWarnings("null")
     @Override
-    public boolean existsById(DiscountPolicyId id) { return jpaRepository.existsById(id); }
+    public boolean existsById(DiscountPolicyId id) {
+        return jpaRepository.existsById(id);
+    }
+
+    @Override
+    public List<DiscountPolicy> findByEventId(EventId eventId) {
+        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
+    }
+
 }
