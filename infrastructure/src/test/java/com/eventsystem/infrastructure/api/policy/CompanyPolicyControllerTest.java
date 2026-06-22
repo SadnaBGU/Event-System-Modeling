@@ -1,6 +1,7 @@
 package com.eventsystem.infrastructure.api.policy;
 
 import com.eventsystem.application.policy.PolicyManagementService;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,8 @@ class CompanyPolicyControllerTest {
     private MockMvc mockMvc;
 
     @Mock private PolicyManagementService policyManagementService;
+
+    @Mock private IEventRepository eventRepository;
 
     @InjectMocks private CompanyPolicyController companyPolicyController;
 
