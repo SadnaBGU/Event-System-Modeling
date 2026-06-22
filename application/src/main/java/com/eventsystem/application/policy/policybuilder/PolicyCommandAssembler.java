@@ -15,6 +15,7 @@ import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
 import com.eventsystem.domain.policy.rule.composite.AndPolicy;
 import com.eventsystem.domain.policy.rule.composite.OrPolicy;
 import com.eventsystem.domain.policy.rule.composite.ZoneSpecificPolicy;
+import com.eventsystem.domain.policy.shared.PolicyOwnerType;
 import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -52,6 +53,22 @@ public class PolicyCommandAssembler {
                 isVisible,
                 endDate
         );
+    }
+
+    public PolicyOwnerType toOwnerType(PolicyOwnerCommand cmnd) {
+        Objects.requireNonNull(cmnd, "policy owner command must not be null");
+        String type = cmnd.toString();
+        if (type == null || type.isBlank()) {
+            throw new IllegalArgumentException("policy owner type is required");
+        }
+
+        return switch (type.toUpperCase()) {
+            case "COMPANY" -> PolicyOwnerType.COMPANY;
+
+            case "EVENT" -> PolicyOwnerType.EVENT;
+
+            default -> throw new IllegalArgumentException("Unsupported policy owner type: " + cmnd.toString());
+        };
     }
 
     public PolicyScope toScope(PolicyScopeCommand command) {

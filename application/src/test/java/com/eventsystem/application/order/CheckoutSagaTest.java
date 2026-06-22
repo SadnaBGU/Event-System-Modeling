@@ -1,5 +1,7 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.TestPurchaseContexts;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,6 +51,7 @@ import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
@@ -64,17 +67,27 @@ import com.eventsystem.domain.zone.ZoneType;
 @ExtendWith(MockitoExtension.class)
 class CheckoutSagaTest {
 
-    @Mock private IActiveOrderRepository orderRepository;
-    @Mock private IPurchaseRecordRepository purchaseRecordRepository;
-    @Mock private IPaymentGatewayPort paymentGateway;
-    @Mock private ITicketIssuancePort ticketIssuance;
-    @Mock private INotificationPort notificationPort;
-    @Mock private IZoneRepository zoneRepository;
-    @Mock private IEventQueryPort eventQueryPort;
-    @Mock private IPurchasePolicyValidationPort purchasePolicyPort;
-    @Mock private IDiscountApplicationPort discountPort;
+    @Mock
+    private IActiveOrderRepository orderRepository;
+    @Mock
+    private IPurchaseRecordRepository purchaseRecordRepository;
+    @Mock
+    private IPaymentGatewayPort paymentGateway;
+    @Mock
+    private ITicketIssuancePort ticketIssuance;
+    @Mock
+    private INotificationPort notificationPort;
+    @Mock
+    private IZoneRepository zoneRepository;
+    @Mock
+    private IEventQueryPort eventQueryPort;
+    @Mock
+    private IPurchasePolicyValidationPort purchasePolicyPort;
+    @Mock
+    private IDiscountApplicationPort discountPort;
 
-    @InjectMocks private CheckoutSaga checkoutSaga;
+    @InjectMocks
+    private CheckoutSaga checkoutSaga;
 
     private ActiveOrder testOrder;
     private BuyerReference testBuyer;
@@ -93,8 +106,7 @@ class CheckoutSagaTest {
                 "VIP-ZONE",
                 "SEAT-42",
                 1,
-                Money.of(BigDecimal.valueOf(150), "USD")
-        );
+                Money.of(BigDecimal.valueOf(150), "USD"));
         testOrder.addItem(mockItem);
 
         lenient().when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(testOrder));
@@ -109,13 +121,12 @@ class CheckoutSagaTest {
     }
 
     private PurchaseContext purchaseContext() {
-        return new PurchaseContext(
+        return TestPurchaseContexts.contextWithZoneSubtotal(
                 new EventId(EVENT_ID),
                 new CompanyId("company-1"),
-                List.of(new ZoneId("VIP-ZONE")),
-                LocalDate.now().minusYears(25),
-                null
-        );
+                new ZoneId("VIP-ZONE"),
+                1,
+                "150.00");
     }
 
     private void mockPurchaseContextCreation() {
@@ -130,7 +141,10 @@ class CheckoutSagaTest {
     }
 
     private void mockNoDiscount() {
-        when(discountPort.generateDiscountSnapshot(any(PurchaseContext.class), any(Money.class)))
+        when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class)))
+                .thenReturn(DiscountSummary.noDiscountSummary());
+
+        when(discountPort.discountSnapshotFromSummary(any(DiscountSummary.class), any(Money.class)))
                 .thenReturn(new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD")));
     }
 
@@ -196,14 +210,12 @@ class CheckoutSagaTest {
                 "ORDER-STANDING-SUCCESS",
                 testBuyer,
                 EVENT_ID,
-                Instant.now().plus(10, ChronoUnit.MINUTES)
-        );
+                Instant.now().plus(10, ChronoUnit.MINUTES));
         standingOrder.addItem(new OrderItem(
                 "STANDING-ZONE",
                 null,
                 3,
-                Money.of(BigDecimal.valueOf(50), "USD")
-        ));
+                Money.of(BigDecimal.valueOf(50), "USD")));
 
         when(orderRepository.findById("ORDER-STANDING-SUCCESS")).thenReturn(Optional.of(standingOrder));
 
@@ -270,14 +282,12 @@ class CheckoutSagaTest {
                 "ORDER-STANDING-FAIL",
                 testBuyer,
                 EVENT_ID,
-                Instant.now().plus(10, ChronoUnit.MINUTES)
-        );
+                Instant.now().plus(10, ChronoUnit.MINUTES));
         standingOrder.addItem(new OrderItem(
                 "STANDING-ZONE",
                 null,
                 3,
-                Money.of(BigDecimal.valueOf(50), "USD")
-        ));
+                Money.of(BigDecimal.valueOf(50), "USD")));
 
         when(orderRepository.findById("ORDER-STANDING-FAIL")).thenReturn(Optional.of(standingOrder));
 
@@ -416,7 +426,8 @@ class CheckoutSagaTest {
     @Test
     void executeCheckout_DiscountEvaluationFails_ThrowsPriceCalcException() {
         mockSuccessfulPolicyValidation();
-        when(discountPort.generateDiscountSnapshot(any(), any()))
+
+        when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class)))
                 .thenThrow(new RuntimeException("Discount service down"));
 
         assertThrows(PriceCalcException.class, () -> {
@@ -446,13 +457,14 @@ class CheckoutSagaTest {
         verify(purchaseRecordRepository, never()).append(any());
     }
 
-    //Transactional related tests
+    // Transactional related tests
     @Test
     void executeCheckout_IsTransactionalAndDoesNotRollbackCompensationOnIssuanceFailure() throws Exception {
         // REQ: PERS-05, INV-10, ROB-01, UC 9, UAT-30
         // V3 requires each use case to be a transaction boundary.
         // For ticket issuance failure after payment, compensation must be committed:
-        // refund requested, inventory released, order cancelled, and no purchase record saved.
+        // refund requested, inventory released, order cancelled, and no purchase record
+        // saved.
 
         Transactional transactional = CheckoutSaga.class
                 .getMethod("executeCheckout", String.class, String.class, String.class)

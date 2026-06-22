@@ -20,11 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-
 @Entity
 @Table(name = "active_orders")
 public class ActiveOrder {
-    
+
     @Id
     private String orderId;
 
@@ -33,13 +32,10 @@ public class ActiveOrder {
     private String eventId;
 
     @ElementCollection
-    @CollectionTable(
-        name = "active_order_items",
-        joinColumns = @JoinColumn(name = "order_id")
-    )
+    @CollectionTable(name = "active_order_items", joinColumns = @JoinColumn(name = "order_id"))
     private List<OrderItem> items;
     private Instant reservationExpiry;
-    
+
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
     private long version;
@@ -64,9 +60,8 @@ public class ActiveOrder {
 
     public void removeItem(String zoneId, String seatId) {
         verifyActive();
-        items.removeIf(item -> 
-            item.getZoneId().equals(zoneId) && 
-                               Objects.equals(item.getSeatId(), seatId));
+        items.removeIf(item -> item.getZoneId().equals(zoneId) &&
+                Objects.equals(item.getSeatId(), seatId));
     }
 
     public void checkout() {
@@ -97,38 +92,39 @@ public class ActiveOrder {
         }
     }
 
-    public String getOrderId() { 
-        return orderId; 
+    public String getOrderId() {
+        return orderId;
     }
 
-    public long getVersion() { 
-        return version; 
+    public long getVersion() {
+        return version;
     }
 
-    public BuyerReference getBuyerRef() { 
-        return buyerRef; 
+    public BuyerReference getBuyerRef() {
+        return buyerRef;
     }
 
-    public String getEventId() { 
-        return eventId; 
+    public String getEventId() {
+        return eventId;
     }
 
     public Money calculateBaseTotal() {
         String currency = items.isEmpty() ? "USD" : items.get(0).getUnitPrice().currency();
+
         return items.stream()
                 .map(item -> item.getUnitPrice().multiply(Math.max(1, item.getQuantity())))
                 .reduce(new Money(BigDecimal.ZERO, currency), Money::add);
     }
 
-    public List<OrderItem> getItems() { 
-        return List.copyOf(items); 
+    public List<OrderItem> getItems() {
+        return List.copyOf(items);
     }
 
-    public OrderStatus getStatus() { 
-        return status; 
+    public OrderStatus getStatus() {
+        return status;
     }
 
-    public Instant getReservationExpiry() { 
-        return reservationExpiry; 
+    public Instant getReservationExpiry() {
+        return reservationExpiry;
     }
 }
