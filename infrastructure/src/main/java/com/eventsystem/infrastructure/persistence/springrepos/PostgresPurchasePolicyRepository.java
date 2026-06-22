@@ -30,6 +30,11 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        return jpaRepository.findAll().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
+    }
+
+    @Override
     public List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId) {
         // סינון בזיכרון לאחר שליפת הפוליסות של החברה
         return jpaRepository.findByCompanyId(companyId).stream()
@@ -38,17 +43,27 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
-    public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
-        // שליפת הכל וסינון לפי הלוגיקה של ה-Domain
-        return jpaRepository.findAll().stream()
-                .filter(policy -> policy.isActiveForEvent(eventId))
+    public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
+        return jpaRepository.findByCompanyId(companyId).stream()
+                .filter(PurchasePolicy::isActive)
+                .filter(policy -> policy.scope().appliesTo(eventId))
                 .toList();
     }
 
     @Override
-    public List<PurchasePolicy> findApplicableToPurchase(CompanyId companyId, EventId eventId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(policy -> policy.isActiveForEvent(eventId))
+    public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
+        return jpaRepository.findByCompanyId(companyId)
+                .stream()
+                .filter(policy -> policy.companyId().equals(companyId))
+                .filter(policy -> policy.isCompanyPolicy())
+                .toList();
+    }
+
+    @Override
+    public List<PurchasePolicy> findEventOwnedPolicy(EventId eventId) {
+        return jpaRepository.findAll().stream()
+                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.isEventPolicy())
                 .toList();
     }
 
@@ -70,17 +85,4 @@ public class PostgresPurchasePolicyRepository implements IPurchasePolicyReposito
         return jpaRepository.existsById(policyId);
     }
 
-    @Override
-    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
-                .filter(PurchasePolicy::isSingleEventPolicy)
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-        return jpaRepository.findAll().stream()
-                .filter(policy -> policy.isSpecificFor(eventId))
-                .toList();
-    }
 }

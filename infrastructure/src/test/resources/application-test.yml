@@ -21,6 +21,8 @@ eventsystem:
     jwt-secret: "test_test_test_test_test_test_te"
     token-validity: PT5M
     bcrypt-strength: 4
+  recovery:
+    enabled: false
   bootstrap:
     enabled: false
     default-reservation-timeout: PT15M

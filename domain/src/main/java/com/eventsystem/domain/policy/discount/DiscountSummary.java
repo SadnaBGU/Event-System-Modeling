@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
+import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
+import com.eventsystem.domain.shared.Money;
 
 import java.math.BigDecimal;
 
@@ -68,6 +70,26 @@ public record DiscountSummary(List<String> appliedDiscountsNames,
             totalDiscountPercent = totalDiscountPercent.add(bigDecimal);
         }
         return totalDiscountPercent.compareTo(HUNDRED) >= 0;
+    }
+
+    public DiscountSnapshot generateDiscountSnapshot(Money baseCost) {
+
+        Objects.requireNonNull(baseCost, "baseCost must not be null");
+        Money discountMoneyAmount = new Money(totalDiscount(), baseCost.currency());
+        int discountAmount = appliedDiscountsNames().size();
+        String discountNames = "";
+        for (int i = 0; i < discountAmount; i++) {
+            discountNames = discountNames.concat(appliedDiscountsNames().get(i));
+            if (i < discountAmount - 1) {
+                discountNames = discountNames.concat(" ; ");
+            }
+        }
+        if (discountNames.isEmpty())
+        {
+            discountNames = "No Discount";
+        }
+        
+        return new DiscountSnapshot(discountNames, discountMoneyAmount);
     }
 
     public static DiscountSummary noDiscountSummary() {
