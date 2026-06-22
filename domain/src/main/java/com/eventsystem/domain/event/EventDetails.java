@@ -1,5 +1,7 @@
 package com.eventsystem.domain.event;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import jakarta.persistence.*;
@@ -55,7 +57,7 @@ public class EventDetails {
         }
 
         this.name = name;
-        this.dates = List.copyOf(dates); 
+        this.dates = new ArrayList<>(dates); 
         this.category = category;
         this.location = location;
         this.description = description;
@@ -66,7 +68,7 @@ public class EventDetails {
     }
 
     public String name() { return name; }
-    public List<LocalDateTime> dates() { return dates; }
+    public List<LocalDateTime> dates() { return Collections.unmodifiableList(dates); }
     public String category() { return category; }
     public String location() { return location; }
     public String description() { return description; }
