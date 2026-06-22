@@ -245,13 +245,13 @@ class BasicPolicyTest {
         LocalDate purchaseDate = LocalDate.of(2026, 6, 1);
         LocalDate exactly18 = LocalDate.of(2008, 6, 1);
 
-        PurchaseContext context = new PurchaseContext(
-                EVENT_ID,
+        PurchaseContext context = context(
                 COMPANY_ID,
-                List.of(REGULAR_ZONE),
+                EVENT_ID,
                 exactly18,
                 purchaseDate,
-                null);
+                null,
+                List.of(REGULAR_ZONE));
 
         MinAgePolicy policy = new MinAgePolicy(18);
 
@@ -263,13 +263,13 @@ class BasicPolicyTest {
         LocalDate purchaseDate = LocalDate.of(2026, 6, 1);
         LocalDate notYet18 = LocalDate.of(2008, 6, 2);
 
-        PurchaseContext context = new PurchaseContext(
-                EVENT_ID,
+        PurchaseContext context = context(
                 COMPANY_ID,
-                List.of(REGULAR_ZONE),
+                EVENT_ID,
                 notYet18,
                 purchaseDate,
-                null);
+                null,
+                List.of(REGULAR_ZONE));
 
         MinAgePolicy policy = new MinAgePolicy(18);
 

@@ -1,4 +1,5 @@
 package com.eventsystem.domain.policy.purchase;
+
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -15,16 +16,15 @@ import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
 import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
 import com.eventsystem.domain.policy.rule.basic.NeverAllowPolicy;
 import com.eventsystem.domain.policy.rule.composite.AndPolicy;
+import com.eventsystem.domain.policy.shared.PolicyOwnerType;
 import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.company.CompanyId;
 
-
-
 @Entity
 @Table(name = "purchase_policies")
-public class PurchasePolicy{
+public class PurchasePolicy {
 
     @EmbeddedId
     private PurchasePolicyId id;
@@ -34,7 +34,7 @@ public class PurchasePolicy{
 
     @Embedded
     @AttributeOverrides({
-        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+            @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
     })
     private CompanyId companyId;
 
@@ -47,25 +47,58 @@ public class PurchasePolicy{
     @Column(name = "policy_tree", columnDefinition = "jsonb")
     private IPolicy policy;
 
-    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "owner_type", nullable = false)
+    private PolicyOwnerType ownerType = PolicyOwnerType.COMPANY;
+
     @Version
     private Long version;
 
     // חובה עבור JPA
-    protected PurchasePolicy() {}
+    protected PurchasePolicy() {
+    }
 
-
-    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope, IPolicy policy) {
+    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName,
+            PolicyScope scope, IPolicy policy, PolicyOwnerType ownerType) {
         this.id = Objects.requireNonNull(policyId, "policy id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
         this.policyName = Objects.requireNonNull(policyName, "policy name must not be null");
         this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
+        this.ownerType = Objects.requireNonNull(ownerType, "policy owner type must not be null");
+
+        requireValidOwnerAndScope(this.ownerType, this.scope);
         PolicyConflictDetector.requireValidPolicy(policy);
 
         this.policy = policy;
     }
 
-    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope, List<IPolicy> policies) {
+    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope,
+            IPolicy policy) {
+        this.id = Objects.requireNonNull(policyId, "policy id must not be null");
+        this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
+        this.policyName = Objects.requireNonNull(policyName, "policy name must not be null");
+        this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
+        this.ownerType = PolicyOwnerType.COMPANY;
+        PolicyConflictDetector.requireValidPolicy(policy);
+
+        this.policy = policy;
+    }
+
+    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope,
+            List<IPolicy> policies, PolicyOwnerType ownerType) {
+        PolicyConflictDetector.requireValidPolicy(policies);
+        this.id = Objects.requireNonNull(policyId, "policy id must not be null");
+        this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
+        this.policyName = Objects.requireNonNull(policyName, "policy name must not be null");
+        this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
+        this.ownerType = Objects.requireNonNull(ownerType, "policy ownerType must not be null");
+        this.policy = new AndPolicy(policies);
+        requireValidOwnerAndScope(this.ownerType, this.scope);
+
+    }
+
+    public PurchasePolicy(PurchasePolicyId policyId, CompanyId companyId, String policyName, PolicyScope scope,
+            List<IPolicy> policies) {
         PolicyConflictDetector.requireValidPolicy(policies);
         this.id = Objects.requireNonNull(policyId, "policy id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "company id must not be null");
@@ -73,7 +106,7 @@ public class PurchasePolicy{
         this.scope = Objects.requireNonNull(scope, "policy scope must not be null");
 
         this.policy = new AndPolicy(policies);
-        
+
     }
 
     public PurchasePolicy(CompanyId companyId, String policyName, PolicyScope scope, IPolicy policy) {
@@ -101,20 +134,24 @@ public class PurchasePolicy{
     }
 
     public void setScopeTo(PolicyScope newScope) {
+        requireMutableScope();
         this.scope = Objects.requireNonNull(newScope, "policy scope must not be null");
     }
 
-        public void setCompanyWide() {
+    public void setCompanyWide() {
         Set<EventId> affectedEvents = scope.eventIds();
+        requireMutableScope();
         this.scope = new PolicyScope(true, affectedEvents);
     }
 
     public void deactivateCompanyWide() {
+        requireMutableScope();
         Set<EventId> affectedEvents = scope.eventIds();
         this.scope = new PolicyScope(false, affectedEvents);
     }
 
     public void activateForEvent(EventId eventId) {
+        requireMutableScope();
         Objects.requireNonNull(eventId, "eventId must not be null");
 
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
@@ -124,6 +161,7 @@ public class PurchasePolicy{
     }
 
     public void deactivateForEvent(EventId eventId) {
+        requireMutableScope();
         Objects.requireNonNull(eventId, "eventId must not be null");
 
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
@@ -144,27 +182,29 @@ public class PurchasePolicy{
         return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName, PolicyScope.clearScope(), policies);
     }
 
-
-    public static PurchasePolicy allowAll(PurchasePolicyId id, CompanyId companyId, String policyName) {
-        return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(),AlwaysTruePolicy.INSTANCE);
-    }
-
     public static PurchasePolicy newAllowAllPolicy(CompanyId companyId, String policyName) {
-        return PurchasePolicy.emptyScope(companyId, policyName,AlwaysTruePolicy.INSTANCE);
-    }
-
-    public static PurchasePolicy notAllowed(PurchasePolicyId id, CompanyId companyId, String policyName) {
-        return new PurchasePolicy(id, companyId, policyName, PolicyScope.clearScope(),NeverAllowPolicy.INSTANCE);
+        return PurchasePolicy.emptyScope(companyId, policyName, AlwaysTruePolicy.INSTANCE);
     }
 
     public static PurchasePolicy newNeverAllowedPolicy(CompanyId companyId, String policyName) {
-        return PurchasePolicy.emptyScope(companyId, policyName,NeverAllowPolicy.INSTANCE);
+        return PurchasePolicy.emptyScope(companyId, policyName, NeverAllowPolicy.INSTANCE);
     }
 
     public static PurchasePolicy newMaxTicketPolicy(CompanyId companyId, String policyName, int maxAllowedTickets) {
-        return PurchasePolicy.emptyScope(companyId, policyName,new MaxTicketPolicy(maxAllowedTickets));
+        return PurchasePolicy.emptyScope(companyId, policyName, new MaxTicketPolicy(maxAllowedTickets));
     }
-    
+
+    public static PurchasePolicy companyPolicy(CompanyId companyId, String policyName, PolicyScope scope,
+            IPolicy policy) {
+        return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName,
+                                    scope, policy, PolicyOwnerType.COMPANY);
+    }
+
+    public static PurchasePolicy eventPolicy(CompanyId companyId, EventId eventId, String policyName, IPolicy policy) {
+        return new PurchasePolicy(PurchasePolicyId.random(), companyId, policyName,
+                                    PolicyScope.forSingleEvent(eventId), policy, PolicyOwnerType.EVENT);
+    }
+
     public boolean isPurchaseAllowedInContext(PurchaseContext context) {
         return evaluate(context).isSuccess();
     }
@@ -174,8 +214,7 @@ public class PurchasePolicy{
 
         if (!result.isSuccess()) {
             throw new PurchasePolicyException(
-                    "Purchase policy violation: " + result.reason()
-            );
+                    "Purchase policy violation: " + result.reason());
         }
     }
 
@@ -197,11 +236,37 @@ public class PurchasePolicy{
         return scope.appliesTo(eventId);
     }
 
-    public boolean isSingleEventPolicy() {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1;
+    public boolean isCompanyPolicy() {
+        return ownerType == PolicyOwnerType.COMPANY;
     }
 
-    public boolean isSpecificFor(EventId eventId) {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1 && scope.appliesTo(eventId);
+    public boolean isEventPolicy() {
+        return ownerType == PolicyOwnerType.EVENT;
+    }
+
+    public boolean appliesTo(PurchaseContext context) {
+        Objects.requireNonNull(context, "context must not be null");
+
+        if (!companyId.equals(context.companyId())) {
+            return false;
+        }
+
+        return scope.appliesTo(context.eventId());
+    }
+
+    private void requireMutableScope() {
+        if (isEventPolicy()) {
+            throw new PurchasePolicyException("Event-owned purchase policy scope cannot be changed");
+        }
+    }
+
+    private static void requireValidOwnerAndScope(PolicyOwnerType ownerType, PolicyScope scope) {
+        Objects.requireNonNull(ownerType, "policy owner type must not be null");
+        Objects.requireNonNull(scope, "policy scope must not be null");
+
+        if ((ownerType == PolicyOwnerType.EVENT) && !scope.isForSingleEvent()) {
+            throw new PurchasePolicyException(
+                    "Event-owned purchase policy must be scoped to exactly one event");
+        }
     }
 }

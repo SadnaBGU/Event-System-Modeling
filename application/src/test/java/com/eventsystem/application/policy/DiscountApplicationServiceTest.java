@@ -1,5 +1,6 @@
 package com.eventsystem.application.policy;
 
+import com.eventsystem.application.TestPurchaseContexts;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.domain.company.CompanyId;
@@ -15,7 +16,6 @@ import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 import com.eventsystem.domain.policy.discount.DiscountSummary;
 import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
-import com.eventsystem.domain.policy.rule.basic.CodePolicy;
 import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
 import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
@@ -66,16 +66,16 @@ class DiscountApplicationServiceTest {
         }
 
         private PurchaseContext contextWithTickets(int ticketCount) {
-                List<ZoneId> zones = java.util.stream.IntStream.range(0, ticketCount)
+                ZoneId[] zones = java.util.stream.IntStream.range(0, ticketCount)
                                 .mapToObj(i -> REGULAR_ZONE)
-                                .toList();
+                                .toArray(ZoneId[]::new);
 
-                return new PurchaseContext(
+                return TestPurchaseContexts.contextWithZones(
                                 EVENT_ID,
                                 COMPANY_ID,
-                                zones,
                                 LocalDate.now().minusYears(25),
-                                null);
+                                null,
+                                zones);
         }
 
         private DiscountPolicy activePolicyForEvent(EventId eventId, Discount discount) {
@@ -231,7 +231,7 @@ class DiscountApplicationServiceTest {
                                 new Discount("Company discount", BigDecimal.TEN, AlwaysTruePolicy.INSTANCE));
                 companyPolicy.activate();
 
-                when(discountPolicyRepository.findActive()).thenReturn(List.of(eventPolicy, companyPolicy));
+                when(discountPolicyRepository.findAllActive()).thenReturn(List.of(eventPolicy, companyPolicy));
                 when(eventManagementPort.allEventsOfCompany(COMPANY_ID)).thenReturn(List.of(OTHER_EVENT_ID));
 
                 Set<EventId> result = service.getAllActiveDiscountEvents();
@@ -246,7 +246,6 @@ class DiscountApplicationServiceTest {
                                 new OrderItem(REGULAR_ZONE.value(), null, 1, Money.of(BigDecimal.TEN, "ILS")));
 
                 when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
-                when(eventManagementPort.getZonesOfTicketsForEvent(EVENT_ID, items)).thenReturn(List.of(REGULAR_ZONE));
                 when(memberInformationPort.getMemberBirthdate(MEMBER_ID)).thenReturn(LocalDate.of(2000, 1, 1));
 
                 PurchaseContext context = service.createPurchaseContext(EVENT_ID, buyer, items, "SAVE20");
@@ -256,6 +255,10 @@ class DiscountApplicationServiceTest {
                 assertThat(context.zonesOfEachEventTicket()).containsExactly(REGULAR_ZONE);
                 assertThat(context.buyerBirthDate()).isEqualTo(LocalDate.of(2000, 1, 1));
                 assertThat(context.discountCode()).isEqualTo("SAVE20");
+                assertThat(context.ticketCount()).isEqualTo(1);
+                assertThat(context.ticketCountInZone(REGULAR_ZONE)).isEqualTo(1);
+                assertThat(context.subtotalForZone(REGULAR_ZONE).amount()).isEqualByComparingTo("10");
+                assertThat(context.baseTotal().amount()).isEqualByComparingTo("10");
         }
 
         @Test
@@ -296,8 +299,9 @@ class DiscountApplicationServiceTest {
                 DiscountPolicy policy = activePolicyForEvent(
                                 EVENT_ID,
                                 new Discount("Visible 10", BigDecimal.TEN, AlwaysTruePolicy.INSTANCE));
-
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(policy));
+                when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+                when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
+                                .thenReturn(List.of(policy));
 
                 assertThat(service.findApplicableToPurchase(EVENT_ID)).containsExactly(policy);
         }
@@ -330,61 +334,8 @@ class DiscountApplicationServiceTest {
 
                 when(discountPolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of());
-
-                DiscountSnapshot snapshot = service.generateDiscountSnapshot(context, baseTotal);
-
-                assertThat(snapshot.discountName()).isEqualTo("No Discount");
-                assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo(BigDecimal.ZERO);
-        }
-
-        @Test
-        @Deprecated
-        void applyDiscount_whenNoLegacyPolicies_shouldReturnNoDiscountSnapshot() {
-                Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
-
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
-
-                DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
-
-                assertThat(snapshot.discountName()).isEqualTo("No Discount");
-                assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo(BigDecimal.ZERO);
-        }
-
-        @Test
-        @Deprecated
-        void applyDiscount_whenLegacyPolicyApplies_shouldReturnBestDiscountSnapshot() {
-                Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
-
-                DiscountPolicy tenPercent = activePolicyForEvent(
-                                EVENT_ID,
-                                Discount.GeneralDiscount("Ten", BigDecimal.TEN, null));
-
-                DiscountPolicy twentyPercent = activePolicyForEvent(
-                                EVENT_ID,
-                                Discount.GeneralDiscount("Twenty", BigDecimal.valueOf(20), null));
-
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID))
-                                .thenReturn(List.of(tenPercent, twentyPercent));
-
-                DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), null, baseTotal);
-
-                assertThat(snapshot.discountName()).contains("Twenty");
-                assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo("20.0");
-        }
-
-        @Test
-        @Deprecated
-        void applyDiscount_whenLegacyCouponDoesNotMatch_shouldReturnNoDiscountSnapshot() {
-                Money baseTotal = Money.of(BigDecimal.valueOf(100), "ILS");
-
-                DiscountPolicy couponPolicy = activePolicyForEvent(
-                                EVENT_ID,
-                                new Discount("Secret coupon", BigDecimal.valueOf(30), new CodePolicy("SAVE30")));
-
-                when(discountPolicyRepository.findApplicableToEvent(EVENT_ID))
-                                .thenReturn(List.of(couponPolicy));
-
-                DiscountSnapshot snapshot = service.applyDiscount(EVENT_ID.value(), "WRONG", baseTotal);
+                DiscountSummary summary = service.calculateDiscountSummary(context, baseTotal);
+                DiscountSnapshot snapshot = service.discountSnapshotFromSummary(summary, baseTotal);
 
                 assertThat(snapshot.discountName()).isEqualTo("No Discount");
                 assertThat(snapshot.discountAmount().amount()).isEqualByComparingTo(BigDecimal.ZERO);

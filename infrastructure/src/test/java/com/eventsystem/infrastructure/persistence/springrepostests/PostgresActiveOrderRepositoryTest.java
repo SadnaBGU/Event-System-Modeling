@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.persistence.springrepostests;
 import com.eventsystem.domain.order.ActiveOrder;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresActiveOrderRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -31,17 +32,11 @@ class PostgresActiveOrderRepositoryTest extends BasePostgresTest {
     private EntityManager em;
 
     @Test
-    void crudAndQueries_workCorrectly() throws Exception {
+    void crudAndQueries_workCorrectly() {
         BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, "sess1", "mem1");
-        // הזמנה שתוקפה פג אתמול - משויכת לאירוע EV-1
+        // ACTIVE reservation whose timer expired yesterday — event EV-1
         ActiveOrder expiredOrder = new ActiveOrder("ORD-1", buyer, "EV-1", Instant.now().minus(1, ChronoUnit.DAYS));
-        
-        // התיקון: נשנה את שדה הסטטוס הפנימי ל-CHECKED_OUT כדי ש-findExpiredReservations ימצא אותה
-        java.lang.reflect.Field statusField = ActiveOrder.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(expiredOrder, com.eventsystem.domain.order.OrderStatus.CHECKED_OUT);
-
-        // הזמנה בתוקף למחר - משויכת לאירוע EV-2 כדי למנוע כפילות
+        // ACTIVE reservation valid until tomorrow — event EV-2 (avoids buyer+event duplicate)
         ActiveOrder validOrder = new ActiveOrder("ORD-2", buyer, "EV-2", Instant.now().plus(1, ChronoUnit.DAYS));
 
         repository.save(expiredOrder);
@@ -51,24 +46,20 @@ class PostgresActiveOrderRepositoryTest extends BasePostgresTest {
 
         // findById
         assertThat(repository.findById("ORD-1")).isPresent();
-        
+
         // findByEvent
         assertThat(repository.findByEvent("EV-1")).hasSize(1);
         assertThat(repository.findByEvent("EV-2")).hasSize(1);
-        
+
         // findByBuyerAndEvent
         assertThat(repository.findByBuyerAndEvent(buyer, "EV-1")).isPresent();
         assertThat(repository.findByBuyerAndEvent(buyer, "EV-2")).isPresent();
 
-        // findExpiredReservations - עכשיו זה יעבור ב-100% כי הסטטוס מתאים!
-        List<ActiveOrder> expiredRes = repository.findExpiredReservations();
-        assertThat(expiredRes).hasSize(1);
-        assertThat(expiredRes.get(0).getOrderId()).isEqualTo("ORD-1");
-
-        // findExpired
+        // findExpired — only the expired ACTIVE order is returned
         Optional<List<ActiveOrder>> expiredOpt = repository.findExpired();
         assertThat(expiredOpt).isPresent();
         assertThat(expiredOpt.get()).hasSize(1);
+        assertThat(expiredOpt.get().get(0).getOrderId()).isEqualTo("ORD-1");
 
         // Delete
         repository.delete("ORD-1");
@@ -78,9 +69,43 @@ class PostgresActiveOrderRepositoryTest extends BasePostgresTest {
     }
 
     @Test
-    void findExpired_whenNoneExpired_returnsEmptyOptional() {
-        // אין הזמנות במסד הנתונים
+    void findExpired_ignoresNonActiveAndFutureReservations() throws Exception {
+        BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, "sess1", "mem1");
+
+        // ACTIVE + past expiry → should be swept
+        ActiveOrder expiredActive = new ActiveOrder("ORD-A", buyer, "EV-A", Instant.now().minus(1, ChronoUnit.DAYS));
+        // CHECKED_OUT + past expiry → already completed, must NOT be swept again
+        ActiveOrder checkedOutPast = new ActiveOrder("ORD-B", buyer, "EV-B", Instant.now().minus(1, ChronoUnit.DAYS));
+        setStatus(checkedOutPast, OrderStatus.CHECKED_OUT);
+        // ACTIVE but not yet expired → must NOT be swept
+        ActiveOrder activeFuture = new ActiveOrder("ORD-C", buyer, "EV-C", Instant.now().plus(1, ChronoUnit.DAYS));
+
+        repository.save(expiredActive);
+        repository.save(checkedOutPast);
+        repository.save(activeFuture);
+        em.flush();
+        em.clear();
+
+        Optional<List<ActiveOrder>> expired = repository.findExpired();
+
+        assertThat(expired).isPresent();
+        assertThat(expired.get())
+                .extracting(ActiveOrder::getOrderId)
+                .containsExactly("ORD-A");
+    }
+
+    @Test
+    void findExpired_whenNoneExpired_returnsPresentEmptyList() {
         Optional<List<ActiveOrder>> expiredOpt = repository.findExpired();
-        assertThat(expiredOpt).isEmpty();
+
+        // Always a present Optional so "nothing to sweep" is a normal outcome, not an error.
+        assertThat(expiredOpt).isPresent();
+        assertThat(expiredOpt.get()).isEmpty();
+    }
+
+    private void setStatus(ActiveOrder order, OrderStatus status) throws Exception {
+        java.lang.reflect.Field statusField = ActiveOrder.class.getDeclaredField("status");
+        statusField.setAccessible(true);
+        statusField.set(order, status);
     }
 }

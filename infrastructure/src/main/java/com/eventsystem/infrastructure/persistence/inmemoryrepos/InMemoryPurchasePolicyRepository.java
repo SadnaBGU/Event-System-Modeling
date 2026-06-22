@@ -34,6 +34,12 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
     }
 
     @Override
+    public List<PurchasePolicy> findByEventId(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        return policiesById.values().stream().filter(policy -> policy.scope().isListedIn(eventId)).toList();
+    }
+
+    @Override
     public List<PurchasePolicy> findActiveByCompanyId(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
 
@@ -41,17 +47,6 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .stream()
                 .filter(PurchasePolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
-                .toList();
-    }
-
-    @Override
-    public List<PurchasePolicy> findApplicableToEvent(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-
-        return policiesById.values()
-                .stream()
-                .filter(PurchasePolicy::isActive)
-                .filter(policy -> policy.scope().appliesTo(eventId))
                 .toList();
     }
 
@@ -64,7 +59,7 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
                 .stream()
                 .filter(PurchasePolicy::isActive)
                 .filter(policy -> policy.companyId().equals(companyId))
-                .filter(policy -> policy.scope().appliesTo(eventId))
+                .filter(policy -> policy.scope().isListedIn(eventId) || policy.scope().companyWide())
                 .toList();
     }
 
@@ -88,24 +83,26 @@ public class InMemoryPurchasePolicyRepository implements IPurchasePolicyReposito
 
         return policiesById.containsKey(policyId);
     }
-
+    
     @Override
-    public List<PurchasePolicy> findSingleEventPolicies(CompanyId companyId) {
+    public List<PurchasePolicy> findCompanyOwnedPolicies(CompanyId companyId) {
         Objects.requireNonNull(companyId, "companyId must not be null");
         return policiesById.values()
                 .stream()
                 .filter(policy -> policy.companyId().equals(companyId))
-                .filter(policy -> policy.scope().isForSingleEvent())
+                .filter(policy -> policy.isCompanyPolicy())
                 .toList();
     }
 
     @Override
-    public List<PurchasePolicy> findSpecificForEvent(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
+    public List<PurchasePolicy> findEventOwnedPolicy(EventId eventId) {
+        Objects.requireNonNull(eventId, "companyId must not be null");
         return policiesById.values()
                 .stream()
-                .filter(policy -> policy.scope().appliesTo(eventId))
-                .filter(policy -> policy.scope().isForSingleEvent())
+                .filter(policy -> policy.scope().isListedIn(eventId))
+                .filter(policy -> policy.isEventPolicy())
                 .toList();
     }
+
+
 }
