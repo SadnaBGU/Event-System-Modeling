@@ -69,7 +69,8 @@ class ActiveOrderTest {
         Instant expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
         ActiveOrder order = orderFactory.createOrder(testBuyer, eventId, expiry);
         
-        // Add items with fractional cents to test BigDecimal precision
+        // Add items with fractional cents to test BigDecimal precision.
+        // unitPrice is per-ticket, so the line total is unitPrice * quantity.
         OrderItem item1 = new OrderItem("VIP-ZONE", "SEAT-101", 1, Money.of(new BigDecimal("150.50"), "USD"));
         OrderItem item2 = new OrderItem("REGULAR-ZONE", "SEAT-201", 2, Money.of(new BigDecimal("75.25"), "USD"));
         OrderItem item3 = new OrderItem("BALCONY-ZONE", "SEAT-301", 1, Money.of(new BigDecimal("99.99"), "USD"));
@@ -81,8 +82,8 @@ class ActiveOrderTest {
         // Act
         Money total = order.calculateBaseTotal();
 
-        // Assert - Expected: 150.50 + 75.25 + 99.99 = 325.74
-        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("325.74"));
+        // Assert - Expected: 150.50*1 + 75.25*2 + 99.99*1 = 400.99
+        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("400.99"));
     }
 
     @Test

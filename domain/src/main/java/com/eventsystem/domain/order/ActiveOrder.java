@@ -116,7 +116,7 @@ public class ActiveOrder {
     public Money calculateBaseTotal() {
         String currency = items.isEmpty() ? "USD" : items.get(0).getUnitPrice().currency();
         return items.stream()
-                .map(OrderItem::getUnitPrice)
+                .map(item -> item.getUnitPrice().multiply(Math.max(1, item.getQuantity())))
                 .reduce(new Money(BigDecimal.ZERO, currency), Money::add);
     }
 

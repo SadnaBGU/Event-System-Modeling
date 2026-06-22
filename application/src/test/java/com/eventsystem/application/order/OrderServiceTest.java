@@ -63,6 +63,8 @@ class OrderServiceTest {
         lenient().when(testOrder.getOrderId()).thenReturn(ORDER_ID);
         lenient().when(testOrder.getBuyerRef()).thenReturn(testBuyer);
         lenient().when(testOrder.getEventId()).thenReturn(EVENT_ID);
+        lenient().when(testOrder.getStatus()).thenReturn(com.eventsystem.domain.order.OrderStatus.ACTIVE);
+        lenient().when(testOrder.isExpired()).thenReturn(false);
     }
 
     // ==========================================

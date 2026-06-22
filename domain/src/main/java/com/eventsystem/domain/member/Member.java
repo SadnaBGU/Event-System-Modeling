@@ -24,7 +24,7 @@ import jakarta.persistence.*;
  */
 
 @Entity
-@Table(name = "members")
+@Table(name = "members", uniqueConstraints = @UniqueConstraint(name = "uk_members_username", columnNames = "username"))
 public class Member {
 
     @EmbeddedId
@@ -33,6 +33,7 @@ public class Member {
     })
     private MemberId memberId;
     
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
     
     @Embedded
@@ -139,7 +140,7 @@ public class Member {
         if (status == MemberStatus.CANCELLED) {
             throw new IllegalStateException("Cannot suspend a cancelled member: " + username);
         }
-        this.suspension = new Suspension(now, duration, reason);
+        this.suspension = new Suspension(duration, reason, now);
         this.status = MemberStatus.SUSPENDED;
     }
 
