@@ -33,6 +33,14 @@ eventsystem:
     # BCrypt cost factor. 12 is the production default; tests use 4 for speed.
     bcrypt-strength: 12
 
+  recovery:
+    # Background sweeper that releases inventory held by abandoned (expired) reservations.
+    enabled: true
+    # Wait this long after start-up before the first sweep (lets the context finish booting).
+    initial-delay-ms: 15000
+    # Delay between the end of one sweep and the start of the next.
+    sweep-interval-ms: 60000
+
   bootstrap:
     enabled: true
     default-reservation-timeout: PT15M

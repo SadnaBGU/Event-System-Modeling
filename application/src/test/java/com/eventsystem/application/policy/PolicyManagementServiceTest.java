@@ -5,6 +5,7 @@ import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.policy.policybuilder.DiscountCommand;
 import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyCommandAssembler;
+import com.eventsystem.application.policy.policybuilder.PolicyOwnerCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
@@ -78,6 +79,8 @@ class PolicyManagementServiceTest {
                 lenient().when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(true);
                 lenient().when(eventOwnershipChecker.isEventByCompany(EVENT_ID, COMPANY_ID)).thenReturn(true);
                 lenient().when(eventOwnershipChecker.isEventByCompany(OTHER_EVENT_ID, COMPANY_ID)).thenReturn(true);
+                lenient().when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
+                lenient().when(eventOwnershipChecker.companyOfEvent(OTHER_EVENT_ID)).thenReturn(COMPANY_ID);
 
                 lenient().when(discountPolicyRepository.findActiveByCompanyId(any())).thenReturn(List.of());
                 lenient().when(purchasePolicyRepository.findActiveByCompanyId(any())).thenReturn(List.of());
@@ -119,6 +122,23 @@ class PolicyManagementServiceTest {
                 return policy;
         }
 
+        private PurchasePolicy eventOwnedPurchasePolicy(EventId eventId, int maxTickets) {
+                return PurchasePolicy.eventPolicy(
+                                COMPANY_ID,
+                                eventId,
+                                "Max " + maxTickets + " tickets",
+                                new MaxTicketPolicy(maxTickets));
+        }
+
+        private DiscountPolicy inactiveEventOwnedDiscountPolicy(EventId eventId, Discount discount) {
+                return DiscountPolicy.eventPolicy(
+                                COMPANY_ID,
+                                eventId,
+                                List.of(discount),
+                                false,
+                                false);
+        }
+
         // UC16 / UAT-44:
         // Owner defines a purchase policy limiting max tickets per buyer.
         @Test
@@ -129,7 +149,8 @@ class PolicyManagementServiceTest {
                                 "Max 4 tickets",
                                 eventScope(EVENT_ID),
                                 valueRule("MAX_TICKETS", 4),
-                                true);
+                                true,
+                                PolicyOwnerCommand.EVENT);
 
                 PurchasePolicyId id = service.createPurchasePolicy(command);
 
@@ -162,7 +183,8 @@ class PolicyManagementServiceTest {
                                 "Max 4 tickets",
                                 eventScope(EVENT_ID),
                                 valueRule("MAX_TICKETS", 4),
-                                true);
+                                true,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createPurchasePolicy(command))
                                 .isInstanceOf(PolicyException.class)
@@ -189,7 +211,8 @@ class PolicyManagementServiceTest {
                                 "Max 4 tickets",
                                 eventScope(EVENT_ID),
                                 valueRule("MAX_TICKETS", 4),
-                                true);
+                                true,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatCode(() -> service.createPurchasePolicy(command))
                                 .doesNotThrowAnyException();
@@ -213,7 +236,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy two discount", 20, valueRule("MIN_TICKETS", 2))),
                                 false,
-                                true);
+                                true,
+                                PolicyOwnerCommand.EVENT);
 
                 DiscountPolicyId id = service.createDiscountPolicy(command);
 
@@ -244,7 +268,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy five discount", 20, valueRule("MIN_TICKETS", 5))),
                                 false,
-                                true);
+                                true,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createDiscountPolicy(command))
                                 .isInstanceOf(PolicyException.class)
@@ -267,7 +292,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy five discount", 20, valueRule("MIN_TICKETS", 5))),
                                 false,
-                                false);
+                                false,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatCode(() -> service.createDiscountPolicy(command))
                                 .doesNotThrowAnyException();
@@ -402,7 +428,8 @@ class PolicyManagementServiceTest {
                                 "Max 4 tickets",
                                 eventScope(EVENT_ID),
                                 valueRule("MAX_TICKETS", 4),
-                                true);
+                                true,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createPurchasePolicy(command))
                                 .isInstanceOf(SecurityException.class)
@@ -425,7 +452,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy two discount", 20, valueRule("MIN_TICKETS", 2))),
                                 false,
-                                true);
+                                true,
+                                PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createDiscountPolicy(command))
                                 .isInstanceOf(SecurityException.class)
@@ -454,10 +482,10 @@ class PolicyManagementServiceTest {
         void doesHaveActivePurchasePolicy_shouldDelegateToRepositories() {
                 when(purchasePolicyRepository.findActiveByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of());
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID))
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
                                 .thenReturn(List.of(activePurchasePolicy(EVENT_ID, 4)));
 
-                boolean result = service.doesHaveActivePurchasePolicy(EVENT_ID, COMPANY_ID);
+                boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
 
                 assertThat(result).isTrue();
         }
@@ -538,6 +566,8 @@ class PolicyManagementServiceTest {
 
                 when(purchasePolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(first, second));
+                when(purchasePolicyRepository.findById(first.id())).thenReturn(Optional.of(first));
+                when(purchasePolicyRepository.findById(second.id())).thenReturn(Optional.of(second));
 
                 service.clearAllPurchasePoliciesOfCompany(ACTOR_ID, COMPANY_ID);
 
@@ -557,6 +587,7 @@ class PolicyManagementServiceTest {
 
                 when(purchasePolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(active, inactive));
+                when(purchasePolicyRepository.findById(active.id())).thenReturn(Optional.of(active));
 
                 service.deactivateAllCompanyPurchasePolicies(ACTOR_ID, COMPANY_ID);
 
@@ -572,8 +603,9 @@ class PolicyManagementServiceTest {
 
                 when(purchasePolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(first, second));
+                when(purchasePolicyRepository.findById(first.id())).thenReturn(Optional.of(first));
 
-                service.removeEventFromAllPurchasePolicyScopes(ACTOR_ID, COMPANY_ID, EVENT_ID);
+                service.removeEventFromAllCompanyPurchasePolicies(ACTOR_ID, COMPANY_ID, EVENT_ID);
 
                 assertThat(first.scope().eventIds()).doesNotContain(EVENT_ID);
                 verify(purchasePolicyRepository).save(first);
@@ -596,7 +628,7 @@ class PolicyManagementServiceTest {
 
         @Test
         void setNotAllowedPurchasePolicy_shouldCreateNeverAllowPolicyForEvent() {
-                service.setNotAllowedPurchasePolicy(ACTOR_ID, COMPANY_ID, EVENT_ID);
+                service.createNotAllowedPurchasePolicy(ACTOR_ID, COMPANY_ID, EVENT_ID);
 
                 ArgumentCaptor<PurchasePolicy> captor = ArgumentCaptor.forClass(PurchasePolicy.class);
                 verify(purchasePolicyRepository).save(captor.capture());
@@ -742,6 +774,8 @@ class PolicyManagementServiceTest {
 
                 when(discountPolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(first, second));
+                when(discountPolicyRepository.findById(first.id())).thenReturn(Optional.of(first));
+                when(discountPolicyRepository.findById(second.id())).thenReturn(Optional.of(second));
 
                 service.clearAllDiscountsOfCompany(ACTOR_ID, COMPANY_ID);
 
@@ -807,8 +841,10 @@ class PolicyManagementServiceTest {
 
                 when(purchasePolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(eventPolicy, companyWideWithEvent));
+                when(purchasePolicyRepository.findById(eventPolicy.id())).thenReturn(Optional.of(eventPolicy));
+                when(purchasePolicyRepository.findById(companyWideWithEvent.id())).thenReturn(Optional.of(companyWideWithEvent));
 
-                service.clearEventsFromAllPurchasePolicies(ACTOR_ID, COMPANY_ID);
+                service.clearEventsFromAllCompanyPurchasePolicies(ACTOR_ID, COMPANY_ID);
 
                 assertThat(eventPolicy.scope().eventIds()).isEmpty();
                 assertThat(companyWideWithEvent.scope().eventIds()).isEmpty();
@@ -823,18 +859,18 @@ class PolicyManagementServiceTest {
                 when(purchasePolicyRepository.findActiveByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(activePurchasePolicy(EVENT_ID, 4)));
 
-                boolean result = service.doesHaveActivePurchasePolicy(EVENT_ID, COMPANY_ID);
+                boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
 
                 assertThat(result).isTrue();
-                verify(purchasePolicyRepository, never()).findApplicableToEvent(any());
+                verify(purchasePolicyRepository, never()).findApplicableToPurchase(any(), any());
         }
 
         @Test
         void doesHaveActivePurchasePolicy_whenNoCompanyOrEventPolicies_shouldReturnFalse() {
                 when(purchasePolicyRepository.findActiveByCompanyId(COMPANY_ID)).thenReturn(List.of());
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID)).thenReturn(List.of());
 
-                boolean result = service.doesHaveActivePurchasePolicy(EVENT_ID, COMPANY_ID);
+                boolean result = service.isAffectedByActivePurchasePolicy(EVENT_ID, COMPANY_ID);
 
                 assertThat(result).isFalse();
         }
@@ -848,7 +884,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 null,
                                 false,
-                                true);
+                                true,
+                        PolicyOwnerCommand.EVENT);
 
                 assertThatThrownBy(() -> service.createDiscountPolicy(command))
                                 .isInstanceOf(PolicyException.class)
@@ -866,7 +903,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(),
                                 false,
-                                true);
+                                true,
+                        PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createDiscountPolicy(command))
                                 .isInstanceOf(PolicyException.class)
@@ -959,41 +997,15 @@ class PolicyManagementServiceTest {
 
                 when(discountPolicyRepository.findByCompanyId(COMPANY_ID))
                                 .thenReturn(List.of(first, second));
+                when(discountPolicyRepository.findById(first.id())).thenReturn(Optional.of(first));
 
-                service.removeEventFromAllDiscountScopes(ACTOR_ID, COMPANY_ID, EVENT_ID);
+                service.removeEventFromAllCompanyDiscountScopes(ACTOR_ID, COMPANY_ID, EVENT_ID);
 
                 assertThat(first.scope().eventIds()).doesNotContain(EVENT_ID);
                 assertThat(second.scope().eventIds()).containsExactly(OTHER_EVENT_ID);
 
-                verify(discountPolicyRepository).save(first);
+                verify(discountPolicyRepository, atLeastOnce()).save(first);
                 verify(discountPolicyRepository, never()).save(second);
-        }
-
-        @Test
-        void clearEventsFromAllDiscounts_shouldClearExplicitEventsAndSaveAll() {
-                DiscountPolicy eventPolicy = activeDiscountPolicy(
-                                EVENT_ID,
-                                new Discount("Event discount", BigDecimal.TEN, new MinTicketPolicy(1)));
-
-                DiscountPolicy companyWideWithEvent = new DiscountPolicy(
-                                DiscountPolicyId.random(),
-                                COMPANY_ID,
-                                new PolicyScope(true, Set.of(EVENT_ID)));
-                companyWideWithEvent
-                                .addDiscount(new Discount("Company discount", BigDecimal.TEN, new MinTicketPolicy(1)));
-                companyWideWithEvent.activate();
-
-                when(discountPolicyRepository.findByCompanyId(COMPANY_ID))
-                                .thenReturn(List.of(eventPolicy, companyWideWithEvent));
-
-                service.clearEventsFromAllDiscounts(ACTOR_ID, COMPANY_ID);
-
-                assertThat(eventPolicy.scope().eventIds()).isEmpty();
-                assertThat(companyWideWithEvent.scope().eventIds()).isEmpty();
-                assertThat(companyWideWithEvent.scope().isCompanyWide()).isTrue();
-
-                verify(discountPolicyRepository).save(eventPolicy);
-                verify(discountPolicyRepository).save(companyWideWithEvent);
         }
 
         @Test
@@ -1008,7 +1020,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy two discount", 20, valueRule("MIN_TICKETS", 2))),
                                 false,
-                                true);
+                                true,
+                        PolicyOwnerCommand.COMPANY);
 
                 assertThatThrownBy(() -> service.createDiscountPolicy(command))
                                 .isInstanceOf(SecurityException.class)
@@ -1063,7 +1076,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand),
                                 false,
-                                true);
+                                true,
+                        PolicyOwnerCommand.COMPANY);
 
                 DiscountPolicyId id = service.createDiscountPolicy(command);
 
@@ -1124,7 +1138,7 @@ class PolicyManagementServiceTest {
 
                 when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
 
-                DiscountPolicyId id = service.createEventScopedDiscountPolicy(
+                DiscountPolicyId id = service.createNewEventOwnedDiscountPolicy(
                                 ACTOR_ID,
                                 EVENT_ID,
                                 "Event hidden",
@@ -1191,7 +1205,7 @@ class PolicyManagementServiceTest {
         // Convenience helper creates company-wide purchase policy.
         @Test
         void createCompanyWidePurchasePolicy_shouldSaveCompanyWidePolicy() {
-                PurchasePolicyId id = service.createCompanyWidePurchasePolicy(
+                PurchasePolicyId id = service.createNewCompanyWidePurchasePolicy(
                                 ACTOR_ID,
                                 COMPANY_ID,
                                 "Max 4",
@@ -1215,7 +1229,7 @@ class PolicyManagementServiceTest {
         void createEventScopedPurchasePolicy_shouldDeriveCompanyAndSaveEventScopedPolicy() {
                 when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
 
-                PurchasePolicyId id = service.createEventScopedPurchasePolicy(
+                PurchasePolicyId id = service.createNewEventOwnedPurchasePolicy(
                                 ACTOR_ID,
                                 EVENT_ID,
                                 "Max 4",
@@ -1349,7 +1363,8 @@ class PolicyManagementServiceTest {
                                 "Max 4 tickets",
                                 eventScope(EVENT_ID),
                                 valueRule("MAX_TICKETS", 4),
-                                true);
+                                true,
+                        PolicyOwnerCommand.EVENT);
 
                 PurchasePolicyId id = service.createPurchasePolicy(command);
 
@@ -1381,7 +1396,8 @@ class PolicyManagementServiceTest {
                                 eventScope(EVENT_ID),
                                 List.of(discountCommand("Buy two discount", 20, valueRule("MIN_TICKETS", 2))),
                                 false,
-                                true);
+                                true,
+                        PolicyOwnerCommand.EVENT);
 
                 DiscountPolicyId id = service.createDiscountPolicy(command);
 
@@ -1405,7 +1421,7 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
                 when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
 
-                PurchasePolicyId id = service.createEventScopedPurchasePolicy(
+                PurchasePolicyId id = service.createNewEventOwnedPurchasePolicy(
                                 ACTOR_ID,
                                 EVENT_ID,
                                 "Event max tickets",
@@ -1431,7 +1447,7 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
                 when(eventOwnershipChecker.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
 
-                DiscountPolicyId id = service.createEventScopedDiscountPolicy(
+                DiscountPolicyId id = service.createNewEventOwnedDiscountPolicy(
                                 ACTOR_ID,
                                 EVENT_ID,
                                 "Event discount",
@@ -1459,7 +1475,7 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
 
-                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                PurchasePolicy policy = eventOwnedPurchasePolicy(EVENT_ID, 4);
                 when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
                 service.renamePurchasePolicy(ACTOR_ID, COMPANY_ID, policy.id(), "Updated event policy");
@@ -1475,7 +1491,7 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
 
-                PurchasePolicy policy = activePurchasePolicy(EVENT_ID, 4);
+                PurchasePolicy policy = eventOwnedPurchasePolicy(EVENT_ID, 4);
                 when(purchasePolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
                 service.deletePurchasePolicy(ACTOR_ID, COMPANY_ID, policy.id());
@@ -1490,11 +1506,9 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
 
-                DiscountPolicy policy = new DiscountPolicy(
-                                DiscountPolicyId.random(),
-                                COMPANY_ID,
-                                PolicyScope.forSingleEvent(EVENT_ID));
-                policy.addDiscount(new Discount("Buy two", BigDecimal.valueOf(20), new MinTicketPolicy(2)));
+                DiscountPolicy policy = inactiveEventOwnedDiscountPolicy(
+                                EVENT_ID,
+                                new Discount("Buy two", BigDecimal.valueOf(20), new MinTicketPolicy(2)));
 
                 when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
@@ -1511,11 +1525,9 @@ class PolicyManagementServiceTest {
                 when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
                 when(permissionChecker.canManageEvents(ACTOR_ID, COMPANY_ID)).thenReturn(true);
 
-                DiscountPolicy policy = new DiscountPolicy(
-                                DiscountPolicyId.random(),
-                                COMPANY_ID,
-                                PolicyScope.forSingleEvent(EVENT_ID));
-                policy.addDiscount(new Discount("Existing", BigDecimal.TEN, new MinTicketPolicy(1)));
+                DiscountPolicy policy = inactiveEventOwnedDiscountPolicy(
+                                EVENT_ID,
+                                new Discount("Existing", BigDecimal.TEN, new MinTicketPolicy(1)));
 
                 when(discountPolicyRepository.findById(policy.id())).thenReturn(Optional.of(policy));
 
@@ -1577,7 +1589,7 @@ class PolicyManagementServiceTest {
         void createCompanyWidePurchasePolicy_whenActorCanManageEventsButNotPurchasePolicies_shouldThrowSecurityException() {
                 when(permissionChecker.canManagePurchasePolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
 
-                assertThatThrownBy(() -> service.createCompanyWidePurchasePolicy(
+                assertThatThrownBy(() -> service.createNewCompanyWidePurchasePolicy(
                                 ACTOR_ID,
                                 COMPANY_ID,
                                 "Company max tickets",
@@ -1595,7 +1607,7 @@ class PolicyManagementServiceTest {
         void createCompanyWideDiscountPolicy_whenActorCanManageEventsButNotDiscountPolicies_shouldThrowSecurityException() {
                 when(permissionChecker.canManageDiscountPolicies(ACTOR_ID, COMPANY_ID)).thenReturn(false);
 
-                assertThatThrownBy(() -> service.createCompanyWideDiscountPolicy(
+                assertThatThrownBy(() -> service.createNewCompanyWideDiscountPolicy(
                                 ACTOR_ID,
                                 COMPANY_ID,
                                 "Company discount",

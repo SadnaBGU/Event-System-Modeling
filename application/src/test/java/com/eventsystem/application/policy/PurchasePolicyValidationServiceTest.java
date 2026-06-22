@@ -1,5 +1,6 @@
 package com.eventsystem.application.policy;
 
+import com.eventsystem.application.TestPurchaseContexts;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.member.IMemberInformationPort;
@@ -56,19 +57,20 @@ class PurchasePolicyValidationServiceTest {
                                 purchasePolicyRepository,
                                 eventManagementPort,
                                 memberInformationPort);
+                lenient().when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
         }
 
         private PurchaseContext contextWithTickets(int ticketCount) {
-                List<ZoneId> zones = java.util.stream.IntStream.range(0, ticketCount)
+                ZoneId[] zones = java.util.stream.IntStream.range(0, ticketCount)
                                 .mapToObj(i -> REGULAR_ZONE)
-                                .toList();
+                                .toArray(ZoneId[]::new);
 
-                return new PurchaseContext(
+                return TestPurchaseContexts.contextWithZones(
                                 EVENT_ID,
                                 COMPANY_ID,
-                                zones,
                                 LocalDate.now().minusYears(25),
-                                null);
+                                null,
+                                zones);
         }
 
         private PurchasePolicy maxTicketPolicy(int maxTickets) {
@@ -183,8 +185,6 @@ class PurchasePolicyValidationServiceTest {
                                 new OrderItem(REGULAR_ZONE.value(), null, 2, Money.of(BigDecimal.TEN, "ILS")));
 
                 when(eventManagementPort.companyOfEvent(EVENT_ID)).thenReturn(COMPANY_ID);
-                when(eventManagementPort.getZonesOfTicketsForEvent(EVENT_ID, items))
-                                .thenReturn(List.of(REGULAR_ZONE, REGULAR_ZONE));
                 when(memberInformationPort.getMemberBirthdate(MEMBER_ID)).thenReturn(LocalDate.of(2000, 1, 1));
 
                 PurchaseContext context = service.createPurchaseContext(EVENT_ID, buyer, items);
@@ -194,21 +194,10 @@ class PurchasePolicyValidationServiceTest {
                 assertThat(context.zonesOfEachEventTicket()).containsExactly(REGULAR_ZONE, REGULAR_ZONE);
                 assertThat(context.buyerBirthDate()).isEqualTo(LocalDate.of(2000, 1, 1));
                 assertThat(context.discountCode()).isNull();
-        }
-
-        @Test
-        @Deprecated
-        void validatePurchasePolicy_legacyMethod_shouldAllowOnlyWhenNoApplicablePolicies() {
-                BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, MEMBER_ID.value());
-                List<OrderItem> items = List.of();
-
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of());
-
-                assertThat(service.validatePurchasePolicy(EVENT_ID.value(), buyer, items)).isTrue();
-
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(maxTicketPolicy(4)));
-
-                assertThat(service.validatePurchasePolicy(EVENT_ID.value(), buyer, items)).isFalse();
+                assertThat(context.ticketCount()).isEqualTo(2);
+                assertThat(context.ticketCountInZone(REGULAR_ZONE)).isEqualTo(2);
+                assertThat(context.subtotalForZone(REGULAR_ZONE).amount()).isEqualByComparingTo("20");
+                assertThat(context.baseTotal().amount()).isEqualByComparingTo("20");
         }
 
         @Test
@@ -242,7 +231,8 @@ class PurchasePolicyValidationServiceTest {
         void findApplicableToEvent_shouldDelegateToRepository() {
                 PurchasePolicy policy = maxTicketPolicy(4);
 
-                when(purchasePolicyRepository.findApplicableToEvent(EVENT_ID)).thenReturn(List.of(policy));
+                when(purchasePolicyRepository.findApplicableToPurchase(COMPANY_ID, EVENT_ID))
+                                .thenReturn(List.of(policy));
 
                 assertThat(service.findApplicableToEvent(EVENT_ID)).containsExactly(policy);
         }

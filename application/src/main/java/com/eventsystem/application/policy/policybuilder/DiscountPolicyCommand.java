@@ -9,6 +9,7 @@ public record DiscountPolicyCommand(
         PolicyScopeCommand scope,
         List<DiscountCommand> discounts,
         boolean stackable,
-        boolean activate
+        boolean activate,
+        PolicyOwnerCommand ownerType
 ) {
 }

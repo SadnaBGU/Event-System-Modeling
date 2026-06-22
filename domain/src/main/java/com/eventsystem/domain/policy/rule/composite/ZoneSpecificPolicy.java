@@ -9,21 +9,25 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
-import java.util.Set;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public final class ZoneSpecificPolicy implements ICompositePolicy {
+
     @JsonProperty("policy")
     private final IPolicy policy;
+
     @JsonProperty("affectedZones")
     private final Set<ZoneId> affectedZones;
+
     @JsonProperty("noAffectedTicketsPass")
     private final boolean noAffectedTicketsPass;
 
-    public ZoneSpecificPolicy(@JsonProperty("affectedZones") Set<ZoneId> affectedZones,
+    public ZoneSpecificPolicy(
+            @JsonProperty("affectedZones") Set<ZoneId> affectedZones,
             @JsonProperty("policy") IPolicy policy,
-            @JsonProperty("noAffectedTicketsPass") boolean passWhenNoAffectedTickets) {
+            @JsonProperty("noAffectedTicketsPass") boolean passWhenNoAffectedTickets
+    ) {
         Objects.requireNonNull(affectedZones, "affectedZones must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 
@@ -40,22 +44,28 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
         this.noAffectedTicketsPass = passWhenNoAffectedTickets;
     }
 
-        @Override
-    public PolicyType type() {
-        return noAffectedTicketsPass 
-                ? PolicyType.ZONE_SPECIFIC_0_PASS
-                : PolicyType.ZONE_SPECIFIC_0_FAIL;
-    }
-
-    public ZoneSpecificPolicy(Set<ZoneId> affectedZones, List<IPolicy> policies, boolean noAffectedTicketsPass) {
+    public ZoneSpecificPolicy(
+            Set<ZoneId> affectedZones,
+            List<IPolicy> policies,
+            boolean noAffectedTicketsPass
+    ) {
         this(affectedZones, new AndPolicy(policies), noAffectedTicketsPass);
     }
 
     @Override
-    public PolicyValidationResult evaluate(PurchaseContext context) {
-        PurchaseContext relevantContext = generateContextForAffectedZones(context);
+    public PolicyType type() {
+        return noAffectedTicketsPass
+                ? PolicyType.ZONE_SPECIFIC_0_PASS
+                : PolicyType.ZONE_SPECIFIC_0_FAIL;
+    }
 
-        if (relevantContext.zonesOfEachEventTicket().isEmpty()) {
+    @Override
+    public PolicyValidationResult evaluate(PurchaseContext context) {
+        Objects.requireNonNull(context, "context must not be null");
+
+        PurchaseContext relevantContext = context.onlyForZones(affectedZones);
+
+        if (relevantContext.zones().isEmpty()) {
             if (noAffectedTicketsPass) {
                 return PolicyValidationResult.success();
             }
@@ -79,22 +89,8 @@ public final class ZoneSpecificPolicy implements ICompositePolicy {
         ));
     }
 
-    private List<ZoneId> listOnlyTicketsOfAffectedZones(PurchaseContext context) {
-        return context.zonesOfEachEventTicket()
-                .stream()
-                .filter(affectedZones::contains)
-                .collect(Collectors.toList());
-    }
-
-    private PurchaseContext generateContextForAffectedZones(PurchaseContext context) {
-        return new PurchaseContext(
-                context.eventId(),
-                context.companyId(),
-                listOnlyTicketsOfAffectedZones(context),
-                context.buyerBirthDate(),
-                context.purchaseDate(),
-                context.discountCode()
-        );
+    public Set<ZoneId> affectedZones() {
+        return affectedZones;
     }
 
     @Override
