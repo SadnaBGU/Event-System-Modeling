@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.api.policy;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.application.policy.policybuilder.DiscountCommand;
 import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyOwnerCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.domain.company.CompanyId;
@@ -162,8 +163,10 @@ public class CompanyPolicyController {
         }
         String policyName = (request.policyName() == null || request.policyName().isBlank())
                 ? "API discount policy" : request.policyName();
+        PolicyOwnerCommand ownerType = scope.companyWide()
+                ? PolicyOwnerCommand.COMPANY : PolicyOwnerCommand.EVENT;
         return new DiscountPolicyCommand(actorId, companyId, policyName, scope,
-                discounts, request.stackable(), true);
+                discounts, request.stackable(), true, ownerType);
     }
 
     public record DiscountPolicyRequest(String policyName, boolean stackable, List<DiscountItem> discounts) {}

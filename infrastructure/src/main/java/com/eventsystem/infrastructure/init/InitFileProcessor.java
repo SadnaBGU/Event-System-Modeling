@@ -15,6 +15,7 @@ import com.eventsystem.application.order.OrderService;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.application.policy.policybuilder.DiscountCommand;
 import com.eventsystem.application.policy.policybuilder.DiscountPolicyCommand;
+import com.eventsystem.application.policy.policybuilder.PolicyOwnerCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyRuleCommand;
 import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.application.policy.policybuilder.PurchasePolicyCommand;
@@ -318,7 +319,8 @@ public class InitFileProcessor {
                 arg(cmd, 2),
                 new PolicyScopeCommand(true, Set.of()),
                 rule,
-                true);
+                true,
+                PolicyOwnerCommand.COMPANY);
         policyService.createPurchasePolicy(command);
     }
 
@@ -337,7 +339,8 @@ public class InitFileProcessor {
                 new PolicyScopeCommand(true, Set.of()),
                 List.of(discount),
                 false,
-                true);
+                true,
+                PolicyOwnerCommand.COMPANY);
         policyService.createDiscountPolicy(command);
     }
 
