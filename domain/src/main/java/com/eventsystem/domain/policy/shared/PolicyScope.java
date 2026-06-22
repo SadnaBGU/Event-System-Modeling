@@ -46,9 +46,12 @@ public record PolicyScope(boolean companyWide, Set<EventId> eventIds) {
     }
 
     public boolean appliesTo(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
+        return isCompanyWide() || isListedIn(eventId);
+    }
 
-        return companyWide || eventIds.contains(eventId);
+    public boolean isListedIn(EventId eventId) {
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        return eventIds.contains(eventId);
     }
 
     public boolean isCompanyWide() {

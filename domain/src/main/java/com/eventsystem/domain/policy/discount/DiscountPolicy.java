@@ -4,24 +4,44 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.DiscountPolicyException;
 import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.composite.ICompositePolicy;
+import com.eventsystem.domain.policy.rule.composite.ZoneSpecificPolicy;
+import com.eventsystem.domain.policy.shared.PolicyOwnerType;
 import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.purchaserecord.DiscountSnapshot;
 import com.eventsystem.domain.shared.Money;
-import jakarta.persistence.*;
+import com.eventsystem.domain.zone.ZoneId;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "discount_policies")
@@ -30,63 +50,97 @@ public final class DiscountPolicy {
     @EmbeddedId
     private DiscountPolicyId id;
 
-    // מגדיר אוטומטית את העמודה כדי שלא יתנגש עם שמות אחרים
     @Embedded
     @AttributeOverrides({
-        @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
+            @AttributeOverride(name = "value", column = @Column(name = "company_id", nullable = false))
     })
     private CompanyId companyId;
 
-    // מכיוון שעוד לא ראיתי את קוד ה-Scope, אפשר לשמור גם אותו כ-JSON 
-    // או כ-Embedded אם זה מתאים
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "policy_scope", columnDefinition = "jsonb")
     private PolicyScope scope;
 
-    // טבלת קשר מיוחדת שתחזיק את כל ההנחות שקשורות לפוליסה הזו
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "discount_policy_discounts", 
-            joinColumns = @JoinColumn(name = "discount_policy_id")
-    )
+    @CollectionTable(name = "discount_policy_discounts", joinColumns = @JoinColumn(name = "discount_policy_id"))
     private List<Discount> discounts = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "owner_type", nullable = false)
+    private PolicyOwnerType ownerType = PolicyOwnerType.COMPANY;
 
     private boolean stackable;
     private boolean active;
 
-    // הבונוס: מונע בעיות ביצועים בשמירה ומונע דריסת נתונים ממספר שרתים במקביל
     @Version
     private Long version;
 
-    // חובה עבור JPA
-    protected DiscountPolicy() {}
+    protected DiscountPolicy() {
+    }
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
-    private DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope,
-                           List<Discount> discounts, boolean isStackable, boolean isActive) {
+    private DiscountPolicy(
+            DiscountPolicyId id,
+            CompanyId companyId,
+            PolicyScope scope,
+            List<Discount> discounts,
+            boolean isStackable,
+            boolean isActive,
+            PolicyOwnerType ownerType
+    ) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
         this.discounts = new ArrayList<>(Objects.requireNonNull(discounts, "discounts must not be null"));
-        if (discounts.stream().anyMatch(discount -> discount == null)) {
+
+        if (discounts.stream().anyMatch(Objects::isNull)) {
             throw new DiscountPolicyException("Given discounts cannot be null");
         }
+
         this.stackable = isStackable;
-        this.active = isActive; //inactive by default
+        this.active = isActive;
+        this.ownerType = Objects.requireNonNull(ownerType, "ownerType must not be null");
+
+        requireValidOwnerAndScope(ownerType, scope);
+        requireValidDiscountPolicy();
     }
 
-    public DiscountPolicy(CompanyId companyId, PolicyScope scope,
-                           List<Discount> discounts, boolean isStackable, boolean isActive) {
+    public DiscountPolicy(
+            CompanyId companyId,
+            PolicyScope scope,
+            List<Discount> discounts,
+            boolean isStackable,
+            boolean isActive
+    ) {
         this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
         this.discounts = new ArrayList<>(Objects.requireNonNull(discounts, "discounts must not be null"));
-        if (discounts.stream().anyMatch(discount -> discount == null)) {
+
+        if (discounts.stream().anyMatch(Objects::isNull)) {
             throw new DiscountPolicyException("Given discounts cannot be null");
         }
+
         this.id = DiscountPolicyId.random();
         this.stackable = isStackable;
-        this.active = isActive; //inactive by default
+        this.active = isActive;
+        this.ownerType = PolicyOwnerType.COMPANY;
+    }
+
+    public DiscountPolicy(
+            DiscountPolicyId id,
+            CompanyId companyId,
+            EventId specificEventId,
+            PolicyOwnerType ownerType
+    ) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.companyId = Objects.requireNonNull(companyId, "companyId must not be null");
+        this.scope = PolicyScope.forSingleEvent(specificEventId);
+        this.discounts = new ArrayList<>();
+        this.ownerType = Objects.requireNonNull(ownerType, "ownerType must not be null");
+        this.stackable = false;
+        this.active = false;
+
+        requireValidOwnerAndScope(ownerType, scope);
     }
 
     public DiscountPolicy(DiscountPolicyId id, CompanyId companyId, PolicyScope scope) {
@@ -95,7 +149,8 @@ public final class DiscountPolicy {
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
         this.discounts = new ArrayList<>();
         this.stackable = false;
-        this.active = false; //inactive by default
+        this.active = false;
+        this.ownerType = PolicyOwnerType.COMPANY;
     }
 
     public DiscountPolicy(CompanyId cid) {
@@ -103,35 +158,54 @@ public final class DiscountPolicy {
     }
 
     public static DiscountPolicy clearScope(CompanyId companyId) {
-        return new DiscountPolicy( DiscountPolicyId.random(), companyId, PolicyScope.clearScope());
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.clearScope());
     }
 
     public static DiscountPolicy inactiveCompanyWide(CompanyId companyId) {
-        return new DiscountPolicy( DiscountPolicyId.random(), companyId, PolicyScope.companyWideScope());
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.companyWideScope());
     }
 
     public static DiscountPolicy inactiveForEvents(CompanyId companyId, Set<EventId> eventIds) {
         return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forEvents(eventIds));
     }
 
-    public static DiscountPolicy inactiveForSingleEvent(CompanyId companyId, EventId eventId) {
-        return new DiscountPolicy(DiscountPolicyId.random(), companyId, PolicyScope.forSingleEvent(eventId));
+    public static DiscountPolicy inactiveEventOwnedPolicy(CompanyId companyId, EventId eventId) {
+        return new DiscountPolicy(DiscountPolicyId.random(), companyId, eventId, PolicyOwnerType.EVENT);
     }
 
-    public static DiscountPolicy withDiscounts(DiscountPolicy discountPolicy, List<Discount> toAdd) {
-        Objects.requireNonNull(discountPolicy, "discountPolicy must not be null");
-        Objects.requireNonNull(toAdd, "discounts to add must not be null");
-
-        List<Discount> joinedDiscounts = new ArrayList<>(discountPolicy.discounts());
-        joinedDiscounts.addAll(toAdd);
-
+    public static DiscountPolicy eventPolicy(
+            CompanyId companyId,
+            EventId eventId,
+            List<Discount> discounts,
+            boolean stackable,
+            boolean active
+    ) {
         return new DiscountPolicy(
-                discountPolicy.id(),
-                discountPolicy.companyId,
-                discountPolicy.scope(),
-                joinedDiscounts,
-                discountPolicy.isStackable(),
-                discountPolicy.isActive()
+                DiscountPolicyId.random(),
+                companyId,
+                PolicyScope.forSingleEvent(eventId),
+                discounts,
+                stackable,
+                active,
+                PolicyOwnerType.EVENT
+        );
+    }
+
+    public static DiscountPolicy companyPolicy(
+            CompanyId companyId,
+            PolicyScope scope,
+            List<Discount> discounts,
+            boolean stackable,
+            boolean active
+    ) {
+        return new DiscountPolicy(
+                DiscountPolicyId.random(),
+                companyId,
+                scope,
+                discounts,
+                stackable,
+                active,
+                PolicyOwnerType.COMPANY
         );
     }
 
@@ -164,9 +238,35 @@ public final class DiscountPolicy {
         this.active = false;
     }
 
+    public boolean isCompanyPolicy() {
+        return ownerType == PolicyOwnerType.COMPANY;
+    }
+
+    public boolean isEventPolicy() {
+        return ownerType == PolicyOwnerType.EVENT;
+    }
+
+    private void requireMutableScope() {
+        if (isEventPolicy()) {
+            throw new DiscountPolicyException("Event-owned discount policy scope cannot be changed");
+        }
+    }
+
+    private static void requireValidOwnerAndScope(PolicyOwnerType ownerType, PolicyScope scope) {
+        Objects.requireNonNull(ownerType, "policy owner type must not be null");
+        Objects.requireNonNull(scope, "scope must not be null");
+
+        if (ownerType == PolicyOwnerType.EVENT && !scope.isForSingleEvent()) {
+            throw new DiscountPolicyException(
+                    "Event-owned discount policy must be scoped to exactly one event");
+        }
+    }
+
     public void changeScope(PolicyScope scope) {
+        requireMutableScope();
         this.scope = Objects.requireNonNull(scope, "scope must not be null");
-        if(!scope.isScopedToEventsOrCompany()) {
+
+        if (!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }
     }
@@ -198,19 +298,23 @@ public final class DiscountPolicy {
     }
 
     public void setCompanyWide() {
+        requireMutableScope();
         Set<EventId> affectedEvents = scope.eventIds();
         this.scope = new PolicyScope(true, affectedEvents);
     }
 
     public void deactivateCompanyWide() {
+        requireMutableScope();
         Set<EventId> affectedEvents = scope.eventIds();
         this.scope = new PolicyScope(false, affectedEvents);
-        if(!scope.isScopedToEventsOrCompany()) {
+
+        if (!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }
     }
 
     public void activateForEvent(EventId eventId) {
+        requireMutableScope();
         Objects.requireNonNull(eventId, "eventId must not be null");
 
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
@@ -220,20 +324,24 @@ public final class DiscountPolicy {
     }
 
     public void deactivateForEvent(EventId eventId) {
+        requireMutableScope();
         Objects.requireNonNull(eventId, "eventId must not be null");
 
         Set<EventId> affectedEvents = new HashSet<>(scope.eventIds());
         affectedEvents.remove(eventId);
 
         this.scope = new PolicyScope(scope.isCompanyWide(), affectedEvents);
-        if(!scope.isScopedToEventsOrCompany()) {
+
+        if (!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }
     }
 
     public void clearAllEventsFromScope() {
+        requireMutableScope();
         this.scope = new PolicyScope(scope.isCompanyWide(), Set.of());
-        if(!scope.isScopedToEventsOrCompany()) {
+
+        if (!scope.isScopedToEventsOrCompany()) {
             deactivate();
         }
     }
@@ -296,7 +404,6 @@ public final class DiscountPolicy {
                 .toList();
     }
 
-
     public Set<EventId> discountedEventIds() {
         return scope.eventIds();
     }
@@ -306,35 +413,34 @@ public final class DiscountPolicy {
     }
 
     public void requireValidDiscountPolicy() {
-        if(!scope.isScopedToEventsOrCompany()) {
+        if (!scope.isScopedToEventsOrCompany()) {
             throw new DiscountPolicyException("Discount is not related to an Event or Company wide");
         }
-        if(discounts.isEmpty()) {
+
+        if (discounts.isEmpty()) {
             throw new DiscountPolicyException("No Discounts are related to this Discount Policy");
         }
     }
 
-    
     public boolean isPurchaseEligibleForSpecificDiscount(PurchaseContext context, String discountName) {
         if (!appliesTo(context)) {
             return false;
         }
-            Discount foundDiscount = null;
+
+        Discount foundDiscount = null;
+
         for (Discount discount : discounts) {
             if (discount.getDiscountName().equals(discountName)) {
                 foundDiscount = discount;
                 break;
             }
         }
+
         if (foundDiscount == null) {
             return false;
         }
 
-        return !foundDiscount.isExpired() && foundDiscount.validateDiscount(context);
-    }
-
-    private BigDecimal capAt100(BigDecimal percent) {
-        return percent.min(HUNDRED);
+        return !foundDiscount.isExpired(context.purchaseDate()) && foundDiscount.validateDiscount(context);
     }
 
     public boolean isPurchaseEligibleForDiscount(PurchaseContext context) {
@@ -345,12 +451,16 @@ public final class DiscountPolicy {
         if (!appliesTo(context)) {
             return PolicyValidationResult.failure("No discount apply to the current purchase context");
         }
+
         for (Discount discount : discounts) {
             PolicyValidationResult validationResult = discount.evaluateDiscount(context);
-            if (validationResult.isSuccess() && discount.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+
+            if (validationResult.isSuccess()
+                    && discount.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
                 return PolicyValidationResult.success();
             }
         }
+
         return PolicyValidationResult.failure("No discount apply to the current purchase context");
     }
 
@@ -360,18 +470,17 @@ public final class DiscountPolicy {
         ArrayList<BigDecimal> bestDiscountPercent = new ArrayList<>();
         ArrayList<BigDecimal> actualAmountPlaceholder = new ArrayList<>();
 
-
         for (Discount discount : discounts) {
             BigDecimal current = discount.getDiscountPercentForContext(context);
 
             if (current.compareTo(best) > 0) {
                 best = current;
+
                 if (bestDiscountName.isEmpty()) {
                     bestDiscountName.add(discount.getDiscountName());
                     bestDiscountPercent.add(current);
                     actualAmountPlaceholder.add(BigDecimal.ZERO);
-                }
-                else {
+                } else {
                     bestDiscountName.set(0, discount.getDiscountName());
                     bestDiscountPercent.set(0, current);
                 }
@@ -382,13 +491,13 @@ public final class DiscountPolicy {
             }
         }
 
-
-        DiscountSummary noActualAmounts = new DiscountSummary(bestDiscountName,
-                                                             bestDiscountPercent,
-                                                             actualAmountPlaceholder,
-                                                             BigDecimal.ZERO,
-                                                             DiscountSummary.shouldCapDiscountAt100(bestDiscountPercent));
-        return noActualAmounts;
+        return new DiscountSummary(
+                bestDiscountName,
+                bestDiscountPercent,
+                actualAmountPlaceholder,
+                BigDecimal.ZERO,
+                DiscountSummary.shouldCapDiscountAt100(bestDiscountPercent)
+        );
     }
 
     private DiscountSummary getStackedDiscountSummary(PurchaseContext context) {
@@ -412,12 +521,13 @@ public final class DiscountPolicy {
             }
         }
 
-        DiscountSummary noActualAmounts = new DiscountSummary(appliedDiscountNames,
-                                                             appliedDiscountPercents,
-                                                             actualAmountPlaceholder,
-                                                             BigDecimal.ZERO, DiscountSummary.shouldCapDiscountAt100(appliedDiscountPercents)
-                                                             );
-        return noActualAmounts;
+        return new DiscountSummary(
+                appliedDiscountNames,
+                appliedDiscountPercents,
+                actualAmountPlaceholder,
+                BigDecimal.ZERO,
+                DiscountSummary.shouldCapDiscountAt100(appliedDiscountPercents)
+        );
     }
 
     public DiscountSummary getFullDiscountSummary(PurchaseContext context, Money baseCost) {
@@ -428,25 +538,41 @@ public final class DiscountPolicy {
             return DiscountSummary.noDiscountSummary();
         }
 
-        DiscountSummary noActualAmounts =  stackable ? getStackedDiscountSummary(context) : getBestDiscountSummary(context);
+        List<DiscountApplicationCandidate> candidates = discounts.stream()
+                .map(discount -> toDiscountCandidate(discount, context, baseCost))
+                .filter(candidate -> candidate.actualAmount().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
 
-        if (noActualAmounts.appliedDiscountsNames().isEmpty()) {
+        if (candidates.isEmpty()) {
             return DiscountSummary.noDiscountSummary();
         }
 
-        List<BigDecimal> newActualAmounts = new ArrayList<>();
-        BigDecimal totalPercent = BigDecimal.ZERO;
+        List<DiscountApplicationCandidate> appliedCandidates = stackable
+                ? candidates
+                : List.of(bestActualAmountCandidate(candidates));
 
-        for (int i = 0; i < noActualAmounts.appliedDiscountsNames().size(); i++) {
-            BigDecimal currPercent = noActualAmounts.appliedDiscountPercents().get(i);
-            totalPercent = capAt100(totalPercent.add(currPercent));
-            BigDecimal mult = currPercent.divide(HUNDRED);
-            newActualAmounts.add(mult.multiply(baseCost.amount()));
-        }
+        BigDecimal totalActualDiscount = appliedCandidates.stream()
+                .map(DiscountApplicationCandidate::actualAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .min(baseCost.amount());
 
-        BigDecimal temp =  totalPercent.divide(HUNDRED);
-
-        return noActualAmounts.replaceActualAmounts(newActualAmounts, temp.multiply(baseCost.amount()));
+        return new DiscountSummary(
+                appliedCandidates.stream()
+                        .map(DiscountApplicationCandidate::discountName)
+                        .toList(),
+                appliedCandidates.stream()
+                        .map(DiscountApplicationCandidate::discountPercent)
+                        .toList(),
+                appliedCandidates.stream()
+                        .map(DiscountApplicationCandidate::actualAmount)
+                        .toList(),
+                totalActualDiscount,
+                DiscountSummary.shouldCapDiscountAt100(
+                        appliedCandidates.stream()
+                                .map(DiscountApplicationCandidate::discountPercent)
+                                .toList()
+                )
+        );
     }
 
     public BigDecimal getFullDiscountPercent(PurchaseContext context) {
@@ -454,8 +580,9 @@ public final class DiscountPolicy {
             return BigDecimal.ZERO;
         }
 
-        DiscountSummary summary =
-                stackable ? getStackedDiscountSummary(context) : getBestDiscountSummary(context);
+        DiscountSummary summary = stackable
+                ? getStackedDiscountSummary(context)
+                : getBestDiscountSummary(context);
 
         return summary.appliedDiscountPercents()
                 .stream()
@@ -463,67 +590,138 @@ public final class DiscountPolicy {
                 .min(HUNDRED);
     }
 
-    public DiscountSnapshot generateDiscountSnapshot(DiscountSummary summary, Money baseCost) {
-
-        Objects.requireNonNull(baseCost, "baseCost must not be null");
-        Money discountMoneyAmount = new Money(summary.totalDiscount(), baseCost.currency());
-        int discountAmount = summary.appliedDiscountsNames().size();
-        String discountNames = "";
-        for (int i = 0; i < discountAmount; i++) {
-            discountNames = discountNames.concat(summary.appliedDiscountsNames().get(i));
-            if (i < discountAmount - 1) {
-                discountNames = discountNames.concat( " ; ");
-            }
-        }
-        return new DiscountSnapshot(discountNames, discountMoneyAmount);
+    public static DiscountSnapshot discountSnapshotFromSummary(DiscountSummary summary, Money baseCost) {
+        return summary.generateDiscountSnapshot(baseCost);
     }
 
     public DiscountSnapshot generateDiscountSnapshot(PurchaseContext context, Money baseCost) {
         DiscountSummary summary = getFullDiscountSummary(context, baseCost);
-        return generateDiscountSnapshot(summary, baseCost);
+        return discountSnapshotFromSummary(summary, baseCost);
     }
 
     public List<DiscountInfo> getDiscountInfos() {
-        return discounts.stream().map(Discount::info).toList();
+        return discounts.stream()
+                .map(Discount::info)
+                .toList();
     }
 
     public List<DiscountInfo> activeVisibleDiscountsInfo() {
-       return  !active
-        ? List.of()
-        : visibleDiscounts().stream().map(Discount::info).toList();
+        return !active
+                ? List.of()
+                : visibleDiscounts().stream()
+                        .map(Discount::info)
+                        .toList();
     }
 
     public LocalDate dateOfLatestActiveDiscount(boolean requireVisible) {
         if (discounts.isEmpty()) {
             throw new PolicyException("No discounts in current discount policy");
         }
+
         List<Discount> toCheck = requireVisible
-                                 ? discounts.stream().filter(Discount::isVisible).toList()
-                                 : discounts();
+                ? discounts.stream().filter(Discount::isVisible).toList()
+                : discounts();
 
         if (toCheck.isEmpty()) {
             throw new PolicyException("No matching discounts in current discount policy");
         }
+
         LocalDate latest = LocalDate.of(0, 1, 1);
+
         for (Discount discount : toCheck) {
             LocalDate endDate = discount.getEndDate();
+
             if (endDate == null) {
                 return null;
             }
-            if(endDate.isAfter(latest)) {
+
+            if (endDate.isAfter(latest)) {
                 latest = endDate;
             }
         }
+
         return latest;
     }
 
-    public boolean isSpecificFor(EventId eventId) {
-        Objects.requireNonNull(eventId, "eventId must not be null");
-        return !scope.isCompanyWide() && scope.eventIds().contains(eventId) && scope.eventIds().size() == 1;
+    private record DiscountApplicationCandidate(
+            String discountName,
+            BigDecimal discountPercent,
+            BigDecimal actualAmount
+    ) {
     }
 
-    public boolean isSingleEventPolicy() {
-        return !scope.isCompanyWide() && scope.eventIds().size() == 1;
+    private DiscountApplicationCandidate toDiscountCandidate(
+            Discount discount,
+            PurchaseContext context,
+            Money baseCost
+    ) {
+        BigDecimal discountPercent = discount.getDiscountPercentForContext(context);
+
+        if (discountPercent.compareTo(BigDecimal.ZERO) <= 0) {
+            return new DiscountApplicationCandidate(
+                    discount.getDiscountName(),
+                    discountPercent,
+                    BigDecimal.ZERO
+            );
+        }
+
+        BigDecimal eligibleSubtotal = eligibleSubtotalForDiscount(discount, context, baseCost);
+
+        if (eligibleSubtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return new DiscountApplicationCandidate(
+                    discount.getDiscountName(),
+                    discountPercent,
+                    BigDecimal.ZERO
+            );
+        }
+
+        BigDecimal actualAmount = eligibleSubtotal
+                .multiply(discountPercent)
+                .divide(HUNDRED);
+
+        return new DiscountApplicationCandidate(
+                discount.getDiscountName(),
+                discountPercent,
+                actualAmount
+        );
     }
 
+    private BigDecimal eligibleSubtotalForDiscount(
+            Discount discount,
+            PurchaseContext context,
+            Money baseCost
+    ) {
+        Set<ZoneId> targetZones = extractTargetZones(discount.policy());
+
+        if (targetZones.isEmpty()) {
+            return baseCost.amount();
+        }
+
+        return context.subtotalForZones(targetZones).amount();
+    }
+
+    private Set<ZoneId> extractTargetZones(IPolicy policy) {
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        if (policy instanceof ZoneSpecificPolicy zoneSpecificPolicy) {
+            return zoneSpecificPolicy.affectedZones();
+        }
+
+        if (policy instanceof ICompositePolicy compositePolicy) {
+            return compositePolicy.children()
+                    .stream()
+                    .flatMap(child -> extractTargetZones(child).stream())
+                    .collect(Collectors.toSet());
+        }
+
+        return Set.of();
+    }
+
+    private DiscountApplicationCandidate bestActualAmountCandidate(
+            List<DiscountApplicationCandidate> candidates
+    ) {
+        return candidates.stream()
+                .max(Comparator.comparing(DiscountApplicationCandidate::actualAmount))
+                .orElseThrow();
+    }
 }

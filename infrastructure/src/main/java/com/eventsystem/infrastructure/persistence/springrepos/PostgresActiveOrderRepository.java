@@ -27,11 +27,6 @@ public class PostgresActiveOrderRepository implements IActiveOrderRepository {
         return jpaRepo.findByEventId(eventId);
     }
 
-    public List<ActiveOrder> findExpiredReservations() {
-        // Keeps the infrastructure detail (Instant.now()) encapsulated here
-        return jpaRepo.findByStatusAndReservationExpiryBefore(OrderStatus.CHECKED_OUT, Instant.now());
-    }
-
     @SuppressWarnings("null")
     @Override
     public void save(ActiveOrder activeOrder) {
@@ -45,8 +40,13 @@ public class PostgresActiveOrderRepository implements IActiveOrderRepository {
 
     @Override
     public Optional<List<ActiveOrder>> findExpired() {
-        List<ActiveOrder> expiredOrders = jpaRepo.findByReservationExpiryBefore(Instant.now());
-        return expiredOrders.isEmpty() ? Optional.empty() : Optional.of(expiredOrders);
+        // Only ACTIVE reservations still hold inventory. CHECKED_OUT / EXPIRED / CANCELLED
+        // orders have already released or sold their seats, so they must not be swept again.
+        // Always returns a present Optional (possibly empty list) so callers can treat
+        // "nothing to sweep" as a normal outcome rather than an error.
+        List<ActiveOrder> expiredOrders =
+                jpaRepo.findByStatusAndReservationExpiryBefore(OrderStatus.ACTIVE, Instant.now());
+        return Optional.of(expiredOrders);
     }
 
     @SuppressWarnings("null")

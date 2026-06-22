@@ -42,8 +42,4 @@ public interface SpringDataActiveOrderRepository extends JpaRepository<ActiveOrd
             @Param("memberId") String memberId,
             @Param("eventId") String eventId);
 
-
-    List<ActiveOrder> findByReservationExpiryBefore(Instant now);
-
-
 }

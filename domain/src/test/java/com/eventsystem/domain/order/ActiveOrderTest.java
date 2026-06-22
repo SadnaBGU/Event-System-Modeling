@@ -81,8 +81,8 @@ class ActiveOrderTest {
         // Act
         Money total = order.calculateBaseTotal();
 
-        // Assert - Expected: 150.50 + 75.25 + 99.99 = 325.74
-        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("325.74"));
+        // Assert - Expected: 150.50 + 2 x 75.25 + 99.99 = 325.74
+        assertThat(total.amount()).isEqualByComparingTo(new BigDecimal("400.99"));
     }
 
     @Test
