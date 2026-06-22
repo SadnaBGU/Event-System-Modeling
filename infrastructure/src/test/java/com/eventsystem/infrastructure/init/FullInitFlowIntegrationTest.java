@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -49,6 +50,7 @@ import static org.mockito.ArgumentMatchers.anyString;
  */
 @SpringBootTest
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ExtendWith(PostgresAvailableCondition.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://127.0.0.1:5434/eventsdb",
@@ -57,9 +59,16 @@ import static org.mockito.ArgumentMatchers.anyString;
         "spring.datasource.driver-class-name=org.postgresql.Driver",
         "spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.datasource.hikari.maximum-pool-size=4",
+        // Keep this full-context test's DB footprint tiny so the cumulative
+        // connection count across all cached Spring contexts stays under
+        // PostgreSQL's max_connections (=100) — otherwise CI fails with
+        // "too many clients already".
+        "spring.datasource.hikari.maximum-pool-size=2",
         "spring.datasource.hikari.minimum-idle=0",
-        "spring.datasource.hikari.idle-timeout=10000"
+        "spring.datasource.hikari.idle-timeout=10000",
+        // Stop the background RecoverySweeper from firing during the test: it
+        // would keep opening connections every 60s for the whole suite run.
+        "eventsystem.recovery.enabled=false"
 })
 class FullInitFlowIntegrationTest {
 
