@@ -1,0 +1,133 @@
+flowchart TB
+%% =====================================================================
+%% Event System — V3 Architecture additions
+%%
+%% Focuses on the components added/changed in V3:
+%%   1. Persistence: ORM (Spring Data JPA) as the Data-Access Layer,
+%%      replacing the in-memory repositories, backed by PostgreSQL.
+%%   2. External systems via HTTP client libraries (WSEP adapters).
+%%   3. System initialization: config file + initial-state file loader.
+%%
+%% The required V3 architecture components are labelled:
+%%   Client · Communication · Application · Infrastructure · Domain ·
+%%   ORM (= Data-Access Layer, not drawn as a separate layer) · Database
+%% =====================================================================
+    classDef client   fill:#90CAF9,stroke:#1565C0,color:#0d2742,font-weight:bold
+    classDef comm     fill:#FFCC80,stroke:#EF6C00,color:#3a2400,font-weight:bold
+    classDef app      fill:#4A90D9,stroke:#2C5F8A,color:#fff,font-weight:bold
+    classDef domain   fill:#7ED321,stroke:#5A9A18,color:#16320a,font-weight:bold
+    classDef infra    fill:#E07070,stroke:#C0392B,color:#fff,font-weight:bold
+    classDef orm      fill:#B39DDB,stroke:#5E35B1,color:#1c1033,font-weight:bold
+    classDef db       fill:#37474F,stroke:#000,color:#fff,font-weight:bold
+    classDef ext      fill:#F5A623,stroke:#C47D1A,color:#33240a,font-weight:bold
+    classDef cfg      fill:#F8E71C,stroke:#C5B200,color:#333,font-weight:bold
+
+    %% ---------------- Client ----------------
+    subgraph CLIENT["🟦 CLIENT"]
+        UI["event-system-ui (React/Vite)"]
+        CLImport["Init scripts / curl"]
+    end
+
+    %% ---------------- Communication ----------------
+    subgraph COMM["🟧 COMMUNICATION"]
+        REST["REST controllers (Spring MVC)"]
+        WS["WebSocket / STOMP (real-time notifications)"]
+        AuthIntc["AuthenticationInterceptor (JWT)"]
+    end
+
+    %% ---------------- Application ----------------
+    subgraph APP["🔵 APPLICATION"]
+        Services["Domain-use-case Services<br/>(Member, Company, Event, Order,<br/>Checkout, Lottery, Policy, Admin, ...)"]
+        Ports["Ports<br/>(IPaymentGatewayPort, ITicketIssuancePort,<br/>INotificationPort, IExternalSystemsAvailabilityPort)"]
+    end
+
+    %% ---------------- Domain ----------------
+    subgraph DOMAIN["🟢 DOMAIN"]
+        Aggregates["JPA-annotated aggregates<br/>(Member, ProductionCompany, Event, Zone,<br/>Venue, ActiveOrder, Lottery, VirtualQueue,<br/>PurchaseRecord, Platform, Policies)"]
+        RepoPorts["Repository ports<br/>(IMemberRepository, IEventRepository, ...)"]
+    end
+
+    %% ---------------- Infrastructure ----------------
+    subgraph INFRA["🔴 INFRASTRUCTURE"]
+        AppConfig["AppConfig (Spring beans / wiring)"]
+
+        subgraph INIT["⚙️ System Initialization (V3)"]
+            direction TB
+            ConfigFile["application-main.yml<br/>+ env vars (DB, admin, queue threshold)"]:::cfg
+            BootRunner["AdminBootstrap (CommandLineRunner @Order 0)"]
+            InitRunner["InitFileRunner (CommandLineRunner @Order 100)"]
+            StateParser["StateFileParser"]
+            InitProc["InitFileProcessor (@Transactional — all-or-nothing)"]
+            StateFile["initial-state file (commands)"]:::cfg
+        end
+
+        subgraph WSEPADAP["🌐 External HTTP Adapters (WSEP)"]
+            direction TB
+            HttpClient["WsepHttpClient (java.net.http HttpClient)"]
+            PayAdapter["PaymentGatewayHttpAdapter"]
+            IssAdapter["TicketIssuanceHttpAdapter"]
+            AvailClient["WsepAvailabilityClient"]
+        end
+    end
+
+    %% ---------------- ORM / Data-Access Layer ----------------
+    subgraph ORM["🟣 ORM — Data-Access Layer (Spring Data JPA + Hibernate)"]
+        direction TB
+        Adapters["Postgres*Repository adapters<br/>(implement domain repository ports)"]
+        SpringData["SpringData*Repository (JpaRepository)"]
+        Cache["Hibernate 1st-level cache / persistence context"]
+    end
+
+    %% ---------------- Database ----------------
+    subgraph DBLAYER["⬛ DATABASE"]
+        PG[("PostgreSQL<br/>(local H2/Docker for dev/test,<br/>Google Cloud SQL for deploy)")]:::db
+    end
+
+    %% ---------------- External services ----------------
+    WSEP["WSEP external service<br/>(payment + ticket issuance)"]:::ext
+
+    %% ---------------- Edges ----------------
+    UI -->|"HTTP / WS"| COMM
+    CLImport -->|"startup"| INIT
+    COMM --> APP
+    AuthIntc -.->|"guards"| REST
+
+    Services --> Aggregates
+    Services --> Ports
+    Services --> RepoPorts
+
+    AppConfig -->|"creates"| Services
+    AppConfig -->|"creates"| Adapters
+
+    %% Init flow
+    ConfigFile -->|"parameters"| BootRunner
+    ConfigFile -->|"db connection"| ORM
+    BootRunner -->|"seed admin + platform"| Services
+    InitRunner -->|"reads path from config"| StateFile
+    InitRunner --> StateParser
+    StateParser --> InitProc
+    InitProc -->|"replays use cases"| Services
+
+    %% Persistence flow
+    RepoPorts -. "implemented by" .-> Adapters
+    Adapters --> SpringData
+    SpringData --> Cache
+    Cache -->|"JDBC"| PG
+
+    %% External flow
+    Ports -. "implemented by" .-> PayAdapter
+    Ports -. "implemented by" .-> IssAdapter
+    Ports -. "implemented by" .-> AvailClient
+    PayAdapter --> HttpClient
+    IssAdapter --> HttpClient
+    AvailClient --> HttpClient
+    HttpClient -->|"HTTPS"| WSEP
+
+    class UI,CLImport client
+    class REST,WS,AuthIntc comm
+    class Services,Ports app
+    class Aggregates,RepoPorts domain
+    class AppConfig,BootRunner,InitRunner,StateParser,InitProc infra
+    class HttpClient,PayAdapter,IssAdapter,AvailClient ext
+    class Adapters,SpringData,Cache orm
+    class PG db

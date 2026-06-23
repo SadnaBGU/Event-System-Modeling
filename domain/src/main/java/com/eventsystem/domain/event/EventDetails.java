@@ -1,5 +1,6 @@
 package com.eventsystem.domain.event;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import jakarta.persistence.*;
@@ -55,7 +56,9 @@ public class EventDetails {
         }
 
         this.name = name;
-        this.dates = List.copyOf(dates); 
+        // Mutable defensive copy: Hibernate must be able to clear/replace this
+        // @ElementCollection on merge (List.copyOf is immutable and would throw).
+        this.dates = new ArrayList<>(dates);
         this.category = category;
         this.location = location;
         this.description = description;

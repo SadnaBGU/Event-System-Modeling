@@ -25,6 +25,7 @@ export function LoginPage() {
       setSession({
         token: res.token,
         memberId: res.memberId,
+        username: me.username,
         roles: inferRoles(res.token, me.username),
         expiresAt: res.expiresAt,
       });

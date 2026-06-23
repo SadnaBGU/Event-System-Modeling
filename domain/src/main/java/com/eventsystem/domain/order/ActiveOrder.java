@@ -112,7 +112,7 @@ public class ActiveOrder {
         String currency = items.isEmpty() ? "USD" : items.get(0).getUnitPrice().currency();
 
         return items.stream()
-                .map(item -> item.getUnitPrice().multiply(item.getQuantity()))
+                .map(item -> item.getUnitPrice().multiply(Math.max(1, item.getQuantity())))
                 .reduce(new Money(BigDecimal.ZERO, currency), Money::add);
     }
 

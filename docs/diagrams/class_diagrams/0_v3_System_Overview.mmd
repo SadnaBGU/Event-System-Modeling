@@ -1,0 +1,171 @@
+classDiagram
+    direction TB
+
+%% =====================================================================
+%% Event System — V3 System Overview  (SRS-aligned, Layered N-Tier view)
+%%
+%% High-level, "white-box" STRUCTURAL view: classes and relationships
+%% ONLY. By design this diagram carries NO attributes and NO methods.
+%%
+%% LAYERING (strict, top → bottom):
+%%   1. Presentation / External Interface   (user views/roles, waiting room)
+%%   2. Domain / Business Logic             (entities, policies, discounts)
+%%   3. Infrastructure / External Services  (payment, ticket issuing)
+%%
+%% DEPENDENCY RULE: every cross-layer arrow points strictly DOWNWARD —
+%%   Presentation ──▶ Domain ──▶ Infrastructure. The Domain core never
+%%   references the Presentation layer, so it stays independent of any
+%%   delivery mechanism.
+%%
+%% UML notation:  <|-- inheritance · *-- composition · o-- aggregation
+%%                --> directed association · "n" multiplicities
+%% =====================================================================
+
+%% ╔═══════════════════════════════════════════════════════════════════╗
+%% ║ 1) PRESENTATION / EXTERNAL INTERFACE LAYER                         ║
+%% ╚═══════════════════════════════════════════════════════════════════╝
+    namespace PresentationLayer {
+        class User:::presentation {
+            <<abstract>>
+        }
+        class Guest:::presentation
+        class Member:::presentation
+        class SystemAdmin:::presentation
+
+        class Producer:::presentation {
+            <<abstract>>
+        }
+        class Founder:::presentation
+        class Owner:::presentation
+        class Manager:::presentation
+
+        class VirtualQueue:::presentation {
+            <<waiting room>>
+        }
+    }
+
+%% ╔═══════════════════════════════════════════════════════════════════╗
+%% ║ 2) DOMAIN / BUSINESS LOGIC LAYER                                   ║
+%% ╚═══════════════════════════════════════════════════════════════════╝
+    namespace DomainLayer {
+        class Platform:::domain
+
+        class ProductionCompany:::domain
+        class Event:::domain
+        class Show:::domain
+
+        class SeatingMap:::domain
+        class PricingZone:::domain
+        class Space:::domain {
+            <<abstract>>
+        }
+        class DesignatedSeat:::domain
+        class OpenSpaceArea:::domain
+
+        class ActiveOrder:::domain
+        class Ticket:::domain
+
+        class PurchasePolicy:::domain
+        class DiscountPolicy:::domain
+        class DiscountType:::domain {
+            <<abstract>>
+        }
+        class VisibleDiscount:::domain
+        class ConditionalDiscount:::domain
+        class CouponCode:::domain
+
+        class Permission:::domain {
+            <<enumeration>>
+        }
+    }
+
+%% ╔═══════════════════════════════════════════════════════════════════╗
+%% ║ 3) INFRASTRUCTURE / EXTERNAL SERVICES LAYER                        ║
+%% ╚═══════════════════════════════════════════════════════════════════╝
+    namespace InfrastructureLayer {
+        class PaymentGateway:::infra {
+            <<external service>>
+        }
+        class TicketIssuingService:::infra {
+            <<external service>>
+        }
+    }
+
+%% =====================================================================
+%% RELATIONSHIPS — within Presentation (user & role hierarchies)
+%% =====================================================================
+    User <|-- Guest
+    User <|-- Member
+    Member <|-- SystemAdmin
+
+    Producer <|-- Founder
+    Producer <|-- Owner
+    Producer <|-- Manager
+
+    Member "1" --> "0..*" Producer : plays
+    Owner "0..1" --> "0..*" Owner : appoints
+    Owner "1" --> "0..*" Manager : appoints
+
+%% =====================================================================
+%% RELATIONSHIPS — Presentation ──▶ Domain  (strictly downward)
+%% =====================================================================
+    SystemAdmin "1..*" --> "1" Platform : administers
+    Member "0..*" --> "1" Platform : registered in
+    User "1" --> "0..*" ActiveOrder : places
+
+    Founder "1" --> "1" ProductionCompany : founds
+    Owner "1..*" --> "1" ProductionCompany : owns
+    Manager "0..*" --> "1" ProductionCompany : manages
+    Manager "1" --> "1..*" Permission : granted
+
+    VirtualQueue "0..1" --> "1" Event : throttles access to
+
+%% =====================================================================
+%% RELATIONSHIPS — within Domain (business structure)
+%% =====================================================================
+    Platform "1" *-- "0..*" ProductionCompany : hosts
+    ProductionCompany "1" *-- "0..*" Event : catalog
+
+    Event "1" *-- "1..*" Show : performances
+    Event "1" *-- "1" SeatingMap : layout
+    SeatingMap "1" *-- "1..*" PricingZone : zones
+    PricingZone "1" *-- "1..*" Space : spaces
+    Space <|-- DesignatedSeat
+    Space <|-- OpenSpaceArea
+
+    ActiveOrder "0..*" --> "1" Event : for
+    ActiveOrder "1" o-- "1..*" Ticket : reserves
+    Ticket "0..*" --> "1" Show : for
+    Ticket "0..*" --> "1" Space : locks
+
+    ProductionCompany "1" --> "1" PurchasePolicy : rules
+    ProductionCompany "1" --> "1" DiscountPolicy : discounts
+    Event "1" --> "1" PurchasePolicy : rules
+    Event "1" --> "1" DiscountPolicy : discounts
+
+    DiscountPolicy "1" *-- "0..*" DiscountType : composes
+    DiscountType <|-- VisibleDiscount
+    DiscountType <|-- ConditionalDiscount
+    DiscountType <|-- CouponCode
+
+%% =====================================================================
+%% RELATIONSHIPS — Domain ──▶ Infrastructure  (strictly downward)
+%% =====================================================================
+    Platform "1" --> "1..*" PaymentGateway : billing and refunds
+    Platform "1" --> "1..*" TicketIssuingService : digital barcodes
+
+%% =====================================================================
+%% CONSTRAINT NOTES
+%% =====================================================================
+    note for SystemAdmin "A SystemAdmin is always a registered Member."
+    note for Producer "Producer is the general role a Member plays inside a ProductionCompany: Founder, Owner, or Manager."
+    note for Owner "Ownership is a strict acyclic tree: every Owner has at most one appointer; the Founder is the root and has none. An Owner appoints Managers and may alter their Permissions."
+    note for ProductionCompany "A non-closed ProductionCompany must always have at least one Owner."
+    note for ActiveOrder "A buyer (Guest or Member) may hold at most one ActiveOrder per Event at any moment. Reserved Tickets are temporarily locked from the Event inventory."
+
+%% =====================================================================
+%% LAYER STYLING  (one colour per architectural layer)
+%% =====================================================================
+    classDef presentation fill:#e7f5ff,stroke:#1c7ed6,stroke-width:1px,color:#000
+    classDef domain fill:#ebfbee,stroke:#2f9e44,stroke-width:1px,color:#000
+    classDef infra fill:#fff3bf,stroke:#e8590c,stroke-width:1px,color:#000

@@ -21,14 +21,13 @@ export function Layout() {
     <div className="layout">
       <header className="layout-header">
         <Link to="/" className="brand">EventSystem</Link>
-        {session && (
-          <nav className="layout-nav">
-            <NavLink to="/events">Catalog</NavLink>
-            <NavLink to="/history">My receipts</NavLink>
-            <NavLink to="/companies">Companies</NavLink>
-            {isAdmin && <NavLink to="/admin">Admin</NavLink>}
-          </nav>
-        )}
+        <nav className="layout-nav">
+          {/* Catalog is open to everyone, including guests (browse without signing up). */}
+          <NavLink to="/events">Catalog</NavLink>
+          {session && <NavLink to="/history">My receipts</NavLink>}
+          {session && <NavLink to="/companies">Companies</NavLink>}
+          {isAdmin && <NavLink to="/admin">Admin</NavLink>}
+        </nav>
         <div className="layout-right">
           {session ? (
             <>
@@ -43,7 +42,7 @@ export function Layout() {
               >
                 🔔{unread > 0 && <span className="badge">{unread}</span>}
               </button>
-              <span className="user">{session.memberId}</span>
+              <Link to="/profile" className="user" title="My profile">{session.username ?? session.memberId}</Link>
               <button type="button" onClick={handleLogout}>Sign out</button>
             </>
           ) : (

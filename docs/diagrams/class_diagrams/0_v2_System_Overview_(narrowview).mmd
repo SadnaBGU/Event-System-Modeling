@@ -15,7 +15,7 @@ flowchart LR
     %% ============================================
     %% INFRASTRUCTURE LAYER
     %% ============================================
-    subgraph INFRA["🔴 INFRASTRUCTURE LAYER"]
+    subgraph INFRA[" INFRASTRUCTURE LAYER"]
         direction TB
 
         subgraph API["API / REST"]
@@ -96,13 +96,17 @@ flowchart LR
                 IssAdapt["Issuance Adapters"]
                 NotifAdapt["Notification Adapters"]
             end
+
+            subgraph Recovery["Recovery"]
+                RecoverySweeper["RecoverySweeper"]
+            end
         end
     end
 
     %% ============================================
     %% APPLICATION LAYER
     %% ============================================
-    subgraph APP["🔵 APPLICATION LAYER — Services & Ports"]
+    subgraph APP[" APPLICATION LAYER — Services & Ports"]
         direction TB
 
         subgraph AppServices["Application Services"]
@@ -125,6 +129,7 @@ flowchart LR
                     DiscountSvc["DiscountApplicationService"]
                     PurchasePolicyValidationSvc["PurchasePolicyValidationService"]
                     ReportSvc["ReportService"]
+                    VenueMgmtSvc["VenueManagementService"]
                 end
             end
 
@@ -155,7 +160,7 @@ flowchart LR
     %% ============================================
     %% PORT INTERFACES
     %% ============================================
-    subgraph PORTS["🟠 EXTERNAL SERVICE INTERFACES"]
+    subgraph PORTS[" EXTERNAL SERVICE INTERFACES"]
         direction TB
         PayGw["PaymentGateway"]
         IssGw["IssuanceGateway"]
@@ -165,7 +170,7 @@ flowchart LR
     %% ============================================
     %% DOMAIN LAYER
     %% ============================================
-    subgraph DOMAIN["🟢 DOMAIN LAYER"]
+    subgraph DOMAIN[" DOMAIN LAYER"]
         direction TB
 
         subgraph DomainRow1["Core Identity"]
@@ -207,6 +212,12 @@ flowchart LR
                 ZoneRepo["ZoneRepository"]
             end
 
+            subgraph AGG_VENUE["⬡ Venue"]
+                Venue["Venue"]
+                VenueZone["VenueZone"]
+                VenueRepo["VenueRepository"]
+            end
+
             subgraph AGG_POLICY["⬡ Policy"]
                 direction TB
 
@@ -217,7 +228,7 @@ flowchart LR
 
                 subgraph DISCOUNT_POLICY["Discount Policy"]
                     DPol["DiscountPolicy"]
-                    DRule["DiscountRule"]
+                    Disc["Discount"]
                     DPolRepo["DiscountPolicyRepository"]
                 end
 
@@ -284,6 +295,7 @@ flowchart LR
     Config -->|"configures"| API
     NotificationsInfra -->|"supports"| NotificationApi
     NotificationsInfra -->|"uses"| NotifAdapt
+    RecoverySweeper -->|"calls"| OrderSvc
 
     %% ============================================
     %% APPLICATION → EXTERNAL PORTS
@@ -316,6 +328,8 @@ flowchart LR
     DiscountSvc --> DPol
     PurchasePolicyValidationSvc --> PPol
 
+    VenueMgmtSvc --> Venue
+
     %% Purchase flow
     SearchSvc --> Event
     SearchSvc --> Zone
@@ -346,6 +360,7 @@ flowchart LR
     QueueRepo --> VQueue
     LotteryRepo --> Lottery
     PurchaseRepo --> PurchRec
+    VenueRepo --> Venue
 
     %% ============================================
     %% APPLICATION PORT → INFRASTRUCTURE IMPLEMENTATION
@@ -372,57 +387,59 @@ flowchart LR
     linkStyle 10 stroke:#8E0000,stroke-width:2px
     linkStyle 11 stroke:#8E0000,stroke-width:2px
     linkStyle 12 stroke:#8E0000,stroke-width:2px
+    linkStyle 13 stroke:#8E0000,stroke-width:2px
 
     %% Application ↔ External port links — orange / gray
-    linkStyle 13 stroke:#F5A623,stroke-width:2px
-    linkStyle 14 stroke:#999999,stroke-width:2px
+    linkStyle 14 stroke:#F5A623,stroke-width:2px
+    linkStyle 15 stroke:#999999,stroke-width:2px
 
     %% User/Admin services — blue / purple / brown / teal
-    linkStyle 15 stroke:#1E88E5,stroke-width:2px
-    linkStyle 16 stroke:#5E35B1,stroke-width:2px
-    linkStyle 17 stroke:#6D4C41,stroke-width:2px
-    linkStyle 18 stroke:#00897B,stroke-width:2px
+    linkStyle 16 stroke:#1E88E5,stroke-width:2px
+    linkStyle 17 stroke:#5E35B1,stroke-width:2px
+    linkStyle 18 stroke:#6D4C41,stroke-width:2px
+    linkStyle 19 stroke:#00897B,stroke-width:2px
 
     %% Company/Event services — orange/pink
-    linkStyle 19 stroke:#F4511E,stroke-width:2px
-    linkStyle 20 stroke:#D81B60,stroke-width:2px
+    linkStyle 20 stroke:#F4511E,stroke-width:2px
     linkStyle 21 stroke:#D81B60,stroke-width:2px
-    linkStyle 22 stroke:#FB8C00,stroke-width:2px
+    linkStyle 22 stroke:#D81B60,stroke-width:2px
     linkStyle 23 stroke:#FB8C00,stroke-width:2px
+    linkStyle 24 stroke:#FB8C00,stroke-width:2px
 
     %% Policy services — yellow/green
-    linkStyle 24 stroke:#FFB300,stroke-width:2px
     linkStyle 25 stroke:#FFB300,stroke-width:2px
     linkStyle 26 stroke:#FFB300,stroke-width:2px
     linkStyle 27 stroke:#FFB300,stroke-width:2px
-    linkStyle 28 stroke:#C0CA33,stroke-width:2px
-    linkStyle 29 stroke:#8BC34A,stroke-width:2px
+    linkStyle 28 stroke:#FFB300,stroke-width:2px
+    linkStyle 29 stroke:#C0CA33,stroke-width:2px
+    linkStyle 30 stroke:#8BC34A,stroke-width:2px
+
+    %% Venue service — deep teal
+    linkStyle 31 stroke:#00796B,stroke-width:2px
 
     %% Search service — green
-    linkStyle 30 stroke:#43A047,stroke-width:2px
-    linkStyle 31 stroke:#43A047,stroke-width:2px
+    linkStyle 32 stroke:#43A047,stroke-width:2px
+    linkStyle 33 stroke:#43A047,stroke-width:2px
 
     %% Order service — blue
-    linkStyle 32 stroke:#039BE5,stroke-width:2px
-    linkStyle 33 stroke:#039BE5,stroke-width:2px
+    linkStyle 34 stroke:#039BE5,stroke-width:2px
+    linkStyle 35 stroke:#039BE5,stroke-width:2px
 
     %% Checkout saga — red
-    linkStyle 34 stroke:#E53935,stroke-width:2px
-    linkStyle 35 stroke:#E53935,stroke-width:2px
     linkStyle 36 stroke:#E53935,stroke-width:2px
     linkStyle 37 stroke:#E53935,stroke-width:2px
     linkStyle 38 stroke:#E53935,stroke-width:2px
     linkStyle 39 stroke:#E53935,stroke-width:2px
+    linkStyle 40 stroke:#E53935,stroke-width:2px
+    linkStyle 41 stroke:#E53935,stroke-width:2px
 
     %% Queue / Lottery / History / Report services
-    linkStyle 40 stroke:#8E24AA,stroke-width:2px
-    linkStyle 41 stroke:#00ACC1,stroke-width:2px
-    linkStyle 42 stroke:#7CB342,stroke-width:2px
-    linkStyle 43 stroke:#546E7A,stroke-width:2px
+    linkStyle 42 stroke:#8E24AA,stroke-width:2px
+    linkStyle 43 stroke:#00ACC1,stroke-width:2px
+    linkStyle 44 stroke:#7CB342,stroke-width:2px
+    linkStyle 45 stroke:#546E7A,stroke-width:2px
 
     %% Repository interface → Domain links — dashed blue
-    linkStyle 44 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
-    linkStyle 45 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 46 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 47 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 48 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
@@ -432,7 +449,10 @@ flowchart LR
     linkStyle 52 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 53 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
     linkStyle 54 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
-    linkStyle 55 stroke:#8E0000,stroke-width:2px
+    linkStyle 55 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 56 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 57 stroke:#1565C0,stroke-width:2px,stroke-dasharray:4 2
+    linkStyle 58 stroke:#8E0000,stroke-width:2px
 
     %% ============================================
     %% APPLY NODE STYLES
@@ -454,15 +474,16 @@ flowchart LR
     style LotterySvc fill:#00ACC1,stroke:#00838F,color:#fff,font-weight:bold
     style HistorySvc fill:#7CB342,stroke:#558B2F,color:#fff,font-weight:bold
     style ReportSvc fill:#546E7A,stroke:#37474F,color:#fff,font-weight:bold
+    style VenueMgmtSvc fill:#00796B,stroke:#004D40,color:#fff,font-weight:bold
 
     class PayGw,IssGw,NotifCh port
-    class Platform,Member,Company,Event,Zone,Order,PurchRec,VQueue,Lottery,PPol,DPol aggRoot
-    class AppTree,ONode,MNode,VMap,RowE,SeatE,OItem,Notif,QEntry,AToken,LWinner,PItem internal
+    class Platform,Member,Company,Event,Zone,Order,PurchRec,VQueue,Lottery,PPol,DPol,Venue aggRoot
+    class AppTree,ONode,MNode,VMap,RowE,SeatE,OItem,Notif,QEntry,AToken,LWinner,PItem,VenueZone internal
     class OFactory,PolicyBuilder,ConflictDetector internal
-    class DRule policy
-    class PlatformRepo,MemberRepo,CompanyRepo,EventRepo,ZoneRepo,PPolRepo,DPolRepo,OrderRepo,QueueRepo,LotteryRepo,PurchaseRepo repo
+    class Disc policy
+    class PlatformRepo,MemberRepo,CompanyRepo,EventRepo,ZoneRepo,PPolRepo,DPolRepo,OrderRepo,QueueRepo,LotteryRepo,PurchaseRepo,VenueRepo repo
     class AuthController,MemberController,AdminController,AdminPlatformController,AdminStreamController,CompanyController,CompanyPolicyController,EventCatalogController,EventLotteryController,EventQueueController,OrdersRestController,CheckoutSagaController,NotificationsRestController,PurchaseHistoryController,GlobalExceptionHandler infra
-    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener,NotificationPortImpl infra
+    class AuthInterceptor,TokenService,PasswordHasher,AppConfig,WebMvcConfig,NotificationsConfig,AdminBootstrap,NotifSessionListener,NotificationPortImpl,RecoverySweeper infra
     class PayAdapt,IssAdapt,NotifAdapt infra
 
     %% ============================================
@@ -490,6 +511,7 @@ flowchart LR
     style Config fill:#FDECEC,stroke:#C0392B,stroke-width:2px
     style NotificationsInfra fill:#FDECEC,stroke:#E07070,stroke-width:2px
     style ExternalAdapters fill:#FDECEC,stroke:#E07070,stroke-width:2px
+    style Recovery fill:#FDECEC,stroke:#E07070,stroke-width:2px
 
     style AppServices fill:#DCEBFA,stroke:#4A90D9,stroke-width:2px
     style AppServicesRow1 fill:transparent,stroke:none
@@ -510,6 +532,7 @@ flowchart LR
     style AGG_COMPANY fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
     style AGG_EVENT fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
     style AGG_ZONE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
+    style AGG_VENUE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
     style AGG_POLICY fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
     style AGG_ORDER fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5
     style AGG_PURCHASE fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,stroke-dasharray:5 5

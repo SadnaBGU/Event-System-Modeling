@@ -53,6 +53,14 @@ eventsystem:
       email: ${ADMIN_EMAIL}
       date-of-birth: ${ADMIN_DOB}
 
+  # Optional initial-state loader (V3 §2.a.ii). When enabled, the file at
+  # 'state-file' is replayed once at startup as a single all-or-nothing
+  # transaction. Disabled by default so normal startup is unaffected.
+  # Override via env vars EVENTSYSTEM_INIT_ENABLED / EVENTSYSTEM_INIT_STATE_FILE.
+  init:
+    enabled: ${INIT_ENABLED:false}
+    state-file: ${INIT_STATE_FILE:}
+
 logging:
   level:
     root: INFO

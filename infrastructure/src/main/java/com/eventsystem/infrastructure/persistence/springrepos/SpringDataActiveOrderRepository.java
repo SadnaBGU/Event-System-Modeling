@@ -35,8 +35,9 @@ public interface SpringDataActiveOrderRepository extends JpaRepository<ActiveOrd
                     (o.buyerRef.memberId is null and :memberId is null)
                     or o.buyerRef.memberId = :memberId
                   )
+            order by o.reservationExpiry desc
             """)
-    Optional<ActiveOrder> findByBuyerAndEvent(
+    List<ActiveOrder> findByBuyerAndEvent(
             @Param("buyerType") BuyerType buyerType,
             @Param("sessionId") String sessionId,
             @Param("memberId") String memberId,

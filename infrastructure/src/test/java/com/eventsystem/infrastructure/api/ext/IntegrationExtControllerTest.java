@@ -194,29 +194,36 @@ class IntegrationExtControllerTest {
     void listCompanies_empty_returnsOk() throws Exception {
         when(companyRepository.findAll()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/companies"))
+        mockMvc.perform(get("/api/companies")
+                .requestAttr("authenticatedMemberId", new MemberId("actor-1")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
-    void listCompanies_allStatuses_returnsOk() throws Exception {
+    void listCompanies_onlyReturnsCompaniesTheMemberCanActOn() throws Exception {
+        MemberId actor = new MemberId("actor-1");
+        // Visible: the member owns c1 and manages c2.
         ProductionCompany c1 = mockCompany("c1", CompanyStatus.ACTIVE);
+        lenient().when(c1.isOwner(actor)).thenReturn(true);
         ProductionCompany c2 = mockCompany("c2", CompanyStatus.SUSPENDED);
+        lenient().when(c2.isManager(actor)).thenReturn(true);
+        // Hidden: the member has no role on c3 or c4.
         ProductionCompany c3 = mockCompany("c3", CompanyStatus.TERMINATED);
         ProductionCompany c4 = mockCompany("c4", CompanyStatus.ADMIN_CLOSED);
 
         when(companyRepository.findAll()).thenReturn(List.of(c1, c2, c3, c4));
 
-        mockMvc.perform(get("/api/companies"))
+        mockMvc.perform(get("/api/companies")
+                .requestAttr("authenticatedMemberId", actor))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].companyId").value("c1"))
                 .andExpect(jsonPath("$[0].companyName").value("Name-c1"))
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"))
-                .andExpect(jsonPath("$[1].status").value("SUSPENDED"))
-                .andExpect(jsonPath("$[2].status").value("CLOSED"))
-                .andExpect(jsonPath("$[3].status").value("CLOSED"));
+                .andExpect(jsonPath("$[1].companyId").value("c2"))
+                .andExpect(jsonPath("$[1].status").value("SUSPENDED"));
     }
 
     @Test

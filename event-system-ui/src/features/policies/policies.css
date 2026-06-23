@@ -1,9 +1,10 @@
 .tree-node {
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  background: #161b22;
-  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.7rem 0.85rem;
   margin-bottom: 0.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .tree-node .node-head {
@@ -15,11 +16,11 @@
 }
 
 .tree-node .node-head .kind-pill {
-  background: #1f6feb33;
-  color: #58a6ff;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
   border-radius: 999px;
-  padding: 0.05rem 0.55rem;
-  font-size: 0.75rem;
+  padding: 0.08rem 0.6rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -40,22 +41,30 @@
 .tree-node .fields label {
   display: inline-flex;
   flex-direction: column;
-  gap: 0.2rem;
-  color: #8b949e;
+  gap: 0.25rem;
+  color: var(--text-muted);
 }
 
 .tree-node .fields input,
 .tree-node .fields select {
-  background: #0d1117;
-  color: #e6edf3;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 0.3rem 0.5rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
   font: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.tree-node .fields input:focus,
+.tree-node .fields select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring);
 }
 
 .tree-children {
-  border-left: 2px dashed #30363d;
+  border-left: 2px dashed var(--border-strong);
   margin-left: 0.5rem;
   padding-left: 0.75rem;
   margin-top: 0.4rem;
@@ -70,22 +79,22 @@
 }
 
 .tree-empty {
-  border: 1px dashed #30363d;
-  border-radius: 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
   padding: 1rem;
   text-align: center;
-  color: #8b949e;
+  color: var(--text-muted);
 }
 
 .preview-box {
-  background: #1c2128;
-  border: 1px solid #30363d;
-  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   margin: 1rem 0;
   font-family: ui-monospace, Consolas, monospace;
   font-size: 0.85rem;
-  color: #c9d1d9;
+  color: var(--text-muted);
 }
 
 .preview-box .label {
@@ -93,6 +102,6 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #8b949e;
+  color: var(--text-faint);
   margin-bottom: 0.25rem;
 }

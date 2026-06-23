@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.api.policy;
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.rule.IPolicy;
 import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
@@ -48,8 +49,9 @@ class CompanyPolicyControllerTest {
     @Mock
     private PolicyManagementService policyManagementService;
 
-    @InjectMocks
-    private CompanyPolicyController companyPolicyController;
+    @Mock private IEventRepository eventRepository;
+
+    @InjectMocks private CompanyPolicyController companyPolicyController;
 
     @BeforeEach
     void setUp() {

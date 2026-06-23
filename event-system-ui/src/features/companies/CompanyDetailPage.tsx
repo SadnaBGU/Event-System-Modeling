@@ -39,7 +39,7 @@ export function CompanyDetailPage() {
     <section>
       <Link to="/companies" className="btn ghost" style={{ marginBottom: '1rem' }}>← Companies</Link>
       <h1 className="page-title">{c.companyName}</h1>
-      <p className="meta">Status: <code>{c.status}</code></p>
+      <p className="meta">Status: <span className={`pill ${c.status}`}>{c.status}</span></p>
       {c.contactDetails && <p className="meta">{c.contactDetails}</p>}
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>

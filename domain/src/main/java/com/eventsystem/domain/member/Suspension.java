@@ -9,10 +9,14 @@ import jakarta.persistence.Embeddable;
 /**
  * Immutable record of a member suspension.
  * {@code duration} is null for permanent suspensions.
+ *
+ * NOTE: component order (duration, reason, suspendedAt) is intentionally alphabetical to match
+ * the order Hibernate uses when hydrating an {@code @Embeddable} record from its columns. Keeping
+ * these aligned avoids a record-instantiation "argument type mismatch" on load.
  */
 
 @Embeddable
-public record Suspension(Instant suspendedAt, Duration duration, String reason) {
+public record Suspension(Duration duration, String reason, Instant suspendedAt) {
 
     public Suspension {
         Objects.requireNonNull(suspendedAt, "suspendedAt must not be null");

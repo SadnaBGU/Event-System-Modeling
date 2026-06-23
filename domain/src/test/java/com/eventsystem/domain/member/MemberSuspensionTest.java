@@ -117,13 +117,13 @@ class MemberSuspensionTest {
     @Test
     void suspension_zeroDuration_throws() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ZERO, "Invalid duration"));
+                .isThrownBy(() -> new Suspension(Duration.ZERO, "Invalid duration", Instant.now()));
     }
 
     @Test
     void suspension_negativeDuration_throws() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new Suspension(Instant.now(), Duration.ofDays(-1), "Invalid duration"));
+                .isThrownBy(() -> new Suspension(Duration.ofDays(-1), "Invalid duration", Instant.now()));
     }
 
 

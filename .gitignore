@@ -1,5 +1,9 @@
 *.md
 
+# Keep the project README and docs tracked despite the blanket *.md ignore above.
+!README.md
+!docs/**/*.md
+
 # Reference folder – branched snapshot, not part of the main project
 Streams1&5/
 Project (1)/

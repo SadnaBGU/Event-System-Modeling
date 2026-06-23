@@ -1,0 +1,56 @@
+# Comprehensive initial-state file exercising EVERY supported init command.
+# Used by FullInitFlowIntegrationTest to verify all use cases work end-to-end
+# against the real application services + PostgreSQL (external payment/ticketing
+# ports are mocked to succeed). All-or-nothing: if any line fails, the whole run
+# rolls back.
+
+# ── Members ──────────────────────────────────────────────────────────────────
+register(founder, password123, Rina, Cohen, rina@example.com, 1990-05-20)
+register(manager, password123, Moshe, Levi, moshe@example.com, 1988-03-15)
+register(coowner, password123, Dana, Ben, dana@example.com, 1991-01-01)
+register(buyer, password123, Yossi, Mizrahi, yossi@example.com, 1995-07-07)
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+login(founder, password123)
+
+# ── Company A: full event/lottery/policy/purchase flow ───────────────────────
+open-production-company(founder, acme, "Acme Live", "Top live concerts", 4.5)
+
+# Appoint a manager, have them accept, then widen their permissions
+appoint-manager(founder, acme, manager, EVENT_INVENTORY_MANAGEMENT|MODIFY_POLICIES)
+accept-appointment(manager, acme)
+modify-manager-permissions(founder, acme, manager, EVENT_INVENTORY_MANAGEMENT|MODIFY_POLICIES|VIEW_PURCHASE_HISTORY)
+
+# Appoint a co-owner and have them accept
+appoint-owner(founder, acme, coowner)
+accept-appointment(coowner, acme)
+
+# Event with one standing and one seated zone
+create-event(founder, acme, summerfest, "Summer Fest", 2026-09-01T20:00, Festival, "Tel Aviv Park", "Annual summer festival")
+create-standing-zone(founder, summerfest, ga, "General Admission", 150.00, ILS, 500)
+create-seated-zone(founder, summerfest, vip, "VIP", 450.00, ILS, A:10|B:10)
+
+# Company purchase & discount policies
+set-purchase-policy(founder, acme, "Max 10 per order", MAX_TICKETS, 10)
+set-discount-policy(founder, acme, "Launch 10%", "Early Bird", 10)
+
+# Publish so it is purchasable
+publish-event(founder, summerfest)
+
+# Lottery: open, two entrants, draw one winner
+open-lottery(founder, summerfest, lottery1)
+register-lottery(manager, lottery1)
+register-lottery(buyer, lottery1)
+draw-lottery(founder, lottery1, 1)
+
+# Reserve standing tickets and check out (payment + issuance mocked to succeed)
+reserve(buyer, order1, ga, 2)
+checkout(order1, tok_visa_mock, )
+
+# ── Company B: organisation lifecycle (destructive commands kept isolated) ───
+open-production-company(founder, beta, "Beta Events", "Side projects", 4.0)
+appoint-manager(founder, beta, manager, EVENT_INVENTORY_MANAGEMENT)
+accept-appointment(manager, beta)
+remove-appointee(founder, beta, manager)
+close-production-company(founder, beta)
+reopen-production-company(founder, beta)
