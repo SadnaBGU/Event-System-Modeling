@@ -136,6 +136,9 @@ public class CheckoutSaga {
             DiscountSummary summ = discountPort.calculateDiscountSummary(context.withCode(discountCode), baseTotal);
             discount = discountPort.discountSnapshotFromSummary(summ, baseTotal);
             finalAmount = baseTotal.subtract(discount.discountAmount());
+        } catch (org.springframework.dao.DataAccessException e) {
+            logger.error("Discount calculation failed due to a storage error for order {}", orderId, e);
+            throw new PriceCalcException("the order total could not be calculated right now. Please try again.");
         } catch (Exception e) {
             logger.error("Error during discount application: {}", e.getMessage());
             throw new PriceCalcException(e.getMessage());

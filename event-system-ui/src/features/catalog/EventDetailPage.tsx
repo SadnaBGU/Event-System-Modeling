@@ -34,6 +34,12 @@ export function EventDetailPage() {
     enabled: !!eventId,
   });
 
+  const winnersQ = useQuery({
+    queryKey: ['lottery-winners', eventId],
+    queryFn: () => lotteryApi.winners(eventId),
+    enabled: !!eventId && perms.canManage && lotteryQ.data?.status === 'DRAWN',
+  });
+
   const openOrder = useMutation({
     mutationFn: async () => {
       const isMember = !!memberId;
@@ -87,6 +93,17 @@ export function EventDetailPage() {
     onError: (err) => toast.error(friendlyError(err, "Couldn't create the lottery.")),
   });
 
+  const [winnerCount, setWinnerCount] = useState<string>('1');
+
+  const drawLottery = useMutation({
+    mutationFn: () => lotteryApi.draw(eventId, Number(winnerCount)),
+    onSuccess: (res) => {
+      toast.success(`Lottery drawn — ${res.winners} winner${res.winners === 1 ? '' : 's'} selected.`);
+      qc.invalidateQueries({ queryKey: ['lottery', eventId] });
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't draw the lottery.")),
+  });
+
   const publish = useMutation({
     mutationFn: () => eventsApi.publish(eventId),
     onSuccess: () => {
@@ -136,6 +153,7 @@ export function EventDetailPage() {
   const canManagePolicies = perms.can('MODIFY_POLICIES');
   const lotteryExists = lotteryQ.data?.exists ?? false;
   const lotteryOpen = lotteryQ.data?.status === 'REGISTRATION_OPEN';
+  const lotteryDrawn = lotteryQ.data?.status === 'DRAWN';
 
   return (
     <section>
@@ -267,8 +285,13 @@ export function EventDetailPage() {
         {canManagePolicies && (
           <Link to={`/events/${eventId}/policies`} className="btn ghost">Edit policies</Link>
         )}
-        {canManageInventory && (
+        {isDraft && canManageInventory && (
           <Link to={`/events/${eventId}/edit`} className="btn ghost">Edit event</Link>
+        )}
+        {!isDraft && canManageInventory && (
+          <span className="meta" style={{ alignSelf: 'center' }}>
+            Published events can’t be edited
+          </span>
         )}
         {canManageInventory && !lotteryExists && (
           <button
@@ -285,6 +308,27 @@ export function EventDetailPage() {
             Lottery: {lotteryQ.data?.status?.toLowerCase().replace('_', ' ')}
           </span>
         )}
+        {canManageInventory && lotteryExists && !lotteryDrawn && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <input
+              type="number"
+              min={1}
+              value={winnerCount}
+              onChange={(e) => setWinnerCount(e.target.value)}
+              style={{ width: '5rem' }}
+              aria-label="Number of winners to draw"
+              title="Number of winners to draw"
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={() => drawLottery.mutate()}
+              disabled={drawLottery.isPending || Number(winnerCount) < 1}
+            >
+              {drawLottery.isPending ? 'Drawing…' : '🎲 Draw winners'}
+            </button>
+          </span>
+        )}
         {isDraft && canManageInventory && (
           <button
             type="button"
@@ -297,6 +341,35 @@ export function EventDetailPage() {
           </button>
         )}
       </div>
+
+      {canManage && lotteryDrawn && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>Lottery winners</h2>
+          {winnersQ.isLoading && <p>Loading…</p>}
+          {winnersQ.isError && <p className="empty">Could not load winners.</p>}
+          {winnersQ.data && winnersQ.data.length === 0 && (
+            <p className="empty">No winners were drawn (no one had registered).</p>
+          )}
+          {winnersQ.data && winnersQ.data.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Winner</th>
+                  <th>Code expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {winnersQ.data.map((w) => (
+                  <tr key={w.memberId}>
+                    <td>{w.username}</td>
+                    <td>{formatDateTime(w.codeExpiry)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </section>
   );
 }

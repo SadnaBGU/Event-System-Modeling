@@ -285,7 +285,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
                 Objects.requireNonNull(items, "items must not be null");
 
                 CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
-                LocalDate buyerBirthday = memberInfoPort.getMemberBirthdate(new MemberId(buyerRef.memberId()));
+                LocalDate buyerBirthday = resolveBuyerBirthday(buyerRef);
 
                 return new PurchaseContext(
                                 eventId,
@@ -294,6 +294,14 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
                                 buyerBirthday,
                                 LocalDate.now(),
                                 discountCode);
+        }
+
+        private LocalDate resolveBuyerBirthday(BuyerReference buyerRef) {
+                String memberId = buyerRef.memberId();
+                if (memberId == null || memberId.isBlank()) {
+                        return LocalDate.now();
+                }
+                return memberInfoPort.getMemberBirthdate(new MemberId(memberId));
         }
 
         private Map<ZoneId, ZonePurchaseContext> buildZonePurchaseContexts(List<OrderItem> items) {

@@ -2,11 +2,15 @@ package com.eventsystem.application.lottery;
 
 import com.eventsystem.application.appexceptions.InvalidLotteryCodeException;
 import com.eventsystem.application.appexceptions.LotteryNotFoundException;
+import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
+import com.eventsystem.domain.lottery.LotteryWinner;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.BuyerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +30,20 @@ public class LotteryService {
     private final RandomGenerator rng;
     private final Clock clock;
     private final Duration codeValidity;
+    private final INotificationPort notificationPort;
 
     public LotteryService(ILotteryRepository lotteries,
                           RandomGenerator rng,
                           Clock clock,
                           Duration codeValidity) {
+        this(lotteries, rng, clock, codeValidity, null);
+    }
+
+    public LotteryService(ILotteryRepository lotteries,
+                          RandomGenerator rng,
+                          Clock clock,
+                          Duration codeValidity,
+                          INotificationPort notificationPort) {
         this.lotteries = Objects.requireNonNull(lotteries, "lotteries must not be null");
         this.rng = Objects.requireNonNull(rng, "rng must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
@@ -39,6 +52,7 @@ public class LotteryService {
             throw new IllegalArgumentException("codeValidity must be positive");
         }
         this.codeValidity = codeValidity;
+        this.notificationPort = notificationPort;
     }
 
     public LotteryId openLottery(EventId eventId) {
@@ -79,6 +93,22 @@ public class LotteryService {
         lottery.draw(winnerCount, rng, clock.instant(), codeValidity);
         lotteries.save(lottery);
         log.info("Lottery drawn lotteryId={} winners={}", lotteryId.value(), lottery.getWinners().size());
+        notifyWinners(lottery);
+    }
+
+    private void notifyWinners(Lottery lottery) {
+        if (notificationPort == null) {
+            return;
+        }
+        String eventId = lottery.getEventId().value();
+        for (LotteryWinner winner : lottery.getWinners()) {
+            try {
+                BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, null, winner.memberId().value());
+                notificationPort.sendLotteryWon(buyer, eventId, winner.permissionCode());
+            } catch (RuntimeException e) {
+                log.warn("Failed to notify lottery winner {}: {}", winner.memberId().value(), e.getMessage());
+            }
+        }
     }
 
     public MemberId validateCode(LotteryId lotteryId, String code) {

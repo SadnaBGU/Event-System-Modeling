@@ -199,7 +199,7 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
         Objects.requireNonNull(items, "items must not be null");
 
         CompanyId companyId = eventOwnershipChecker.companyOfEvent(eventId);
-        LocalDate buyerBirthday = memberInfoPort.getMemberBirthdate(new MemberId(buyerRef.memberId()));
+        LocalDate buyerBirthday = resolveBuyerBirthday(buyerRef);
 
         return new PurchaseContext(
                 eventId,
@@ -208,6 +208,20 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
                 buyerBirthday,
                 LocalDate.now(),
                 null);
+    }
+
+    /**
+     * Guests have no member account, so there is no stored birthdate to look up.
+     * They are treated as having an unverifiable age (today, i.e. age 0): events
+     * without a minimum-age policy still let them buy, while age-restricted events
+     * correctly reject a buyer who cannot prove their age.
+     */
+    private LocalDate resolveBuyerBirthday(BuyerReference buyerRef) {
+        String memberId = buyerRef.memberId();
+        if (memberId == null || memberId.isBlank()) {
+            return LocalDate.now();
+        }
+        return memberInfoPort.getMemberBirthdate(new MemberId(memberId));
     }
 
     private Map<com.eventsystem.domain.zone.ZoneId, ZonePurchaseContext> buildZonePurchaseContexts(

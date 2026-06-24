@@ -46,6 +46,10 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             isGuestAllowed = true;
         }
 
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/zones/") && path.endsWith("/seats")) {
+            isGuestAllowed = true;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             if (isGuestAllowed) {

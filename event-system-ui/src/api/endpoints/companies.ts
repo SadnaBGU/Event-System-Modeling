@@ -6,6 +6,16 @@ import type {
   SalesReportRow,
 } from '../../types/api';
 
+export interface CompanyEventListItem {
+  eventId: string;
+  eventName: string;
+  status: string;
+  salesMethod: string;
+  category?: string;
+  location?: string;
+  dates: string[];
+}
+
 export const companiesApi = {
   list: () => api.get<CompanyDto[]>('/companies').then((r) => r.data),
 
@@ -20,6 +30,9 @@ export const companiesApi = {
 
   get: (companyId: string) =>
     api.get<CompanyDto>(`/companies/${companyId}`).then((r) => r.data),
+
+  events: (companyId: string) =>
+    api.get<CompanyEventListItem[]>(`/companies/${companyId}/events`).then((r) => r.data),
 
   updateStatus: (companyId: string, body: CompanyStatusUpdate) =>
     api.patch<void>(`/companies/${companyId}/status`, body).then(() => undefined),

@@ -11,4 +11,7 @@ public interface INotificationPort {
     void sendQueueTurnArrived(BuyerReference buyer, String eventId);
     
     void sendEventSoldOut(BuyerReference buyer, String eventId);
+
+    /** Notify a lottery winner that they won and give them their time-limited purchase code. */
+    void sendLotteryWon(BuyerReference buyer, String eventId, String permissionCode);
 }
