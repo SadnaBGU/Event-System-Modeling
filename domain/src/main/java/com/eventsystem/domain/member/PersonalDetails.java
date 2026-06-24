@@ -17,6 +17,14 @@ public record PersonalDetails(
         String firstName,
         String lastName) {
 
+    /**
+     * Lenient email format check (UAT-38): requires a single "@" with non-empty
+     * local and domain parts and no whitespace. Deliberately not stricter (e.g.
+     * no required TLD dot) so existing identifiers like "admin@local" stay valid.
+     */
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+$");
+
     public PersonalDetails {
         Objects.requireNonNull(firstName, "firstName must not be null");
         Objects.requireNonNull(lastName, "lastName must not be null");
@@ -30,6 +38,9 @@ public record PersonalDetails(
         }
         if (email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
+        }
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("email format is invalid");
         }
     }
 

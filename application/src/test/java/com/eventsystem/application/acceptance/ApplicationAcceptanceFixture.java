@@ -3,11 +3,20 @@ package com.eventsystem.application.acceptance;
 import com.eventsystem.application.TestPurchaseContexts;
 
 import com.eventsystem.application.company.ProductionCompanyService;
+import com.eventsystem.application.event.EventCatalogService;
+import com.eventsystem.application.event.EventService;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.admin.AdminMemberBanService;
+import com.eventsystem.application.admin.AdminService;
+import com.eventsystem.application.lottery.LotteryService;
+import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.order.*;
+import com.eventsystem.application.security.IPasswordHasher;
+import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.application.policy.DiscountApplicationService;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
@@ -18,16 +27,24 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
+import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.EventStatus;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.event.SalesMethod;
 import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.lottery.Lottery;
 import com.eventsystem.domain.lottery.LotteryId;
+import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.order.*;
+import com.eventsystem.domain.platform.IPlatformRepository;
+import com.eventsystem.domain.platform.Platform;
+import com.eventsystem.domain.queue.IVirtualQueueRepository;
+import com.eventsystem.domain.queue.VirtualQueue;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 import com.eventsystem.domain.policy.discount.DiscountSummary;
@@ -42,6 +59,8 @@ import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -107,12 +126,48 @@ class ApplicationAcceptanceFixture {
     final FakeEventManagementPort eventManagement = new FakeEventManagementPort();
     final FakeMemberInformationPort memberInfo = new FakeMemberInformationPort();
 
+    // Auth/member fakes for UC04 (register), UC05 (login), UC13 (update details)
+    final FakePasswordHasher passwordHasher = new FakePasswordHasher();
+    final FakeTokenService tokenService = new FakeTokenService();
+
+    final MemberService memberService = new MemberService(
+            members,
+            passwordHasher,
+            tokenService,
+            Duration.ofHours(1));
+
     final FakePurchasePolicyRepository realPurchasePolicies = new FakePurchasePolicyRepository();
     final FakeDiscountPolicyRepository realDiscountPolicies = new FakeDiscountPolicyRepository();
 
     final ProductionCompanyService companyService = new ProductionCompanyService(
             companies,
             members);
+
+    // Event services for UC06 (search/catalog) and UC15 (create/configure event)
+    final FakeEventRepository eventRepository = new FakeEventRepository();
+    final EventService eventService = new EventService(eventRepository, companyService);
+    final EventCatalogService eventCatalogService = new EventCatalogService(
+            eventRepository,
+            zones,
+            companies);
+
+    // History / reporting / lottery services for UC12, UC14, UC18, UC23
+    final PurchaseHistoryService purchaseHistoryService = new PurchaseHistoryService(purchaseRecords);
+    final ReportService reportService = new ReportService(purchaseRecords);
+    final LotteryService lotteryService = new LotteryService(
+            lotteries,
+            new Random(42),
+            Clock.systemUTC(),
+            Duration.ofHours(1));
+
+    // Platform admin service for UC01 (init) and virtual queue service for UC03
+    final FakePlatformRepository platformRepo = new FakePlatformRepository();
+    final FakeExternalSystemsAvailabilityPort externalSystems = new FakeExternalSystemsAvailabilityPort();
+    final AdminService adminService = new AdminService(platformRepo, members, externalSystems);
+    final AdminMemberBanService adminMemberBanService = new AdminMemberBanService(platformRepo, members, companies);
+
+    final FakeVirtualQueueRepository queues = new FakeVirtualQueueRepository();
+    final QueueService queueService = new QueueService(queues, notifications);
 
     final PolicyCommandAssembler policyCommandAssembler = new PolicyCommandAssembler();
 
@@ -201,6 +256,13 @@ class ApplicationAcceptanceFixture {
                 "Company " + founderId,
                 "Acceptance test company",
                 5.0);
+    }
+
+    /** Creates and saves the singleton platform (INITIALIZING) with one admin; returns the admin id. */
+    MemberId initPlatformWithAdmin(String adminId) {
+        MemberId admin = memberId(adminId);
+        platformRepo.save(new Platform(admin, Duration.ofMinutes(10), 100));
+        return admin;
     }
 
     Zone createSeatedZone(String eventId, String zoneId, String seatId, String price) {
@@ -970,6 +1032,129 @@ class ApplicationAcceptanceFixture {
         @Override
         public List<DiscountPolicy> findByEventId(EventId eventId) {
             return byId.values().stream().filter(p -> p.scope().isListedIn(eventId)).toList();
+        }
+    }
+
+    static final class FakeEventRepository implements IEventRepository {
+        private final Map<EventId, Event> byId = new LinkedHashMap<>();
+
+        @Override
+        public Optional<Event> findById(EventId id) {
+            return Optional.ofNullable(byId.get(id));
+        }
+
+        @Override
+        public List<Event> findByCompany(CompanyId companyId) {
+            return byId.values().stream()
+                    .filter(event -> event.companyId().equals(companyId))
+                    .toList();
+        }
+
+        @Override
+        public List<Event> findPublishedEvents() {
+            return byId.values().stream()
+                    .filter(event -> event.status() == EventStatus.PUBLISHED)
+                    .toList();
+        }
+
+        @Override
+        public List<Event> findAll() {
+            return List.copyOf(byId.values());
+        }
+
+        @Override
+        public void save(Event event) {
+            byId.put(event.id(), event);
+        }
+    }
+
+    static final class FakePlatformRepository implements IPlatformRepository {
+        private Platform instance;
+
+        @Override
+        public Optional<Platform> findInstance() {
+            return Optional.ofNullable(instance);
+        }
+
+        @Override
+        public void save(Platform platform) {
+            this.instance = platform;
+        }
+    }
+
+    /** Toggleable external-systems availability for UC01 initialization tests. */
+    static final class FakeExternalSystemsAvailabilityPort implements IExternalSystemsAvailabilityPort {
+        boolean available = true;
+
+        @Override
+        public boolean areExternalSystemsAvailable() {
+            return available;
+        }
+    }
+
+    static final class FakeVirtualQueueRepository implements IVirtualQueueRepository {
+        private final Map<String, VirtualQueue> byId = new LinkedHashMap<>();
+
+        @Override
+        public Optional<VirtualQueue> findById(String queueId) {
+            return Optional.ofNullable(byId.get(queueId));
+        }
+
+        @Override
+        public Optional<VirtualQueue> findByEvent(String eventId) {
+            return byId.values().stream()
+                    .filter(queue -> queue.getEventId().equals(eventId))
+                    .findFirst();
+        }
+
+        @Override
+        public void save(VirtualQueue queue) {
+            byId.put(queue.getQueueId(), queue);
+        }
+
+        @Override
+        public List<VirtualQueue> findAll() {
+            return List.copyOf(byId.values());
+        }
+    }
+
+    /**
+     * Fake password hasher: deterministic, no real cryptography.
+     * "Hashes" by prefixing the plaintext; matches by recomputing the prefix.
+     */
+    static final class FakePasswordHasher implements IPasswordHasher {
+        @Override
+        public HashedCredentials hash(String plaintext) {
+            return new HashedCredentials("hashed:" + plaintext, "salt", "FAKE");
+        }
+
+        @Override
+        public boolean matches(String plaintext, HashedCredentials credentials) {
+            return credentials != null
+                    && credentials.hash().equals("hashed:" + plaintext);
+        }
+    }
+
+    /**
+     * Fake token service: encodes the subject memberId into the token string
+     * and decodes it back on verification. Rejects malformed tokens.
+     */
+    static final class FakeTokenService implements ITokenService {
+        private static final String PREFIX = "token-";
+
+        @Override
+        public String issueToken(MemberId subject, Duration validity) {
+            return PREFIX + subject.value();
+        }
+
+        @Override
+        public TokenClaims verifyToken(String token) {
+            if (token == null || !token.startsWith(PREFIX)) {
+                throw new InvalidTokenException("malformed token");
+            }
+            MemberId subject = new MemberId(token.substring(PREFIX.length()));
+            Instant now = Instant.now();
+            return new TokenClaims(subject, now, now.plus(1, ChronoUnit.HOURS));
         }
     }
 }

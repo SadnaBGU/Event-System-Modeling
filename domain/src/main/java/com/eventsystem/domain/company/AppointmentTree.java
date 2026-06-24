@@ -78,6 +78,28 @@ public final class AppointmentTree {
         return getOwnerSubTree(root.memberId()).size();
     }
 
+    /** True if the given member is the founder (root owner) of this tree. */
+    public boolean isFounder(MemberId memberId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        return root.memberId().equals(memberId);
+    }
+
+    /**
+     * Admin-forced removal (UC21/UC22): unconditionally removes the member from the
+     * tree as owner or manager if present. No authority check. The founder is never
+     * removed (handle the orphaned-company case separately).
+     */
+    public void forceRemove(MemberId memberId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        if (root.memberId().equals(memberId)) {
+            return;
+        }
+        if (removeOwnerFromTree(root, memberId).isPresent()) {
+            return;
+        }
+        removeManagerFromTree(root, memberId);
+    }
+
     public void appointOwner(MemberId appointerId, MemberId targetId) {
         OwnerNode appointer = findOwner(appointerId)
             .orElseThrow(() -> new CompanyDomainException("appointer is not an owner"));
