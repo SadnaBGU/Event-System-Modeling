@@ -3,6 +3,8 @@ package com.eventsystem.application.acceptance;
 import com.eventsystem.application.TestPurchaseContexts;
 
 import com.eventsystem.application.company.ProductionCompanyService;
+import com.eventsystem.application.event.EventCatalogService;
+import com.eventsystem.application.event.EventService;
 import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.member.IMemberInformationPort;
@@ -21,7 +23,10 @@ import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.company.IProductionCompanyRepository;
 import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
+import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.EventStatus;
+import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.event.SalesMethod;
 import com.eventsystem.domain.lottery.ILotteryRepository;
 import com.eventsystem.domain.lottery.Lottery;
@@ -128,6 +133,14 @@ class ApplicationAcceptanceFixture {
     final ProductionCompanyService companyService = new ProductionCompanyService(
             companies,
             members);
+
+    // Event services for UC06 (search/catalog) and UC15 (create/configure event)
+    final FakeEventRepository eventRepository = new FakeEventRepository();
+    final EventService eventService = new EventService(eventRepository, companyService);
+    final EventCatalogService eventCatalogService = new EventCatalogService(
+            eventRepository,
+            zones,
+            companies);
 
     final PolicyCommandAssembler policyCommandAssembler = new PolicyCommandAssembler();
 
@@ -979,6 +992,39 @@ class ApplicationAcceptanceFixture {
         @Override
         public List<DiscountPolicy> findByEventId(EventId eventId) {
             return byId.values().stream().filter(p -> p.scope().isListedIn(eventId)).toList();
+        }
+    }
+
+    static final class FakeEventRepository implements IEventRepository {
+        private final Map<EventId, Event> byId = new LinkedHashMap<>();
+
+        @Override
+        public Optional<Event> findById(EventId id) {
+            return Optional.ofNullable(byId.get(id));
+        }
+
+        @Override
+        public List<Event> findByCompany(CompanyId companyId) {
+            return byId.values().stream()
+                    .filter(event -> event.companyId().equals(companyId))
+                    .toList();
+        }
+
+        @Override
+        public List<Event> findPublishedEvents() {
+            return byId.values().stream()
+                    .filter(event -> event.status() == EventStatus.PUBLISHED)
+                    .toList();
+        }
+
+        @Override
+        public List<Event> findAll() {
+            return List.copyOf(byId.values());
+        }
+
+        @Override
+        public void save(Event event) {
+            byId.put(event.id(), event);
         }
     }
 
