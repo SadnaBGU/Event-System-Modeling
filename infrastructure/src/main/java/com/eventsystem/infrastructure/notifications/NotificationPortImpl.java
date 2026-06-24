@@ -89,6 +89,11 @@ public class NotificationPortImpl implements INotificationPort {
     @SuppressWarnings("null")
     private void dispatchMessage(BuyerReference buyer, NotificationType type, String message) {
         String memberIdStr = buyer.memberId();
+        if (memberIdStr == null || memberIdStr.isBlank()) {
+            // Guests have no member account, so there is nobody to store/deliver an
+            // in-app notification to. Skip silently instead of failing the caller.
+            return;
+        }
         Notification notification = Notification.create(type, message);
 
         memberRepository.findById(new MemberId(memberIdStr)).ifPresentOrElse(member -> {
