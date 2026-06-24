@@ -9,6 +9,7 @@ import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.lottery.LotteryService;
 import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.order.*;
 import com.eventsystem.application.security.IPasswordHasher;
@@ -51,6 +52,7 @@ import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -141,6 +143,15 @@ class ApplicationAcceptanceFixture {
             eventRepository,
             zones,
             companies);
+
+    // History / reporting / lottery services for UC12, UC14, UC18, UC23
+    final PurchaseHistoryService purchaseHistoryService = new PurchaseHistoryService(purchaseRecords);
+    final ReportService reportService = new ReportService(purchaseRecords);
+    final LotteryService lotteryService = new LotteryService(
+            lotteries,
+            new Random(42),
+            Clock.systemUTC(),
+            Duration.ofHours(1));
 
     final PolicyCommandAssembler policyCommandAssembler = new PolicyCommandAssembler();
 
