@@ -143,6 +143,24 @@ public final class ProductionCompany implements Persistable<CompanyId> {
         status = CompanyStatus.ADMIN_CLOSED;
     }
 
+    /**
+     * Admin-forced global role revocation (UC22 - ban member).
+     * Removes the member's owner/manager role from this company regardless of the
+     * company status or normal appointment authority.
+     *
+     * @return {@code true} if the member is this company's founder (the company is
+     *         left orphaned and the founder role is NOT removed — caller should warn),
+     *         {@code false} otherwise.
+     */
+    public synchronized boolean adminRevokeRolesOf(MemberId target) {
+        Objects.requireNonNull(target, "target must not be null");
+        if (appointmentTree.isFounder(target)) {
+            return true;
+        }
+        appointmentTree.forceRemove(target);
+        return false;
+    }
+
 
     public synchronized void reopen() {
         if (status == CompanyStatus.TERMINATED) {

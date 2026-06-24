@@ -9,11 +9,14 @@ import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.IEventQueryPort;
 import com.eventsystem.application.member.IMemberInformationPort;
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.admin.AdminMemberBanService;
+import com.eventsystem.application.admin.AdminService;
 import com.eventsystem.application.lottery.LotteryService;
 import com.eventsystem.application.member.MemberService;
 import com.eventsystem.application.order.*;
 import com.eventsystem.application.security.IPasswordHasher;
 import com.eventsystem.application.security.ITokenService;
+import com.eventsystem.application.system.IExternalSystemsAvailabilityPort;
 import com.eventsystem.application.policy.DiscountApplicationService;
 import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
@@ -38,6 +41,10 @@ import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.order.*;
+import com.eventsystem.domain.platform.IPlatformRepository;
+import com.eventsystem.domain.platform.Platform;
+import com.eventsystem.domain.queue.IVirtualQueueRepository;
+import com.eventsystem.domain.queue.VirtualQueue;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.DiscountPolicyId;
 import com.eventsystem.domain.policy.discount.DiscountSummary;
@@ -153,6 +160,15 @@ class ApplicationAcceptanceFixture {
             Clock.systemUTC(),
             Duration.ofHours(1));
 
+    // Platform admin service for UC01 (init) and virtual queue service for UC03
+    final FakePlatformRepository platformRepo = new FakePlatformRepository();
+    final FakeExternalSystemsAvailabilityPort externalSystems = new FakeExternalSystemsAvailabilityPort();
+    final AdminService adminService = new AdminService(platformRepo, members, externalSystems);
+    final AdminMemberBanService adminMemberBanService = new AdminMemberBanService(platformRepo, members, companies);
+
+    final FakeVirtualQueueRepository queues = new FakeVirtualQueueRepository();
+    final QueueService queueService = new QueueService(queues, notifications);
+
     final PolicyCommandAssembler policyCommandAssembler = new PolicyCommandAssembler();
 
     final PolicyManagementService policyManagementService = new PolicyManagementService(
@@ -240,6 +256,13 @@ class ApplicationAcceptanceFixture {
                 "Company " + founderId,
                 "Acceptance test company",
                 5.0);
+    }
+
+    /** Creates and saves the singleton platform (INITIALIZING) with one admin; returns the admin id. */
+    MemberId initPlatformWithAdmin(String adminId) {
+        MemberId admin = memberId(adminId);
+        platformRepo.save(new Platform(admin, Duration.ofMinutes(10), 100));
+        return admin;
     }
 
     Zone createSeatedZone(String eventId, String zoneId, String seatId, String price) {
@@ -1036,6 +1059,56 @@ class ApplicationAcceptanceFixture {
         @Override
         public void save(Event event) {
             byId.put(event.id(), event);
+        }
+    }
+
+    static final class FakePlatformRepository implements IPlatformRepository {
+        private Platform instance;
+
+        @Override
+        public Optional<Platform> findInstance() {
+            return Optional.ofNullable(instance);
+        }
+
+        @Override
+        public void save(Platform platform) {
+            this.instance = platform;
+        }
+    }
+
+    /** Toggleable external-systems availability for UC01 initialization tests. */
+    static final class FakeExternalSystemsAvailabilityPort implements IExternalSystemsAvailabilityPort {
+        boolean available = true;
+
+        @Override
+        public boolean areExternalSystemsAvailable() {
+            return available;
+        }
+    }
+
+    static final class FakeVirtualQueueRepository implements IVirtualQueueRepository {
+        private final Map<String, VirtualQueue> byId = new LinkedHashMap<>();
+
+        @Override
+        public Optional<VirtualQueue> findById(String queueId) {
+            return Optional.ofNullable(byId.get(queueId));
+        }
+
+        @Override
+        public Optional<VirtualQueue> findByEvent(String eventId) {
+            return byId.values().stream()
+                    .filter(queue -> queue.getEventId().equals(eventId))
+                    .findFirst();
+        }
+
+        @Override
+        public void save(VirtualQueue queue) {
+            byId.put(queue.getQueueId(), queue);
+        }
+
+        @Override
+        public List<VirtualQueue> findAll() {
+            return List.copyOf(byId.values());
         }
     }
 
