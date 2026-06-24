@@ -17,11 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Organiser dashboard: lists every event belonging to a company (drafts included),
- * so an owner/manager can see and reach all of their events in one place. Gated by the
- * same event-management permission used elsewhere — guests and plain members get 403.
- */
+// Lists all events of a company (drafts included). Owner/manager only.
 @RestController
 @RequestMapping("/api/companies/{companyId}/events")
 public class CompanyEventsController {

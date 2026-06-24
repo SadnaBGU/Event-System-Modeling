@@ -26,12 +26,6 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /**
-     * Generic, non-technical message shown to the client whenever an unexpected
-     * infrastructure failure (database / persistence / driver) occurs. The real
-     * cause is logged server-side only, so SQL fragments, table/column names and
-     * stack traces never reach the UI (requirement: concise, non-technical errors).
-     */
     private static final String STORAGE_FAILURE_MESSAGE =
             "We could not complete your request right now due to a temporary problem. Please try again in a moment.";
 
@@ -64,9 +58,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
     }
 
-    // 3b. Persistence / database failures - never leak SQL or driver details (500 Internal Server Error)
-    // Catches Spring's DataAccessException hierarchy (wrapping Hibernate/JDBC) and raw SQLExceptions.
-    // The technical cause is logged; the client only sees a safe, generic message.
+    // 3b. Database failures - return a generic message, log the real cause (500 Internal Server Error)
     @ExceptionHandler({DataAccessException.class, SQLException.class})
     public ResponseEntity<Map<String, Object>> handlePersistenceException(Exception ex, HttpServletRequest request) {
         log.error("Persistence failure on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.toString(), ex);
@@ -94,11 +86,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorBody, status);
     }
 
-    /**
-     * Builds the same error envelope but with a caller-supplied safe message and
-     * error code, so the original (possibly sensitive) exception message is never
-     * exposed to the client.
-     */
     private ResponseEntity<Map<String, Object>> buildSafeErrorResponse(Exception ex, HttpStatus status,
             String errorCode, String safeMessage, HttpServletRequest request) {
         Map<String, Object> errorBody = new LinkedHashMap<>();

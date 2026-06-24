@@ -1,25 +1,6 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- Migration: add discount_policies.owner_type  (2026-06-24)
---
--- WHY: The domain model gives every policy a PolicyOwnerType (COMPANY or EVENT).
---      Hibernate's `ddl-auto: update` adds NEW columns, but it CANNOT add a NOT NULL
---      column to a table that already holds rows. On the live Google Cloud SQL instance
---      `discount_policies` already had data, so the `owner_type` column was never created
---      there (the sibling `purchase_policies` table did get it). Any read of discount
---      policies (e.g. during checkout price calculation) then fails with:
---          ERROR: column dp1_0.owner_type does not exist
---
--- WHAT: Add the column, backfill existing rows as 'COMPANY' (all legacy discount policies
---       were company-wide), then enforce NOT NULL + the COMPANY/EVENT check constraint,
---       matching what Hibernate generates for a fresh schema.
---
--- SAFE TO RE-RUN: every statement is idempotent.
---
--- HOW TO APPLY (PowerShell, from repo root):
---   docker run --rm -i -e PGPASSWORD=$env:DB_PASSWORD postgres:15-alpine `
---     psql "host=$env:DB_IP port=$env:DB_PORT dbname=eventsystem_db user=$env:DB_USERNAME sslmode=require" `
---     -v ON_ERROR_STOP=1 -f - < config/migrations/2026-06-24_add_discount_policy_owner_type.sql
--- ─────────────────────────────────────────────────────────────────────────────
+-- Migration: add discount_policies.owner_type (COMPANY|EVENT), 2026-06-24.
+-- ddl-auto=update can't add a NOT NULL column to a populated table, so the live
+-- cloud DB never got this column. Idempotent / safe to re-run.
 
 BEGIN;
 

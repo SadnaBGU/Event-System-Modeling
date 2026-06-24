@@ -91,11 +91,7 @@ public class EventLotteryController {
         return ResponseEntity.ok(payload);
     }
 
-    /**
-     * Organiser action: close registration and draw the winners for this event's lottery
-     * (requires event-management permission). The draw is terminal: the lottery moves to
-     * DRAWN and winners receive time-limited permission codes.
-     */
+    /** Organiser action: close registration and draw the winners (requires event-management permission). */
     @PostMapping("/draw")
     public ResponseEntity<Map<String, Object>> drawLottery(
             @PathVariable String eventId,
@@ -125,11 +121,7 @@ public class EventLotteryController {
     /** Request body for {@link #drawLottery}: how many winners to pick (capped at the pool size). */
     public record DrawLotteryRequest(Integer winnerCount) {}
 
-    /**
-     * Organiser read: list the winners of this event's lottery (requires event-management
-     * permission). Returns each winner's id, username and code expiry. The private purchase
-     * code itself is not exposed here — it is delivered to the winner via their notification.
-     */
+    /** Organiser read: list the winners (id, username, code expiry). Requires event-management permission. */
     @GetMapping("/winners")
     public ResponseEntity<List<Map<String, Object>>> getWinners(
             @PathVariable String eventId,

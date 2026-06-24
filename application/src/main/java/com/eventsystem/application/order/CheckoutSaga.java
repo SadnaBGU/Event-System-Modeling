@@ -137,8 +137,6 @@ public class CheckoutSaga {
             discount = discountPort.discountSnapshotFromSummary(summ, baseTotal);
             finalAmount = baseTotal.subtract(discount.discountAmount());
         } catch (org.springframework.dao.DataAccessException e) {
-            // Storage/driver failure (e.g. schema mismatch): log the technical cause but
-            // never surface SQL/column details to the client (concise, non-technical errors).
             logger.error("Discount calculation failed due to a storage error for order {}", orderId, e);
             throw new PriceCalcException("the order total could not be calculated right now. Please try again.");
         } catch (Exception e) {

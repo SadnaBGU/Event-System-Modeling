@@ -11,11 +11,7 @@ export interface NotificationClient {
     disconnect(): void;
 }
 
-/**
- * Maps a raw notification frame to the UI {@link NotificationDto} shape. The backend
- * sends `{ notificationId, type, content, createdAt, delivered }`, so without this the
- * UI's `message`/`id` fields would be undefined and the notification would render blank.
- */
+// Backend sends { notificationId, type, content, ... }; map it to the UI's { id, message, ... }.
 function normalizeNotification(raw: unknown): NotificationDto {
     const r = (raw ?? {}) as Record<string, unknown>;
     const newId =

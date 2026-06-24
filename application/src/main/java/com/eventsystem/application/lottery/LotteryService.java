@@ -96,11 +96,6 @@ public class LotteryService {
         notifyWinners(lottery);
     }
 
-    /**
-     * Push a LOTTERY_WON notification (with the time-limited purchase code) to each winner.
-     * Best-effort: a notification failure must not roll back a completed draw, so failures
-     * are logged and swallowed.
-     */
     private void notifyWinners(Lottery lottery) {
         if (notificationPort == null) {
             return;
