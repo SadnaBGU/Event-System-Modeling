@@ -336,7 +336,6 @@ class UC16_PolicyAcceptanceTest {
         assertThat(app.realPurchasePolicies.findByCompanyId(companyId)).isEmpty();
     }
 
-//TODO - fix so the test passes!
     // REQ: DP-03, DP-06, DP-11, USR-10, INV-10
     // UC: UC 16 - Define Discount Policies + UC 9 - Checkout
     // UAT: UAT-45 - Set Visible Discount, UAT-26 - Successful Checkout
