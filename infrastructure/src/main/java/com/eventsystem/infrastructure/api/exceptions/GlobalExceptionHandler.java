@@ -7,18 +7,33 @@ import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Generic, non-technical message shown to the client whenever an unexpected
+     * infrastructure failure (database / persistence / driver) occurs. The real
+     * cause is logged server-side only, so SQL fragments, table/column names and
+     * stack traces never reach the UI (requirement: concise, non-technical errors).
+     */
+    private static final String STORAGE_FAILURE_MESSAGE =
+            "We could not complete your request right now due to a temporary problem. Please try again in a moment.";
 
     // 1. Handling authentication failures - not logged in (401 Unauthorized)
     @ExceptionHandler(AuthenticationException.class)
@@ -49,6 +64,15 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
     }
 
+    // 3b. Persistence / database failures - never leak SQL or driver details (500 Internal Server Error)
+    // Catches Spring's DataAccessException hierarchy (wrapping Hibernate/JDBC) and raw SQLExceptions.
+    // The technical cause is logged; the client only sees a safe, generic message.
+    @ExceptionHandler({DataAccessException.class, SQLException.class})
+    public ResponseEntity<Map<String, Object>> handlePersistenceException(Exception ex, HttpServletRequest request) {
+        log.error("Persistence failure on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.toString(), ex);
+        return buildSafeErrorResponse(ex, HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR", STORAGE_FAILURE_MESSAGE, request);
+    }
+
     // 4. Handling domain and validation exceptions - other logic and domain errors (400 Bad Request)
     // Catches exceptions like ActiveOrderHasExpiredException, OrderViolatesPolicyException etc.
     @ExceptionHandler(RuntimeException.class)
@@ -67,6 +91,23 @@ public class GlobalExceptionHandler {
         
         errorBody.put("path", request.getRequestURI());
 
+        return new ResponseEntity<>(errorBody, status);
+    }
+
+    /**
+     * Builds the same error envelope but with a caller-supplied safe message and
+     * error code, so the original (possibly sensitive) exception message is never
+     * exposed to the client.
+     */
+    private ResponseEntity<Map<String, Object>> buildSafeErrorResponse(Exception ex, HttpStatus status,
+            String errorCode, String safeMessage, HttpServletRequest request) {
+        Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("timestamp", Instant.now().toString());
+        errorBody.put("status", status.value());
+        errorBody.put("errorType", ex.getClass().getSimpleName());
+        errorBody.put("errorCode", errorCode);
+        errorBody.put("message", safeMessage);
+        errorBody.put("path", request.getRequestURI());
         return new ResponseEntity<>(errorBody, status);
     }
 

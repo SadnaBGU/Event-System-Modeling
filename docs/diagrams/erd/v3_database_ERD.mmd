@@ -230,6 +230,7 @@
     PURCHASE_POLICIES {
         string id PK
         string company_id FK
+        string owner_type "COMPANY|EVENT"
         string policy_name
         jsonb  policy_scope
         jsonb  policy_tree "composite rule tree"
@@ -239,6 +240,7 @@
     DISCOUNT_POLICIES {
         string id PK
         string company_id FK
+        string owner_type "COMPANY|EVENT"
         jsonb  policy_scope
         boolean stackable
         boolean active

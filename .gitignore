@@ -1,6 +1,8 @@
 *.md
 
-# Keep the project README and docs tracked despite the blanket *.md ignore above.
+# Keep ONLY the project README tracked despite the blanket *.md ignore above.
+# (All personal docs — EXISTING_CODE_ISSUES.md, CHEAT_SHEET.md, LOCAL_CLOUD_RUN_GUIDE.md,
+#  IMPLEMENTATION_GUIDE.md — stay ignored and are never committed.)
 !README.md
 !docs/**/*.md
 

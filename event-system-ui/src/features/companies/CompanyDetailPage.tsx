@@ -21,6 +21,12 @@ export function CompanyDetailPage() {
     enabled: !!companyId,
   });
 
+  const events = useQuery({
+    queryKey: ['company-events', companyId],
+    queryFn: () => companiesApi.events(companyId),
+    enabled: !!companyId,
+  });
+
   const setStatus = useMutation({
     mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
       companiesApi.updateStatus(companyId, { status }),
@@ -66,6 +72,35 @@ export function CompanyDetailPage() {
           </button>
         ) : null}
       </div>
+
+      <h2 style={{ fontSize: '1.05rem', marginTop: '1.5rem' }}>Events</h2>
+      {events.isLoading && <p>Loading…</p>}
+      {events.isError && <p className="empty">Could not load events.</p>}
+      {events.data && events.data.length === 0 && (
+        <p className="empty">No events yet. Use “New event” above to create one.</p>
+      )}
+      {events.data && events.data.length > 0 && (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Status</th>
+              <th>Sales method</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.data.map((evt) => (
+              <tr key={evt.eventId}>
+                <td>{evt.eventName}</td>
+                <td><span className={`pill ${evt.status}`}>{evt.status}</span></td>
+                <td>{evt.salesMethod.toLowerCase().replace('_', ' ')}</td>
+                <td><Link to={`/events/${evt.eventId}`} className="btn ghost">Open</Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <h2 style={{ fontSize: '1.05rem', marginTop: '1.5rem' }}>Sales report</h2>
       {sales.isLoading && <p>Loading…</p>}

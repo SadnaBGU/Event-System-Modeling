@@ -129,4 +129,11 @@ public class NotificationPortImpl implements INotificationPort {
     public void sendEventSoldOut(BuyerReference buyer, String eventId) {
         dispatchMessage(buyer, NotificationType.SOLD_OUT, "Event " + eventId + " is sold out.");
     }
+
+    @Override
+    public void sendLotteryWon(BuyerReference buyer, String eventId, String permissionCode) {
+        dispatchMessage(buyer, NotificationType.LOTTERY_WON,
+                "You won the lottery for event " + eventId + "! Use code " + permissionCode
+                        + " to buy your ticket before it expires.");
+    }
 }

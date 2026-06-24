@@ -300,8 +300,8 @@ public class AppConfig {
     }
 
     @Bean
-    public LotteryService lotteryService(ILotteryRepository lotteryRepo) {
-        return new LotteryService(lotteryRepo, new SecureRandom(), Clock.systemUTC(), lotteryCodeValidity);
+    public LotteryService lotteryService(ILotteryRepository lotteryRepo, INotificationPort notificationService) {
+        return new LotteryService(lotteryRepo, new SecureRandom(), Clock.systemUTC(), lotteryCodeValidity, notificationService);
     }
 
     @Bean

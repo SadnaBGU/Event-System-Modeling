@@ -561,6 +561,7 @@ class ApplicationAcceptanceFixture {
         final List<String> purchaseFailures = new ArrayList<>();
         final List<String> queueTurns = new ArrayList<>();
         final List<String> soldOuts = new ArrayList<>();
+        final List<String> lotteryWins = new ArrayList<>();
 
         @Override
         public void sendPurchaseSuccess(BuyerReference buyer, String receiptId) {
@@ -580,6 +581,11 @@ class ApplicationAcceptanceFixture {
         @Override
         public void sendEventSoldOut(BuyerReference buyer, String eventId) {
             soldOuts.add(buyer.memberId() + ":" + eventId);
+        }
+
+        @Override
+        public void sendLotteryWon(BuyerReference buyer, String eventId, String permissionCode) {
+            lotteryWins.add(buyer.memberId() + ":" + eventId);
         }
     }
 

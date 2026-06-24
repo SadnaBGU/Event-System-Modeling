@@ -11,6 +11,26 @@ export interface NotificationClient {
     disconnect(): void;
 }
 
+/**
+ * Maps a raw notification frame to the UI {@link NotificationDto} shape. The backend
+ * sends `{ notificationId, type, content, createdAt, delivered }`, so without this the
+ * UI's `message`/`id` fields would be undefined and the notification would render blank.
+ */
+function normalizeNotification(raw: unknown): NotificationDto {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    const newId =
+        globalThis.crypto && 'randomUUID' in globalThis.crypto
+            ? globalThis.crypto.randomUUID()
+            : String(Date.now());
+    return {
+        id: String(r.id ?? r.notificationId ?? newId),
+        type: (r.type as NotificationDto['type']) ?? 'GENERIC',
+        message: String(r.message ?? r.content ?? ''),
+        createdAt: String(r.createdAt ?? new Date().toISOString()),
+        meta: r.meta as Record<string, unknown> | undefined,
+    };
+}
+
 class StompNotificationClient implements NotificationClient {
     private client: Client | null = null;
     private subscription: StompSubscription | null = null;
@@ -26,7 +46,7 @@ class StompNotificationClient implements NotificationClient {
             onConnect: () => {
                 this.subscription = client.subscribe(DESTINATION, (frame) => {
                     try {
-                        const payload = JSON.parse(frame.body) as NotificationDto;
+                        const payload = normalizeNotification(JSON.parse(frame.body));
                         onMessage(payload);
                     } catch {
                         // ignore malformed frames; backend should always send valid JSON
@@ -72,7 +92,7 @@ class RawWsNotificationClient implements NotificationClient {
             const ws = new WebSocket(url.toString());
             ws.onmessage = (event) => {
                 try {
-                    const payload = JSON.parse(event.data) as NotificationDto;
+                    const payload = normalizeNotification(JSON.parse(event.data));
                     onMessage(payload);
                 } catch {
                     // ignore
