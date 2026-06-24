@@ -136,4 +136,23 @@ class UC04_05_13_MemberAuthAcceptanceTest {
         assertThat(reread.firstName()).isEqualTo("Jonathan");
         assertThat(reread.email()).isEqualTo("jonathan@example.com");
     }
+
+    // REQ: USR-03
+    // UC: UC 13 - Update Identifying Details
+    // UAT: UAT-38 - Update Profile Fail (malformed email)
+    @Test
+    void updateDetailsWithMalformedEmail_isRejectedAndDetailsUnchanged() {
+        ApplicationAcceptanceFixture app = new ApplicationAcceptanceFixture();
+        MemberId memberId = app.memberService.register(validRegister("jon"));
+
+        UpdateMemberDetailsRequest bad = new UpdateMemberDetailsRequest(
+                "Jon", "Snow", "not-an-email", LocalDate.of(1990, 1, 1));
+
+        assertThatThrownBy(() -> app.memberService.updateDetails(memberId, memberId, bad))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // The original valid email is preserved.
+        assertThat(app.memberService.getDetails(memberId, memberId).email())
+                .isEqualTo("jon@example.com");
+    }
 }

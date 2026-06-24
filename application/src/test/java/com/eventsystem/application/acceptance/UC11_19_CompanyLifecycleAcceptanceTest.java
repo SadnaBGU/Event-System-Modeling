@@ -5,6 +5,7 @@ import com.eventsystem.domain.company.CompanyStatus;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.order.BuyerReference;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,5 +116,30 @@ class UC11_19_CompanyLifecycleAcceptanceTest {
                 .hasMessageContaining("admin-closed");
 
         assertThat(company(app, companyId).status()).isEqualTo(CompanyStatus.ADMIN_CLOSED);
+    }
+
+    // REQ: PRD-12
+    // UC: UC 19 - Suspend and Reopen Production Company
+    // UAT: UAT-58 - Suspend With Sold Tickets
+    // The warning + explicit confirmation are a UI concern; once the user confirms,
+    // the confirmed action is the existing application-level suspend, which proceeds
+    // regardless of already-sold tickets.
+    @Test
+    void suspendingCompanyThatHasSoldTickets_proceedsOnceConfirmed() {
+        ApplicationAcceptanceFixture app = new ApplicationAcceptanceFixture();
+        MemberId founder = app.memberId("founder-1");
+        CompanyId companyId = app.createCompanyWithFounder(founder.value());
+
+        // Produce a sold ticket for one of the company's events.
+        app.createStandingZoneForCompany("event-1", "zone-a", "General", "50.00", 100, companyId);
+        BuyerReference buyer = app.memberBuyer("buyer-1");
+        String orderId = app.createStrictOrder(buyer, "event-1").orderId();
+        app.reserveStanding(orderId, "zone-a", 2);
+        app.checkoutSaga.executeCheckout(orderId, "payment-token", null);
+        assertThat(app.purchaseRecords.findAll()).isNotEmpty();
+
+        app.companyService.suspendCompany(companyId);
+
+        assertThat(company(app, companyId).status()).isEqualTo(CompanyStatus.SUSPENDED);
     }
 }
