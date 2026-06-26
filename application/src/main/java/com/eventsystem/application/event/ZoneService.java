@@ -40,7 +40,7 @@ public class ZoneService implements IZoneServicePort {
     // ── Zone creation ────────────────────────────────────────────────────────
     
     public ZoneId createSeatedZone(MemberId actorId, EventId eventId, String zoneName, Money price, List<Row> rows) {
-        log.info("createSeatedZone: eventId={}, zoneName={}, rows={}", eventId, zoneName, rows.size());
+
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneName, "zoneName must not be null");
         Objects.requireNonNull(price, "price must not be null");
@@ -48,6 +48,8 @@ public class ZoneService implements IZoneServicePort {
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("seated zone must have at least one row");
         }
+        
+        log.info("createSeatedZone: eventId={}, zoneName={}, rows={}",eventId, zoneName, rows == null ? null : rows.size());
 
         requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
 

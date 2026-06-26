@@ -285,4 +285,74 @@ class ZoneServiceTest {
         assertThatThrownBy(() -> service.findByEvent(null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void createSeatedZone_deniesActorWithoutVenueOrEventPermission() {
+        Row row = new Row("A", List.of(new Seat(SeatId.random(), "A", 1)));
+
+        when(permissionChecker.canConfigureVenue(actorId, companyId)).thenReturn(false);
+        when(permissionChecker.canManageEvents(actorId, companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.createSeatedZone(actorId, eventId, "VIP", price, List.of(row)))
+                .isInstanceOf(SecurityException.class)
+                .hasMessageContaining("not allowed");
+
+        verify(zoneRepository, never()).save(any(Zone.class));
+    }
+
+    @Test
+    void createSeatedZone_allowsActorWithEventManagementPermission() {
+        Row row = new Row("A", List.of(new Seat(SeatId.random(), "A", 1)));
+
+        when(permissionChecker.canConfigureVenue(actorId, companyId)).thenReturn(false);
+        when(permissionChecker.canManageEvents(actorId, companyId)).thenReturn(true);
+
+        ZoneId id = service.createSeatedZone(actorId, eventId, "VIP", price, List.of(row));
+
+        assertThat(id).isNotNull();
+        verify(zoneRepository).save(any(Zone.class));
+    }
+
+    @Test
+    void updateZonePrice_deniesActorWithoutPermission() {
+        Zone zone = Zone.createStanding(ZoneId.random(), eventId, "GA", price, 10);
+        Money newPrice = new Money(new BigDecimal("120.00"), "USD");
+
+        when(zoneRepository.findById(zone.zoneId())).thenReturn(Optional.of(zone));
+        when(permissionChecker.canConfigureVenue(actorId, companyId)).thenReturn(false);
+        when(permissionChecker.canManageEvents(actorId, companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.updateZonePrice(actorId, zone.zoneId(), newPrice))
+                .isInstanceOf(SecurityException.class);
+
+        verify(zoneRepository, never()).save(any(Zone.class));
+    }
+
+    @Test
+    void updateZoneName_rejectsNullInputs() {
+        ZoneId zoneId = ZoneId.random();
+
+        assertThatThrownBy(() -> service.updateZoneName(null, zoneId, "New"))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> service.updateZoneName(actorId, null, "New"))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> service.updateZoneName(actorId, zoneId, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void updateZonePrice_rejectsNullInputs() {
+        ZoneId zoneId = ZoneId.random();
+
+        assertThatThrownBy(() -> service.updateZonePrice(null, zoneId, price))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> service.updateZonePrice(actorId, null, price))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> service.updateZonePrice(actorId, zoneId, null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

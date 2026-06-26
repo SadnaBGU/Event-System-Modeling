@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,8 +45,7 @@ class VenueManagementServiceTest {
         venueManagementService = new VenueManagementService(
                 venueRepository,
                 memberRepository,
-                permissionChecker
-        );
+                permissionChecker);
 
         actorId = MemberId.random();
         companyId = CompanyId.random();
@@ -115,8 +115,7 @@ class VenueManagementServiceTest {
                 "Zone A",
                 BigDecimal.valueOf(50),
                 "USD",
-                100
-        );
+                100);
 
         assertThat(venue.getZones()).hasSize(1);
         assertThat(venue.getZones().get(0).getZoneName()).isEqualTo("Zone A");
@@ -135,8 +134,7 @@ class VenueManagementServiceTest {
                 "Standing",
                 BigDecimal.valueOf(30),
                 "USD",
-                200
-        );
+                200);
 
         assertThat(venue.getZones()).hasSize(1);
         assertThat(venue.getZones().get(0).getZoneType()).isEqualTo(ZoneType.STANDING);
@@ -156,8 +154,7 @@ class VenueManagementServiceTest {
                 "Standing",
                 BigDecimal.valueOf(30),
                 "USD",
-                200
-        )).isInstanceOf(SecurityException.class);
+                200)).isInstanceOf(SecurityException.class);
 
         verify(venueRepository, never()).save(any(Venue.class));
     }
@@ -172,37 +169,43 @@ class VenueManagementServiceTest {
                 "Standing",
                 BigDecimal.valueOf(30),
                 "USD",
-                200
-        )).isInstanceOf(VenueException.class);
+                200)).isInstanceOf(VenueException.class);
     }
 
     @Test
     void addZone_rejects_null_inputs() {
-        assertThatThrownBy(() -> venueManagementService.addSeatedZone(null, venueId, "Zone A", BigDecimal.TEN, "USD", 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addSeatedZone(null, venueId, "Zone A", BigDecimal.TEN, "USD", 10))
                 .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addSeatedZone(actorId, null, "Zone A", BigDecimal.TEN, "USD", 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addSeatedZone(actorId, null, "Zone A", BigDecimal.TEN, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addSeatedZone(actorId, venueId, null, BigDecimal.TEN, "USD", 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addSeatedZone(actorId, venueId, null, BigDecimal.TEN, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> venueManagementService.addSeatedZone(actorId, venueId, "Zone A", null, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addSeatedZone(actorId, venueId, "Zone A", BigDecimal.TEN, null, 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addSeatedZone(actorId, venueId, "Zone A", BigDecimal.TEN, null, 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addStandingZone(actorId, null, "Zone B", BigDecimal.TEN, "USD", 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addStandingZone(actorId, null, "Zone B", BigDecimal.TEN, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addStandingZone(actorId, venueId, null, BigDecimal.TEN, "USD", 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addStandingZone(actorId, venueId, null, BigDecimal.TEN, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> venueManagementService.addStandingZone(actorId, venueId, "Zone B", null, "USD", 10))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> venueManagementService.addStandingZone(actorId, venueId, "Zone B", BigDecimal.TEN, null, 10))
+        assertThatThrownBy(
+                () -> venueManagementService.addStandingZone(actorId, venueId, "Zone B", BigDecimal.TEN, null, 10))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -216,8 +219,7 @@ class VenueManagementServiceTest {
                 "Zone A",
                 BigDecimal.valueOf(50),
                 "USD",
-                100
-        )).isInstanceOf(VenueException.class);
+                100)).isInstanceOf(VenueException.class);
     }
 
     @Test
@@ -390,5 +392,33 @@ class VenueManagementServiceTest {
 
         assertThatThrownBy(() -> venueManagementService.getCompanyVenues(null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void createVenue_deniesActorWithOnlyEventManagementPermission_ifVenueRequiresVenueConfiguration() {
+        when(permissionChecker.canConfigureVenue(actorId, companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> venueManagementService.createVenue(actorId, companyId, "Main Venue"))
+                .isInstanceOf(SecurityException.class);
+
+        verify(venueRepository, never()).save(any(Venue.class));
+    }
+
+    @Test
+    void addSeatedZone_denies_actor_without_permission() {
+        Venue venue = new Venue(venueId, companyId, "Main Venue");
+
+        when(venueRepository.findById(venueId)).thenReturn(Optional.of(venue));
+        when(permissionChecker.canConfigureVenue(actorId, companyId)).thenReturn(false);
+
+        assertThatThrownBy(() -> venueManagementService.addSeatedZone(
+                actorId,
+                venueId,
+                "Zone A",
+                BigDecimal.valueOf(50),
+                "USD",
+                100)).isInstanceOf(SecurityException.class);
+
+        verify(venueRepository, never()).save(any(Venue.class));
     }
 }
