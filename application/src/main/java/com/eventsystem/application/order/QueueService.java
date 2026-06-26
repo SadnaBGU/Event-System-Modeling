@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 
 public class QueueService {
     private final Logger logger = LoggerFactory.getLogger(QueueService.class);
@@ -124,6 +125,7 @@ public class QueueService {
         });
     }
 
+    @Transactional
     public void resetAllQueues() {
         logger.info("Resetting all queues in the system due to startup or recovery.");
         queueRepository.deleteAll();
