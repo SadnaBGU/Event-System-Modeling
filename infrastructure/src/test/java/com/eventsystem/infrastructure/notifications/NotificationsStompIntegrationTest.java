@@ -16,7 +16,7 @@ import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;
-import com.eventsystem.infrastructure.api.notifications.NotificationDto;
+import com.eventsystem.application.member.NotificationDto;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

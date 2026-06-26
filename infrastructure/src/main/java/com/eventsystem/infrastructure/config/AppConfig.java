@@ -12,6 +12,7 @@ import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.lottery.LotteryService;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.member.MemberService;
+import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.order.CheckoutSaga;
 import com.eventsystem.application.order.IPaymentGatewayPort;
 import com.eventsystem.application.order.ITicketIssuancePort;
@@ -358,7 +359,7 @@ public class AppConfig {
 
     @Bean
     public NotificationPortImpl notificationService(IMemberRepository memberRepo,
-                                                   com.eventsystem.application.member.NotificationBroadcaster broadcaster) {
+                                                   NotificationBroadcaster broadcaster) {
         return new NotificationPortImpl(memberRepo, broadcaster);
     }
 

@@ -18,10 +18,13 @@ import com.eventsystem.domain.member.PersonalDetails;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Use cases: get/update member details (II.3.4), cancel account (II.6.2).
@@ -144,6 +147,29 @@ public class MemberService implements IMemberInformationPort{
         TokenClaims claims = tokenService.verifyToken(token);
         log.info("Member logged in memberId={}", member.getMemberId().value());
         return new LoginResponse(token, member.getMemberId(), claims.expiresAt());
+    }
+
+    @Transactional
+    public List<NotificationDto> getAndMarkPendingNotifications(MemberId actor, boolean markAsRead) {
+        Member m;
+        if (markAsRead) {
+            m = members.findByIdForUpdate(actor)
+                    .orElseThrow(() -> new MemberNotFoundException(actor));
+        } else {
+            m = members.findById(actor)
+                    .orElseThrow(() -> new MemberNotFoundException(actor));
+        }
+
+        List<NotificationDto> pending = m.getUndeliveredNotifications().stream()
+                .map(n -> new NotificationDto(n.getNotificationId(), n.getType().name(), n.getContent(), n.getCreatedAt().toString(), n.isDelivered()))
+                .collect(Collectors.toList());
+
+        if (markAsRead && !pending.isEmpty()) {
+            m.markNotificationsDelivered();
+            members.save(m);
+        }
+
+        return pending;
     }
 
     private void validateRegisterRequest(RegisterMemberRequest req) {

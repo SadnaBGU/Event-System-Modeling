@@ -791,6 +791,11 @@ class ApplicationAcceptanceFixture {
         public void save(Member member) {
             byId.put(member.getMemberId(), member);
         }
+
+        @Override
+        public Optional<Member> findByIdForUpdate(MemberId memberId) {
+            return findById(memberId);
+        }
     }
 
     static final class FakeProductionCompanyRepository implements IProductionCompanyRepository {
