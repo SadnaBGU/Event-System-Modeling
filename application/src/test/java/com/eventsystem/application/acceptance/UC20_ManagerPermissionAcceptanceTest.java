@@ -2,6 +2,7 @@ package com.eventsystem.application.acceptance;
 
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
 import com.eventsystem.application.event.EventService;
+import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.venue.VenueManagementService;
 import com.eventsystem.domain.company.CompanyId;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
@@ -40,13 +41,11 @@ import static org.mockito.Mockito.*;
  *
  * Purpose:
  * A Manager with exactly one granted permission should be able to perform only
- * actions requiring that permission, and should be denied from all actions that
+ * actions covered by that permission, and should be denied from actions that
  * require a different permission.
  *
- * These tests intentionally expose the current bug:
- * - EventService already checks permissions.
- * - ZoneService and VenueManagementService currently do not receive actorId/companyId
- *   and therefore cannot enforce VENUE_CONFIGURATION.
+ * This is an application-level acceptance test:
+ * it calls Application services directly, not controllers/UI and not Domain objects directly.
  */
 @ExtendWith(MockitoExtension.class)
 class UC20_ManagerPermissionAcceptanceTest {
@@ -66,6 +65,9 @@ class UC20_ManagerPermissionAcceptanceTest {
     @Mock
     private ICompanyPermissionServicePort permissionChecker;
 
+    @Mock
+    private IEventManagementPort eventOwnershipChecker;
+
     private EventService eventService;
     private ZoneService zoneService;
     private VenueManagementService venueManagementService;
@@ -77,16 +79,29 @@ class UC20_ManagerPermissionAcceptanceTest {
     @BeforeEach
     void setUp() {
         eventService = new EventService(eventRepository, permissionChecker);
-        zoneService = new ZoneService(zoneRepository);
-        venueManagementService = new VenueManagementService(venueRepository, memberRepository);
+
+        zoneService = new ZoneService(
+                zoneRepository,
+                permissionChecker,
+                eventOwnershipChecker
+        );
+
+        venueManagementService = new VenueManagementService(
+                venueRepository,
+                memberRepository,
+                permissionChecker
+        );
 
         managerId = MemberId.random();
         companyId = CompanyId.random();
         eventId = EventId.random();
+
+        lenient().when(eventOwnershipChecker.companyOfEvent(eventId))
+                .thenReturn(companyId);
     }
 
     // -------------------------------------------------------------------------
-    // EVENT_INVENTORY_MANAGEMENT - existing correct behavior
+    // EVENT_INVENTORY_MANAGEMENT
     // -------------------------------------------------------------------------
 
     // REQ: PRD-15, TST-13, UC20, UAT-61
@@ -123,20 +138,37 @@ class UC20_ManagerPermissionAcceptanceTest {
     }
 
     // -------------------------------------------------------------------------
-    // VENUE_CONFIGURATION - expected behavior, currently failing
+    // ZONE CONFIGURATION
+    // Current design:
+    // ZoneService allows either VENUE_CONFIGURATION or EVENT_INVENTORY_MANAGEMENT.
     // -------------------------------------------------------------------------
 
     // REQ: PRD-15, TST-13, UC20, UAT-61
-    //
-    // This test documents the desired behavior after the fix.
-    // Currently ZoneService has no actorId/companyId parameter, so the action succeeds
-    // without checking that the manager has VENUE_CONFIGURATION.
     @Test
     void managerWithVenueConfigurationCanCreateStandingZone() {
         grantOnly(Permission.VENUE_CONFIGURATION);
 
         assertDoesNotThrow(() ->
                 zoneService.createStandingZone(
+                        managerId,
+                        eventId,
+                        "Standing Zone",
+                        Money.of(BigDecimal.valueOf(100), "ILS"),
+                        100
+                )
+        );
+
+        verify(zoneRepository).save(any());
+    }
+
+    // REQ: PRD-15, TST-13, UC20, UAT-61
+    @Test
+    void managerWithEventInventoryManagementCanCreateStandingZone() {
+        grantOnly(Permission.EVENT_INVENTORY_MANAGEMENT);
+
+        assertDoesNotThrow(() ->
+                zoneService.createStandingZone(
+                        managerId,
                         eventId,
                         "Standing Zone",
                         Money.of(BigDecimal.valueOf(100), "ILS"),
@@ -152,17 +184,17 @@ class UC20_ManagerPermissionAcceptanceTest {
     @EnumSource(
             value = Permission.class,
             names = {
-                    "EVENT_INVENTORY_MANAGEMENT",
                     "MODIFY_POLICIES",
                     "VIEW_PURCHASE_HISTORY",
                     "GENERATE_SALES_REPORT"
             }
     )
-    void managerWithoutVenueConfigurationCannotCreateStandingZone(Permission grantedPermission) {
+    void managerWithoutVenueOrEventManagementCannotCreateStandingZone(Permission grantedPermission) {
         grantOnly(grantedPermission);
 
         assertThrows(SecurityException.class, () ->
                 zoneService.createStandingZone(
+                        managerId,
                         eventId,
                         "Standing Zone",
                         Money.of(BigDecimal.valueOf(100), "ILS"),
@@ -171,6 +203,24 @@ class UC20_ManagerPermissionAcceptanceTest {
         );
 
         verify(zoneRepository, never()).save(any());
+    }
+
+    // -------------------------------------------------------------------------
+    // VENUE CONFIGURATION
+    // Current design:
+    // VenueManagementService allows only VENUE_CONFIGURATION.
+    // -------------------------------------------------------------------------
+
+    // REQ: PRD-15, TST-13, UC20, UAT-61
+    @Test
+    void managerWithVenueConfigurationCanCreateVenue() {
+        grantOnly(Permission.VENUE_CONFIGURATION);
+
+        assertDoesNotThrow(() ->
+                venueManagementService.createVenue(managerId, companyId, "Main Venue")
+        );
+
+        verify(venueRepository).save(any());
     }
 
     // REQ: PRD-15, TST-13, UC20, UAT-62
@@ -188,10 +238,33 @@ class UC20_ManagerPermissionAcceptanceTest {
         grantOnly(grantedPermission);
 
         assertThrows(SecurityException.class, () ->
-                venueManagementService.createVenue(companyId, "Main Venue")
+                venueManagementService.createVenue(managerId, companyId, "Main Venue")
         );
 
         verify(venueRepository, never()).save(any());
+    }
+
+    // REQ: PRD-15, TST-13, UC20, UAT-61
+    @Test
+    void managerWithVenueConfigurationCanAddStandingZoneToVenue() {
+        grantOnly(Permission.VENUE_CONFIGURATION);
+
+        Venue venue = new Venue(VenueId.generate(), companyId, "Main Venue");
+        when(venueRepository.findById(venue.getVenueId()))
+                .thenReturn(Optional.of(venue));
+
+        assertDoesNotThrow(() ->
+                venueManagementService.addStandingZone(
+                        managerId,
+                        venue.getVenueId(),
+                        "Standing",
+                        BigDecimal.valueOf(100),
+                        "ILS",
+                        100
+                )
+        );
+
+        verify(venueRepository).save(any());
     }
 
     // REQ: PRD-15, TST-13, UC20, UAT-62
@@ -209,10 +282,12 @@ class UC20_ManagerPermissionAcceptanceTest {
         grantOnly(grantedPermission);
 
         Venue venue = new Venue(VenueId.generate(), companyId, "Main Venue");
-        when(venueRepository.findById(venue.getVenueId())).thenReturn(Optional.of(venue));
+        when(venueRepository.findById(venue.getVenueId()))
+                .thenReturn(Optional.of(venue));
 
         assertThrows(SecurityException.class, () ->
                 venueManagementService.addStandingZone(
+                        managerId,
                         venue.getVenueId(),
                         "Standing",
                         BigDecimal.valueOf(100),
@@ -224,17 +299,24 @@ class UC20_ManagerPermissionAcceptanceTest {
         verify(venueRepository, never()).save(any());
     }
 
-
-
     private void grantOnly(Permission permission) {
-        when(permissionChecker.canManageEvents(managerId, companyId))
+        lenient().when(permissionChecker.canManageEvents(managerId, companyId))
                 .thenReturn(permission == Permission.EVENT_INVENTORY_MANAGEMENT);
 
-        when(permissionChecker.canManagePurchasePolicies(managerId, companyId))
+        lenient().when(permissionChecker.canConfigureVenue(managerId, companyId))
+                .thenReturn(permission == Permission.VENUE_CONFIGURATION);
+
+        lenient().when(permissionChecker.canManagePurchasePolicies(managerId, companyId))
                 .thenReturn(permission == Permission.MODIFY_POLICIES);
 
-        when(permissionChecker.canManageDiscountPolicies(managerId, companyId))
+        lenient().when(permissionChecker.canManageDiscountPolicies(managerId, companyId))
                 .thenReturn(permission == Permission.MODIFY_POLICIES);
+
+        lenient().when(permissionChecker.canViewPurchaseHistory(managerId, companyId))
+                .thenReturn(permission == Permission.VIEW_PURCHASE_HISTORY);
+
+        lenient().when(permissionChecker.canGenerateSalesReport(managerId, companyId))
+                .thenReturn(permission == Permission.GENERATE_SALES_REPORT);
     }
 
     private EventDetails validEventDetails() {

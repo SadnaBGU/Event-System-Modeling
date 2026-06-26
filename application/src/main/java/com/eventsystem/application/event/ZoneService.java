@@ -17,9 +17,12 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /**
- * Application service for zone lifecycle, seat reservations, and standing inventory.
+ * Application service for zone lifecycle, seat reservations, and standing
+ * inventory.
  *
- * <p>Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is handled
+ * <p>
+ * Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is
+ * handled
  * by the Event team's EventService, which owns the Event aggregate boundary.
  */
 @Transactional
@@ -31,16 +34,19 @@ public class ZoneService implements IZoneServicePort {
     private final ICompanyPermissionServicePort permissionChecker;
     private final IEventManagementPort eventOwnershipChecker;
 
-    public ZoneService(IZoneRepository zoneRepository, ICompanyPermissionServicePort permissionChecker, IEventManagementPort eventOwnershipChecker) {
+    public ZoneService(IZoneRepository zoneRepository, ICompanyPermissionServicePort permissionChecker,
+            IEventManagementPort eventOwnershipChecker) {
         this.zoneRepository = Objects.requireNonNull(zoneRepository, "zoneRepository must not be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker, "permissionChecker must not be null");
-        this.eventOwnershipChecker = Objects.requireNonNull(eventOwnershipChecker, "eventOwnershipChecker must not be null");
+        this.eventOwnershipChecker = Objects.requireNonNull(eventOwnershipChecker,
+                "eventOwnershipChecker must not be null");
     }
 
     // ── Zone creation ────────────────────────────────────────────────────────
-    
+
     public ZoneId createSeatedZone(MemberId actorId, EventId eventId, String zoneName, Money price, List<Row> rows) {
 
+        Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneName, "zoneName must not be null");
         Objects.requireNonNull(price, "price must not be null");
@@ -48,11 +54,11 @@ public class ZoneService implements IZoneServicePort {
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("seated zone must have at least one row");
         }
-        
-        log.info("createSeatedZone: eventId={}, zoneName={}, rows={}",eventId, zoneName, rows == null ? null : rows.size());
+
+        log.info("createSeatedZone: eventId={}, zoneName={}, rows={}", eventId, zoneName,
+                rows == null ? null : rows.size());
 
         requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
-
 
         ZoneId zoneId = ZoneId.random();
         Zone zone = Zone.createSeated(zoneId, eventId, zoneName, price, rows);
@@ -61,15 +67,15 @@ public class ZoneService implements IZoneServicePort {
     }
 
     public ZoneId createStandingZone(MemberId actorId, EventId eventId, String zoneName, Money price, int capacity) {
-        log.info("createStandingZone: eventId={}, zoneName={}, capacity={}", eventId, zoneName, capacity);
+        Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneName, "zoneName must not be null");
         Objects.requireNonNull(price, "price must not be null");
         if (capacity < 1) {
             throw new IllegalArgumentException("capacity must be at least 1");
         }
+        log.info("createStandingZone: eventId={}, zoneName={}, capacity={}", eventId, zoneName, capacity);
         requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
-
 
         ZoneId zoneId = ZoneId.random();
         Zone zone = Zone.createStanding(zoneId, eventId, zoneName, price, capacity);
@@ -80,32 +86,38 @@ public class ZoneService implements IZoneServicePort {
     // ── Zone updates ─────────────────────────────────────────────────────────
 
     public void updateZoneName(MemberId actorId, ZoneId zoneId, String newName) {
-
-        log.info("updateZoneName: zoneId={}, newName={}", zoneId, newName);
+        Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
+        Objects.requireNonNull(newName, "newName must not be null");
+
+        log.info("updateZoneName: actorId={}, zoneId={}, newName={}", actorId, zoneId, newName);
 
         zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
-            requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
+            CompanyId companyId = eventOwnershipChecker.companyOfEvent(zone.eventId());
+            requireZoneEditingPermissions(actorId, companyId);
+
             zone.updateName(newName);
             zoneRepository.save(zone);
         });
     }
 
     public void updateZonePrice(MemberId actorId, ZoneId zoneId, Money newPrice) {
-
-
-        log.info("updateZonePrice: zoneId={}, newPrice={}", zoneId, newPrice);
+        Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(zoneId, "zoneId must not be null");
+        Objects.requireNonNull(newPrice, "newPrice must not be null");
+
+        log.info("updateZonePrice: actorId={}, zoneId={}, newPrice={}", actorId, zoneId, newPrice);
 
         zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
-            requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
+            CompanyId companyId = eventOwnershipChecker.companyOfEvent(zone.eventId());
+            requireZoneEditingPermissions(actorId, companyId);
+
             zone.updatePrice(newPrice);
             zoneRepository.save(zone);
         });
     }
-
     // ── Seated reservation lifecycle ─────────────────────────────────────────
 
     @Override
@@ -207,13 +219,14 @@ public class ZoneService implements IZoneServicePort {
                 .orElseThrow(() -> new NoSuchElementException("Zone not found for zoneId: " + zoneId));
     }
 
-    //helpers:
+    // helpers:
 
     private void requireZoneEditingPermissions(MemberId actorId, CompanyId companyId) {
         Objects.requireNonNull(actorId, "actorId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
 
-        if (!permissionChecker.canConfigureVenue(actorId, companyId) && !permissionChecker.canManageEvents(actorId, companyId)) {
+        if (!permissionChecker.canConfigureVenue(actorId, companyId)
+                && !permissionChecker.canManageEvents(actorId, companyId)) {
             throw new SecurityException(
                     "actor is not allowed to manage zones for company: " + companyId);
         }

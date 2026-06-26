@@ -29,6 +29,8 @@ public class VenueManagementService {
     }
 
     public Venue createVenue(MemberId actorId, CompanyId companyId, String venueName) {
+        Objects.requireNonNull(actorId, "actorId must not be null");
+
         if (companyId == null || venueName == null) {
             throw new IllegalArgumentException("CompanyId and venueName cannot be null");
         }
@@ -41,6 +43,7 @@ public class VenueManagementService {
 
     public void addSeatedZone(MemberId actorId, VenueId venueId, String zoneName, BigDecimal pricePerTicket, String currency, int capacity) {
 
+        Objects.requireNonNull(actorId, "actorId must not be null");
         if (venueId == null || zoneName == null || pricePerTicket == null || currency == null) {
             throw new IllegalArgumentException("VenueId, zoneName, pricePerTicket, and currency cannot be null");
         }
@@ -57,7 +60,7 @@ public class VenueManagementService {
     }
 
     public void addStandingZone(MemberId actorId, VenueId venueId, String zoneName, BigDecimal pricePerTicket, String currency, int capacity) {
-
+        Objects.requireNonNull(actorId, "actorId must not be null");
         if (venueId == null || zoneName == null || pricePerTicket == null || currency == null) {
             throw new IllegalArgumentException("VenueId, zoneName, pricePerTicket, and currency cannot be null");
         }
@@ -73,7 +76,7 @@ public class VenueManagementService {
     }
 
     public void removeZone(MemberId actorId, VenueId venueId, ZoneId zoneId) {
-
+        Objects.requireNonNull(actorId, "actorId must not be null");
         if (venueId == null || zoneId == null) {
             throw new IllegalArgumentException("VenueId and ZoneId cannot be null");
         }
