@@ -94,7 +94,7 @@ import java.util.Objects;
 
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
-@EntityScan(basePackages = {"com.eventsystem.domain"})
+@EntityScan(basePackages = { "com.eventsystem.domain" })
 @EnableConfigurationProperties(BootstrapProperties.class)
 public class AppConfig {
 
@@ -129,8 +129,6 @@ public class AppConfig {
 
     @Value("${eventsystem.bootstrap.admin.date-of-birth:1990-01-01}")
     private LocalDate adminDob;
-
-    
 
     // ==========================================
     // 1. Adapters (Repositories & Security)
@@ -167,7 +165,8 @@ public class AppConfig {
     }
 
     @Bean
-    public IPurchaseRecordRepository purchaseRecordRepository(SpringDataPurchaseRecordRepository springDataPurchaseRecordRepo) {
+    public IPurchaseRecordRepository purchaseRecordRepository(
+            SpringDataPurchaseRecordRepository springDataPurchaseRecordRepo) {
         return new PostgresPurchaseRecordRepository(springDataPurchaseRecordRepo);
     }
 
@@ -216,21 +215,35 @@ public class AppConfig {
         return new PolicyCommandAssembler();
     }
 
-
-
     /**
      * Adapter from the company aggregate/repository to the permission port used by
-     * EventService, DiscountPolicyService, PurchasePolicyService, and EventPurchaseService.
+     * EventService, DiscountPolicyService, PurchasePolicyService, and
+     * EventPurchaseService.
      */
     @Bean
     public ICompanyPermissionServicePort companyPermissionServicePort(
             IProductionCompanyRepository productionCompanyRepository,
-            IMemberRepository memberRepository
-    ) {
+            IMemberRepository memberRepository) {
         return new ICompanyPermissionServicePort() {
+
             @Override
             public boolean canManageEvents(MemberId actorId, CompanyId companyId) {
                 return hasCompanyPermission(actorId, companyId, Permission.EVENT_INVENTORY_MANAGEMENT);
+            }
+
+            @Override
+            public boolean canConfigureVenue(MemberId actorId, CompanyId companyId) {
+                return hasCompanyPermission(actorId, companyId, Permission.VENUE_CONFIGURATION);
+            }
+
+            @Override
+            public boolean canViewPurchaseHistory(MemberId actorId, CompanyId companyId) {
+                return hasCompanyPermission(actorId, companyId, Permission.VIEW_PURCHASE_HISTORY);
+            }
+
+            @Override
+            public boolean canGenerateSalesReport(MemberId actorId, CompanyId companyId) {
+                return hasCompanyPermission(actorId, companyId, Permission.GENERATE_SALES_REPORT);
             }
 
             @Override
@@ -246,6 +259,7 @@ public class AppConfig {
             @Override
             public String getCompanyName(CompanyId companyId) {
                 Objects.requireNonNull(companyId, "companyId must not be null");
+
                 return productionCompanyRepository.findById(companyId)
                         .map(company -> company.companyDetails().name())
                         .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
@@ -276,23 +290,23 @@ public class AppConfig {
     }
 
     @Bean
-    public MemberService memberService(IMemberRepository memberRepo, 
-                                        IPasswordHasher passwordHasher,
-                                        ITokenService tokenService
-    ) {
+    public MemberService memberService(IMemberRepository memberRepo,
+            IPasswordHasher passwordHasher,
+            ITokenService tokenService) {
         return new MemberService(memberRepo, passwordHasher, tokenService, this.tokenValidity);
     }
 
     @Bean
     public AdminService adminService(IPlatformRepository platformRepo,
-                                    IMemberRepository memberRepo,
-                                    IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
+            IMemberRepository memberRepo,
+            IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
         return new AdminService(platformRepo, memberRepo, externalSystemsAvailabilityPort);
     }
 
     @Bean
     public LotteryService lotteryService(ILotteryRepository lotteryRepo, INotificationPort notificationService) {
-        return new LotteryService(lotteryRepo, new SecureRandom(), Clock.systemUTC(), lotteryCodeValidity, notificationService);
+        return new LotteryService(lotteryRepo, new SecureRandom(), Clock.systemUTC(), lotteryCodeValidity,
+                notificationService);
     }
 
     @Bean
@@ -302,9 +316,9 @@ public class AppConfig {
 
     @Bean
     public OrderService orderService(IActiveOrderRepository orderRepo,
-                                     IZoneRepository zoneRepo,
-                                     OrderFactory orderFactory,
-                                     ILotteryRepository lotteryRepo) {
+            IZoneRepository zoneRepo,
+            OrderFactory orderFactory,
+            ILotteryRepository lotteryRepo) {
         return new OrderService(orderRepo, zoneRepo, orderFactory, lotteryRepo);
     }
 
@@ -315,20 +329,20 @@ public class AppConfig {
 
     @Bean
     public ProductionCompanyService productionCompanyService(IProductionCompanyRepository productionCompanyRepo,
-                                                             IMemberRepository memberRepo) {
+            IMemberRepository memberRepo) {
         return new ProductionCompanyService(productionCompanyRepo, memberRepo);
     }
 
     @Bean
     public EventService eventService(IEventRepository eventRepo,
-                                     ICompanyPermissionServicePort companyPermissionServicePort) {
+            ICompanyPermissionServicePort companyPermissionServicePort) {
         return new EventService(eventRepo, companyPermissionServicePort);
     }
 
     @Bean
     public EventCatalogService eventCatalogService(IEventRepository eventRepo,
-                                                   IZoneRepository zoneRepo,
-                                                   IProductionCompanyRepository productionCompanyRepository) {
+            IZoneRepository zoneRepo,
+            IProductionCompanyRepository productionCompanyRepository) {
         return new EventCatalogService(eventRepo, zoneRepo, productionCompanyRepository);
     }
 
@@ -338,63 +352,75 @@ public class AppConfig {
     }
 
     @Bean
-    public ZoneService zoneService(IZoneRepository zoneRepo) {
-        return new ZoneService(zoneRepo);
+    public ZoneService zoneService(
+            IZoneRepository zoneRepo,
+            ICompanyPermissionServicePort companyPermissionServicePort,
+            IEventManagementPort eventManagementPort) {
+        return new ZoneService(
+                zoneRepo,
+                companyPermissionServicePort,
+                eventManagementPort);
     }
 
     @Bean
-    public VenueManagementService venueManagementService(IVenueRepository venueRepo, IMemberRepository memberRepo) {
-        return new VenueManagementService(venueRepo, memberRepo);
+    public VenueManagementService venueManagementService(
+            IVenueRepository venueRepo,
+            IMemberRepository memberRepo,
+            ICompanyPermissionServicePort companyPermissionServicePort) {
+        return new VenueManagementService(
+                venueRepo,
+                memberRepo,
+                companyPermissionServicePort);
     }
 
     @Bean
     public NotificationPortImpl notificationService(IMemberRepository memberRepo,
-                                                   NotificationBroadcaster broadcaster) {
+            NotificationBroadcaster broadcaster) {
         return new NotificationPortImpl(memberRepo, broadcaster);
     }
 
     @Bean
     public IEventQueryPort eventPurchaseService(IEventRepository eventRepo,
-                                                IZoneRepository zoneRepo,
-                                                ICompanyPermissionServicePort companyPermissionServicePort) {
+            IZoneRepository zoneRepo,
+            ICompanyPermissionServicePort companyPermissionServicePort) {
         return new EventPurchaseService(eventRepo, zoneRepo, companyPermissionServicePort);
     }
 
     @Bean
-    public IPurchasePolicyValidationPort purchasePolicyValidationPort(IPurchasePolicyRepository purchasePolicyRepository,
-                                                                      IEventManagementPort eventManagementPort,
-                                                                      MemberService memberService) {
+    public IPurchasePolicyValidationPort purchasePolicyValidationPort(
+            IPurchasePolicyRepository purchasePolicyRepository,
+            IEventManagementPort eventManagementPort,
+            MemberService memberService) {
         return new PurchasePolicyValidationService(purchasePolicyRepository, eventManagementPort, memberService);
     }
 
     @Bean
     public IDiscountApplicationPort discountApplicationPort(IDiscountPolicyRepository discountPolicyRepository,
-                                                            IEventManagementPort eventManagementPort,
-                                                            MemberService memberService) {
-        return new DiscountApplicationService(discountPolicyRepository,eventManagementPort,memberService);
+            IEventManagementPort eventManagementPort,
+            MemberService memberService) {
+        return new DiscountApplicationService(discountPolicyRepository, eventManagementPort, memberService);
     }
 
     @Bean
     public PolicyManagementService policyManagementService(IPurchasePolicyRepository purchasePolicyRepository,
-                                                        IDiscountPolicyRepository discountPolicyRepository,
-                                                        ICompanyPermissionServicePort companyPermissionServicePort,
-                                                        IEventManagementPort eventManagementPort,
-                                                        PolicyCommandAssembler policyAssembler) {
+            IDiscountPolicyRepository discountPolicyRepository,
+            ICompanyPermissionServicePort companyPermissionServicePort,
+            IEventManagementPort eventManagementPort,
+            PolicyCommandAssembler policyAssembler) {
         return new PolicyManagementService(purchasePolicyRepository, discountPolicyRepository,
-                                            companyPermissionServicePort, eventManagementPort, policyAssembler);
+                companyPermissionServicePort, eventManagementPort, policyAssembler);
     }
-
 
     @Bean
     public CheckoutSaga checkoutSaga(IActiveOrderRepository orderRepo,
-                                     IPurchaseRecordRepository purchaseRecordRepo,
-                                     IPaymentGatewayPort paymentGateway,
-                                     ITicketIssuancePort ticketIssuance,
-                                     INotificationPort notificationService,
-                                     IZoneRepository zoneRepo,
-                                     IPurchasePolicyValidationPort purchasePolicyPort,
-                                     IDiscountApplicationPort discountPort,
-                                     IEventQueryPort eventQueryPort) {
+            IPurchaseRecordRepository purchaseRecordRepo,
+            IPaymentGatewayPort paymentGateway,
+            ITicketIssuancePort ticketIssuance,
+            INotificationPort notificationService,
+            IZoneRepository zoneRepo,
+            IPurchasePolicyValidationPort purchasePolicyPort,
+            IDiscountApplicationPort discountPort,
+            IEventQueryPort eventQueryPort) {
         return new CheckoutSaga(
                 orderRepo,
                 purchaseRecordRepo,
@@ -404,30 +430,24 @@ public class AppConfig {
                 zoneRepo,
                 purchasePolicyPort,
                 discountPort,
-                eventQueryPort
-        );
+                eventQueryPort);
     }
 
     // ==========================================
     // 3. Bootstrap Runner
     // ==========================================
     @Bean
-    @ConditionalOnProperty(
-            name = "eventsystem.bootstrap.enabled",
-            havingValue = "true",
-            matchIfMissing = true
-    )
+    @ConditionalOnProperty(name = "eventsystem.bootstrap.enabled", havingValue = "true", matchIfMissing = true)
     @Order(0)
     public CommandLineRunner runAdminBootstrap(IPlatformRepository platformRepo,
-                                            IMemberRepository memberRepo,
-                                            BCryptPasswordHasher passwordHasher,
-                                            BootstrapProperties props,
-                                            IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
+            IMemberRepository memberRepo,
+            BCryptPasswordHasher passwordHasher,
+            BootstrapProperties props,
+            IExternalSystemsAvailabilityPort externalSystemsAvailabilityPort) {
         return args -> {
             if (!externalSystemsAvailabilityPort.areExternalSystemsAvailable()) {
                 throw new IllegalStateException(
-                        "External services are unavailable; platform initialization halted."
-                );
+                        "External services are unavailable; platform initialization halted.");
             }
 
             new AdminBootstrap(platformRepo, memberRepo, passwordHasher, props).run();

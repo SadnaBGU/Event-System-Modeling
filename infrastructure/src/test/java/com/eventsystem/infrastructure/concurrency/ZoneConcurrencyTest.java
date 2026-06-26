@@ -1,5 +1,7 @@
 package com.eventsystem.infrastructure.concurrency;
 
+import com.eventsystem.application.company.ICompanyPermissionServicePort;
+import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.shared.Money;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @DataJpaTest
 @EntityScan(basePackages = "com.eventsystem.domain")
@@ -55,7 +58,10 @@ class ZoneConcurrencyTest {
 
     @BeforeEach
     void setUp() {
-        service = new ZoneService(repository);
+        ICompanyPermissionServicePort permissionChecker = mock(ICompanyPermissionServicePort.class);
+        IEventManagementPort eventOwnershipChecker = mock(IEventManagementPort.class);
+
+        service = new ZoneService(repository, permissionChecker, eventOwnershipChecker);
         eventId = EventId.random();
         price = new Money(new BigDecimal("50.00"), "ILS");
     }

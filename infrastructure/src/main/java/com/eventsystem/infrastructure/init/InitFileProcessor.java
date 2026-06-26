@@ -55,8 +55,10 @@ import java.util.stream.Collectors;
  * run — e.g. a company cannot be opened without first logging in (V3 appendix).
  *
  * <h2>Atomicity</h2>
- * {@link #process(List)} is annotated {@link Transactional}: the whole file runs
- * inside a single database transaction. If any command fails, the transaction is
+ * {@link #process(List)} is annotated {@link Transactional}: the whole file
+ * runs
+ * inside a single database transaction. If any command fails, the transaction
+ * is
  * rolled back and the exception propagates, so <b>nothing</b> is persisted and
  * application startup aborts ("all-or-nothing", team task 2.1).
  *
@@ -79,14 +81,14 @@ public class InitFileProcessor {
     private final PolicyManagementService policyService;
 
     public InitFileProcessor(MemberService memberService,
-                             AuthService authService,
-                             ProductionCompanyService companyService,
-                             EventService eventService,
-                             ZoneService zoneService,
-                             LotteryService lotteryService,
-                             OrderService orderService,
-                             CheckoutSaga checkoutSaga,
-                             PolicyManagementService policyService) {
+            AuthService authService,
+            ProductionCompanyService companyService,
+            EventService eventService,
+            ZoneService zoneService,
+            LotteryService lotteryService,
+            OrderService orderService,
+            CheckoutSaga checkoutSaga,
+            PolicyManagementService policyService) {
         this.memberService = memberService;
         this.authService = authService;
         this.companyService = companyService;
@@ -250,26 +252,42 @@ public class InitFileProcessor {
 
     private void createSeatedZone(InitCommand cmd, InitContext ctx) {
         requireArity(cmd, 7);
+
         MemberId actor = actor(cmd, 0, ctx);
         String eventAlias = arg(cmd, 1);
         EventId event = ctx.event(eventAlias, cmd.lineNumber());
         String zoneAlias = arg(cmd, 2);
         Money price = money(cmd, 4, 5);
         List<Row> rows = rows(cmd, 6);
-        ZoneId zoneId = zoneService.createSeatedZone(event, arg(cmd, 3), price, rows);
+
+        ZoneId zoneId = zoneService.createSeatedZone(
+                actor,
+                event,
+                arg(cmd, 3),
+                price,
+                rows);
+
         eventService.addZone(actor, event, zoneId);
         ctx.putZone(zoneAlias, zoneId, eventAlias);
     }
 
     private void createStandingZone(InitCommand cmd, InitContext ctx) {
         requireArity(cmd, 7);
+
         MemberId actor = actor(cmd, 0, ctx);
         String eventAlias = arg(cmd, 1);
         EventId event = ctx.event(eventAlias, cmd.lineNumber());
         String zoneAlias = arg(cmd, 2);
         Money price = money(cmd, 4, 5);
         int capacity = parseInt(cmd, 6);
-        ZoneId zoneId = zoneService.createStandingZone(event, arg(cmd, 3), price, capacity);
+
+        ZoneId zoneId = zoneService.createStandingZone(
+                actor,
+                event,
+                arg(cmd, 3),
+                price,
+                capacity);
+
         eventService.addZone(actor, event, zoneId);
         ctx.putZone(zoneAlias, zoneId, eventAlias);
     }
