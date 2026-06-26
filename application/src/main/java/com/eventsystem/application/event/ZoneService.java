@@ -4,8 +4,10 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -17,6 +19,7 @@ import java.util.Objects;
  * <p>Zone-to-event linking (adding/removing ZoneId on the Event aggregate) is handled
  * by the Event team's EventService, which owns the Event aggregate boundary.
  */
+@Transactional
 public class ZoneService implements IZoneServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(ZoneService.class);
@@ -28,7 +31,7 @@ public class ZoneService implements IZoneServicePort {
     }
 
     // ── Zone creation ────────────────────────────────────────────────────────
-
+    
     public ZoneId createSeatedZone(EventId eventId, String zoneName, Money price, List<Row> rows) {
         log.info("createSeatedZone: eventId={}, zoneName={}, rows={}", eventId, zoneName, rows.size());
         Objects.requireNonNull(eventId, "eventId must not be null");

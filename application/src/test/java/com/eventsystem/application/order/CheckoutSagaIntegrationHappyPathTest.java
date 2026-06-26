@@ -30,6 +30,7 @@ import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.shared.Money;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -41,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@Transactional
 public class CheckoutSagaIntegrationHappyPathTest {
 
         private PurchaseContext context = TestPurchaseContexts.contextWithZoneSubtotal(

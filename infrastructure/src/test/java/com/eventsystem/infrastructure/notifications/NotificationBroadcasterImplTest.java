@@ -2,7 +2,7 @@ package com.eventsystem.infrastructure.notifications;
 
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;
-import com.eventsystem.infrastructure.api.notifications.NotificationDto;
+import com.eventsystem.application.member.NotificationDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

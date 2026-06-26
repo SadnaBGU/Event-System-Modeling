@@ -12,6 +12,7 @@ import com.eventsystem.application.event.ZoneService;
 import com.eventsystem.application.lottery.LotteryService;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.application.member.MemberService;
+import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.application.order.CheckoutSaga;
 import com.eventsystem.application.order.IPaymentGatewayPort;
 import com.eventsystem.application.order.ITicketIssuancePort;
@@ -79,6 +80,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -93,6 +95,7 @@ import java.util.Objects;
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
 @EntityScan(basePackages = {"com.eventsystem.domain"})
+@EnableConfigurationProperties(BootstrapProperties.class)
 public class AppConfig {
 
     // --- Configuration constants ---
@@ -127,19 +130,7 @@ public class AppConfig {
     @Value("${eventsystem.bootstrap.admin.date-of-birth:1990-01-01}")
     private LocalDate adminDob;
 
-    @Bean
-    public BootstrapProperties bootstrapProperties() {
-        return new BootstrapProperties(
-                new BootstrapProperties.Admin(
-                        adminUsername,
-                        adminPassword,
-                        adminFirstName,
-                        adminLastName,
-                        adminEmail,
-                        adminDob),
-                Duration.ofMinutes(15),
-                100);
-    }
+    
 
     // ==========================================
     // 1. Adapters (Repositories & Security)
@@ -358,7 +349,7 @@ public class AppConfig {
 
     @Bean
     public NotificationPortImpl notificationService(IMemberRepository memberRepo,
-                                                   com.eventsystem.application.member.NotificationBroadcaster broadcaster) {
+                                                   NotificationBroadcaster broadcaster) {
         return new NotificationPortImpl(memberRepo, broadcaster);
     }
 

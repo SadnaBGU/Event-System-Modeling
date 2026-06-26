@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Transactional
 public class CheckoutSaga {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckoutSaga.class);

@@ -88,6 +88,7 @@ class RegistrationConcurrencyTest extends BasePostgresTest {
                 username, "password123", "F", "L", username + "@x", LocalDate.of(1990, 1, 1));
     }
 
+    @SuppressWarnings("null")
     private long countMembers() {
         return txTemplate.execute(s ->
                 em.createQuery("SELECT COUNT(m) FROM Member m", Long.class).getSingleResult());

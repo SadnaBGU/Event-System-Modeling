@@ -145,6 +145,7 @@ class PlatformConcurrencyTest extends BasePostgresTest {
         }
 
         assertThat(errors.get()).isZero();
+        @SuppressWarnings("null")
         int size = txTemplate.execute(s ->
                 platformRepo.findInstance().orElseThrow().getPaymentProviders().size());
         assertThat(size).isEqualTo(threads);
@@ -186,6 +187,7 @@ class PlatformConcurrencyTest extends BasePostgresTest {
         }
 
         assertThat(errors.get()).isZero();
+        @SuppressWarnings("null")
         int size = txTemplate.execute(s ->
                 platformRepo.findInstance().orElseThrow().getSystemAdmins().size());
         // root admin + all promoted candidates
@@ -243,6 +245,7 @@ class PlatformConcurrencyTest extends BasePostgresTest {
             pool.shutdownNow();
         }
 
+        @SuppressWarnings("null")
         int size = txTemplate.execute(s ->
                 platformRepo.findInstance().orElseThrow().getSystemAdmins().size());
         assertThat(size).isGreaterThanOrEqualTo(1);

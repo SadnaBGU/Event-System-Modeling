@@ -16,4 +16,6 @@ public interface IMemberRepository {
     Collection<Member> findAll();
 
     void save(Member member);
+
+    Optional<Member> findByIdForUpdate(MemberId memberId);
 }

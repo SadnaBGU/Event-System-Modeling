@@ -32,7 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "spring.main.web-application-type=servlet")
+@SpringBootTest(properties = {
+        "spring.main.web-application-type=servlet",
+        "eventsystem.bootstrap.enabled=false"
+})
 @AutoConfigureMockMvc
 public class NotificationsPendingConcurrencyTest {
 

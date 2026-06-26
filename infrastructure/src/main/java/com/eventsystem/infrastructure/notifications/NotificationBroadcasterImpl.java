@@ -2,8 +2,7 @@ package com.eventsystem.infrastructure.notifications;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
 import com.eventsystem.domain.member.Notification;
-import com.eventsystem.infrastructure.api.notifications.NotificationDto;
-
+import com.eventsystem.application.member.NotificationDto;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 

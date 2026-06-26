@@ -94,6 +94,11 @@ class ProductionCompanyServiceConcurrencyTest {
         public void save(Member member) {
             members.put(member.memberId(), member);
         }
+
+        @Override
+        public Optional<Member> findByIdForUpdate(MemberId memberId) {
+            return findById(memberId);
+        }
     }
 
     private static final class InMemoryProductionCompanyRepository implements IProductionCompanyRepository {

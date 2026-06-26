@@ -65,6 +65,7 @@ import com.eventsystem.domain.zone.ZoneId;
 import com.eventsystem.domain.zone.ZoneType;
 
 @ExtendWith(MockitoExtension.class)
+@Transactional
 class CheckoutSagaTest {
 
     @Mock
