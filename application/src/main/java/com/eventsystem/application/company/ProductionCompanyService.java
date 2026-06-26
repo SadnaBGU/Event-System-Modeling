@@ -151,10 +151,25 @@ public class ProductionCompanyService implements ICompanyPermissionServicePort{
         }
     }
 
-    //Added for Event and policy managment by company
+    //Added for Permission checking in other services (from interface):
     @Override
     public boolean canManageEvents(MemberId actorId, CompanyId companyId) {
         return hasPermission(actorId, companyId, Permission.EVENT_INVENTORY_MANAGEMENT);
+    }
+    
+    @Override
+    public boolean canConfigureVenue(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.VENUE_CONFIGURATION);
+    }
+
+    @Override
+    public boolean canViewPurchaseHistory(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.VIEW_PURCHASE_HISTORY);
+    }
+
+    @Override
+    public boolean canGenerateSalesReport(MemberId actorId, CompanyId companyId) {
+        return hasPermission(actorId, companyId, Permission.GENERATE_SALES_REPORT);
     }
 
     @Override
@@ -171,4 +186,5 @@ public class ProductionCompanyService implements ICompanyPermissionServicePort{
     public String getCompanyName(CompanyId companyId) {
         return loadCompany(companyId).companyDetails().name();
     }
+
 }
