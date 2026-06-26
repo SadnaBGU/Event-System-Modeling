@@ -66,7 +66,7 @@ public class AdminBootstrap {
         log.info("Bootstrap: platform initialised and ACTIVE with admin={}", admin.getUsername());
     }
 
-    private static void validate(BootstrapProperties.Admin a) {
+    public static void validate(BootstrapProperties.Admin a) {
         if (a == null
                 || isBlank(a.username()) || isBlank(a.password())
                 || isBlank(a.firstName()) || isBlank(a.lastName())

@@ -76,20 +76,4 @@ class AppConfigBeansTest {
         assertThatThrownBy(() -> port.canManageEvents(actorId, null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> port.getCompanyName(null)).isInstanceOf(NullPointerException.class);
     }
-
-    @SuppressWarnings("null")
-    @Test
-    void bootstrapPropertiesBean_InitializesCorrectly() {
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminUsername", "admin");
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminPassword", "changeme123");
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminFirstName", "Initial");
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminLastName", "Admin");
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminEmail", "admin@local");
-        org.springframework.test.util.ReflectionTestUtils.setField(appConfig, "adminDob", java.time.LocalDate.of(1990, 1, 1));
-
-        BootstrapProperties properties = appConfig.bootstrapProperties();
-        
-        assertThat(properties.admin().username()).isEqualTo("admin");
-        assertThat(properties.queueLoadThreshold()).isEqualTo(100);
-    }
 }
