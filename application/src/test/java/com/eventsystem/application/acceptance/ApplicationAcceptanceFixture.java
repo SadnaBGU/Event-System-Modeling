@@ -1116,6 +1116,11 @@ class ApplicationAcceptanceFixture {
         public List<VirtualQueue> findAll() {
             return List.copyOf(byId.values());
         }
+
+        @Override
+        public void deleteAll() {
+            byId.clear();
+        }
     }
 
     /**
