@@ -123,4 +123,10 @@ public class QueueService {
             }
         });
     }
+
+    public void resetAllQueues() {
+        logger.info("Resetting all queues in the system due to startup or recovery.");
+        queueRepository.deleteAll();
+        logger.info("All queues have been reset.");
+    }
 }

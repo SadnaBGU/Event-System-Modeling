@@ -37,4 +37,9 @@ public class PostgresVirtualQueueRepository implements IVirtualQueueRepository {
     public List<VirtualQueue> findAll() {
         return jpaRepository.findAll();
     }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
+    }
 }

@@ -442,4 +442,12 @@ public class AppConfig {
             new AdminBootstrap(platformRepo, memberRepo, passwordHasher, props).run();
         };
     }
+
+    @Bean
+    @Order(1)
+    public CommandLineRunner resetQueuesOnStartup(QueueService service) {
+        return args -> {
+            service.resetAllQueues();
+        };
+    }
 }

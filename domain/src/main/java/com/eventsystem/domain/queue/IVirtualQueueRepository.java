@@ -8,4 +8,5 @@ public interface IVirtualQueueRepository {
     Optional<VirtualQueue> findByEvent(String eventId);
     void save(VirtualQueue queue);
     List<VirtualQueue> findAll();
+    void deleteAll();
 }
