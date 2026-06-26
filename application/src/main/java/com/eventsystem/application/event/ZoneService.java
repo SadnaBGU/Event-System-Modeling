@@ -40,7 +40,6 @@ public class ZoneService implements IZoneServicePort {
     // ── Zone creation ────────────────────────────────────────────────────────
     
     public ZoneId createSeatedZone(MemberId actorId, EventId eventId, String zoneName, Money price, List<Row> rows) {
-        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
         log.info("createSeatedZone: eventId={}, zoneName={}, rows={}", eventId, zoneName, rows.size());
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneName, "zoneName must not be null");
@@ -50,6 +49,9 @@ public class ZoneService implements IZoneServicePort {
             throw new IllegalArgumentException("seated zone must have at least one row");
         }
 
+        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
+
+
         ZoneId zoneId = ZoneId.random();
         Zone zone = Zone.createSeated(zoneId, eventId, zoneName, price, rows);
         zoneRepository.save(zone);
@@ -57,7 +59,6 @@ public class ZoneService implements IZoneServicePort {
     }
 
     public ZoneId createStandingZone(MemberId actorId, EventId eventId, String zoneName, Money price, int capacity) {
-        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
         log.info("createStandingZone: eventId={}, zoneName={}, capacity={}", eventId, zoneName, capacity);
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(zoneName, "zoneName must not be null");
@@ -65,6 +66,8 @@ public class ZoneService implements IZoneServicePort {
         if (capacity < 1) {
             throw new IllegalArgumentException("capacity must be at least 1");
         }
+        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(eventId));
+
 
         ZoneId zoneId = ZoneId.random();
         Zone zone = Zone.createStanding(zoneId, eventId, zoneName, price, capacity);
@@ -76,12 +79,12 @@ public class ZoneService implements IZoneServicePort {
 
     public void updateZoneName(MemberId actorId, ZoneId zoneId, String newName) {
 
-        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
-
         log.info("updateZoneName: zoneId={}, newName={}", zoneId, newName);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
+
         zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
+            requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
             zone.updateName(newName);
             zoneRepository.save(zone);
         });
@@ -89,12 +92,13 @@ public class ZoneService implements IZoneServicePort {
 
     public void updateZonePrice(MemberId actorId, ZoneId zoneId, Money newPrice) {
 
-        requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
 
         log.info("updateZonePrice: zoneId={}, newPrice={}", zoneId, newPrice);
         Objects.requireNonNull(zoneId, "zoneId must not be null");
+
         zoneRepository.withLock(zoneId, () -> {
             Zone zone = loadZone(zoneId);
+            requireZoneEditingPermissions(actorId, eventOwnershipChecker.companyOfEvent(loadZone(zoneId).eventId()));
             zone.updatePrice(newPrice);
             zoneRepository.save(zone);
         });

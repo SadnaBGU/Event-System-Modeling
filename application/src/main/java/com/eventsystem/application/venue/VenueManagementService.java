@@ -1,7 +1,6 @@
 package com.eventsystem.application.venue;
 
 import com.eventsystem.application.company.ICompanyPermissionServicePort;
-import com.eventsystem.application.event.IEventManagementPort;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.domainexceptions.VenueException;
 import com.eventsystem.domain.member.IMemberRepository;
@@ -23,18 +22,17 @@ public class VenueManagementService {
 
     private final ICompanyPermissionServicePort permissionChecker;
 
-    public VenueManagementService(IVenueRepository venueRepository, IMemberRepository memberRepository, ICompanyPermissionServicePort permissionChecker, IEventManagementPort eventOwnershipChecker) {
+    public VenueManagementService(IVenueRepository venueRepository, IMemberRepository memberRepository, ICompanyPermissionServicePort permissionChecker) {
         this.venueRepository = Objects.requireNonNull(venueRepository, "VenueRepository cannot be null");
         this.memberRepository = Objects.requireNonNull(memberRepository, "MemberRepository cannot be null");
         this.permissionChecker = Objects.requireNonNull(permissionChecker, "permissionChecker must not be null");
     }
 
     public Venue createVenue(MemberId actorId, CompanyId companyId, String venueName) {
-        requireVenueEditingPermissions(actorId, companyId);
-
         if (companyId == null || venueName == null) {
             throw new IllegalArgumentException("CompanyId and venueName cannot be null");
         }
+        requireVenueEditingPermissions(actorId, companyId);
 
         Venue venue = new Venue(VenueId.generate(), companyId, venueName);
         venueRepository.save(venue);
@@ -43,11 +41,11 @@ public class VenueManagementService {
 
     public void addSeatedZone(MemberId actorId, VenueId venueId, String zoneName, BigDecimal pricePerTicket, String currency, int capacity) {
 
-        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
-
         if (venueId == null || zoneName == null || pricePerTicket == null || currency == null) {
             throw new IllegalArgumentException("VenueId, zoneName, pricePerTicket, and currency cannot be null");
         }
+
+        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
 
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new VenueException("Venue not found: " + venueId));
@@ -59,12 +57,11 @@ public class VenueManagementService {
     }
 
     public void addStandingZone(MemberId actorId, VenueId venueId, String zoneName, BigDecimal pricePerTicket, String currency, int capacity) {
-        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
-
 
         if (venueId == null || zoneName == null || pricePerTicket == null || currency == null) {
             throw new IllegalArgumentException("VenueId, zoneName, pricePerTicket, and currency cannot be null");
         }
+        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
 
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new VenueException("Venue not found: " + venueId));
@@ -76,12 +73,13 @@ public class VenueManagementService {
     }
 
     public void removeZone(MemberId actorId, VenueId venueId, ZoneId zoneId) {
-        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
-
 
         if (venueId == null || zoneId == null) {
             throw new IllegalArgumentException("VenueId and ZoneId cannot be null");
         }
+
+        requireVenueEditingPermissions(actorId, getVenue(venueId).getCompanyId());
+
 
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new VenueException("Venue not found: " + venueId));
