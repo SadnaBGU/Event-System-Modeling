@@ -1,13 +1,16 @@
 package com.eventsystem.infrastructure.init;
 
+import com.eventsystem.infrastructure.config.startup.StartupConfigException;
+import com.eventsystem.infrastructure.config.startup.StartupMode;
+import com.eventsystem.infrastructure.config.startup.StartupProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -15,21 +18,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/**
- * Reads the path of the initial-state file from configuration and replays it
- * through {@link InitFileProcessor} once, at application startup.
- *
- * <p>Activated only when {@code eventsystem.init.enabled=true}; the file path is
- * taken from {@code eventsystem.init.state-file} (a filesystem path by default,
- * or a {@code classpath:}/{@code file:} prefixed resource). Neither value is
- * hard-coded in the system (V3 §2.a.i).</p>
- *
- * <p>{@link Order} 100 places this after the admin/platform bootstrap so the
- * platform already exists when the script runs. Any failure propagates and
- * aborts startup.</p>
- */
 @Component
-@ConditionalOnProperty(name = "eventsystem.init.enabled", havingValue = "true")
 @Order(100)
 public class InitFileRunner implements CommandLineRunner {
 
@@ -37,42 +26,97 @@ public class InitFileRunner implements CommandLineRunner {
 
     private final InitFileProcessor processor;
     private final ResourceLoader resourceLoader;
-    private final StateFileParser parser = new StateFileParser();
+    private final StartupProperties startupProperties;
+    private final StateFileParser parser;
 
-    @Value("${eventsystem.init.state-file:}")
-    private String stateFilePath;
+    @Autowired
+    public InitFileRunner(
+            InitFileProcessor processor,
+            ResourceLoader resourceLoader,
+            StartupProperties startupProperties) {
+        this(processor, resourceLoader, startupProperties, new StateFileParser());
+    }
 
-    public InitFileRunner(InitFileProcessor processor, ResourceLoader resourceLoader) {
+    InitFileRunner(
+            InitFileProcessor processor,
+            ResourceLoader resourceLoader,
+            StartupProperties startupProperties,
+            StateFileParser parser) {
         this.processor = processor;
         this.resourceLoader = resourceLoader;
+        this.startupProperties = startupProperties;
+        this.parser = parser;
     }
 
     @Override
     public void run(String... args) {
-        if (stateFilePath == null || stateFilePath.isBlank()) {
-            throw new IllegalStateException(
-                    "eventsystem.init.enabled=true but eventsystem.init.state-file is not set");
+        if (startupProperties.getMode() != StartupMode.INIT_FILE) {
+            log.info("INIT_FILE_SKIPPED: startup mode={}", startupProperties.getMode());
+            return;
         }
 
-        String content = readFile(stateFilePath);
-        List<InitCommand> commands = parser.parse(content);
-        log.info("Init-state: loaded {} command(s) from {}", commands.size(), stateFilePath);
+        String stateFilePath = startupProperties.getInitStateFile();
 
-        // Single transaction inside the processor — all-or-nothing.
-        processor.process(commands);
-        log.info("Init-state: initialization from {} completed", stateFilePath);
+        try {
+            String content = readFileOrThrowConfigError(stateFilePath);
+            List<InitCommand> commands = parser.parse(content);
+
+            log.info(
+                    "INIT_FILE_START: loaded {} command(s) from {}",
+                    commands.size(),
+                    stateFilePath
+            );
+
+            processor.process(commands);
+
+            log.info(
+                    "INIT_FILE_SUCCESS: initialization from {} completed successfully",
+                    stateFilePath
+            );
+        } catch (StartupConfigException e) {
+            log.error(e.getMessage(), e);
+            throw e;
+        } catch (InitFileException e) {
+            log.error(
+                    "INIT_FILE_FAILED: file={}, line={}, reason={}. Startup continues; init-file transaction was rolled back.",
+                    stateFilePath,
+                    e.lineNumber(),
+                    e.getMessage()
+            );
+        } catch (RuntimeException e) {
+            log.error(
+                    "INIT_FILE_FAILED: file={}, reason={}. Startup continues; init-file transaction was rolled back.",
+                    stateFilePath,
+                    e.getMessage(),
+                    e
+            );
+        }
     }
 
-    private String readFile(String path) {
-        String location = (path.contains(":")) ? path : "file:" + path;
-        Resource resource = resourceLoader.getResource(location);
-        if (!resource.exists()) {
-            throw new IllegalStateException("Init-state file not found: " + path);
+    private String readFileOrThrowConfigError(String path) {
+        if (path == null || path.isBlank()) {
+            throw new StartupConfigException(
+                    "STARTUP_CONFIG_ERROR: startup mode INIT_FILE requires " +
+                    "eventsystem.startup.init-state-file to be configured."
+            );
         }
+
+        String location = path.contains(":") ? path : "file:" + path;
+        Resource resource = resourceLoader.getResource(location);
+
+        if (!resource.exists()) {
+            throw new StartupConfigException(
+                    "STARTUP_CONFIG_ERROR: configured init-state file was not found: " + path
+            );
+        }
+
         try (InputStream in = resource.getInputStream()) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to read init-state file: " + path, e);
+            throw new StartupConfigException(
+                    "STARTUP_CONFIG_ERROR: failed to read configured init-state file: " + path,
+                    e
+            );
         }
     }
 }
