@@ -23,6 +23,10 @@ eventsystem:
     bcrypt-strength: 4
   recovery:
     enabled: false
+  startup:
+    mode: EXISTING_DB
+    init-state-file:
+    validate-external-systems: false
   bootstrap:
     enabled: false
     default-reservation-timeout: PT15M

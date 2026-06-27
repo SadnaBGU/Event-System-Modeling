@@ -9,7 +9,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.util.ReflectionTestUtils;
+import com.eventsystem.infrastructure.config.startup.StartupMode;
+import com.eventsystem.infrastructure.config.startup.StartupProperties;
+import com.eventsystem.infrastructure.config.startup.StartupConfigException;
 import org.junit.jupiter.api.extension.ExtendWith;
 import com.eventsystem.infrastructure.testsupport.PostgresAvailableCondition;
 
@@ -20,6 +22,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Integration tests for the initial-state loader running against a real
@@ -27,11 +30,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * cannot host the {@code jsonb}/{@code enum} columns and reserved-word ({@code
  * value}) column names used by the domain entities, so DB-backed tests use
  * Postgres like the rest of the suite. Verifies that a valid file is replayed
- * through the application layer and persisted, and that a single failing command
+ * through the application layer and persisted, and that a single failing
+ * command
  * rolls the whole file back (all-or-nothing, team task 2.1) and aborts startup.
  *
- * <p>Skipped automatically when the test database is unreachable, so the build
- * stays green without it.</p>
+ * <p>
+ * Skipped automatically when the test database is unreachable, so the build
+ * stays green without it.
+ * </p>
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -84,23 +90,38 @@ class InitFileProcessorIntegrationTest {
     }
 
     @Test
-    void runner_failsStartupWhenStateFileIsInvalid() {
-        InitFileRunner runner = new InitFileRunner(processor, new DefaultResourceLoader());
-        ReflectionTestUtils.setField(runner, "stateFilePath", "classpath:init/invalid-state.txt");
+    void runner_logsInvalidStateFileAndContinuesStartup() {
+        StartupProperties startupProperties = new StartupProperties();
+        startupProperties.setMode(StartupMode.INIT_FILE);
+        startupProperties.setInitStateFile("classpath:init/invalid-state.txt");
 
-        assertThatThrownBy(() -> runner.run())
-                .isInstanceOf(InitFileException.class);
+        InitFileRunner runner = new InitFileRunner(
+                processor,
+                new DefaultResourceLoader(),
+                startupProperties);
 
+        assertThatCode(() -> runner.run())
+                .doesNotThrowAnyException();
+
+        // 'dana' was registered on line 1 but the file failed on line 2.
+        // The processor transaction should roll the file back.
         assertThat(memberRepository.findByUsername("dana")).isEmpty();
     }
 
     @Test
-    void runner_failsWhenStateFileMissing() {
-        InitFileRunner runner = new InitFileRunner(processor, new DefaultResourceLoader());
-        ReflectionTestUtils.setField(runner, "stateFilePath", "classpath:init/does-not-exist.txt");
+    void runner_failsStartupWhenConfiguredStateFileIsMissing() {
+        StartupProperties startupProperties = new StartupProperties();
+        startupProperties.setMode(StartupMode.INIT_FILE);
+        startupProperties.setInitStateFile("classpath:init/does-not-exist.txt");
+
+        InitFileRunner runner = new InitFileRunner(
+                processor,
+                new DefaultResourceLoader(),
+                startupProperties);
 
         assertThatThrownBy(() -> runner.run())
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(StartupConfigException.class)
+                .hasMessageContaining("STARTUP_CONFIG_ERROR")
                 .hasMessageContaining("not found");
     }
 
