@@ -50,6 +50,7 @@ import com.eventsystem.application.event.EventCatalogService;
 import com.eventsystem.infrastructure.notifications.NotificationPortImpl;
 import com.eventsystem.infrastructure.security.BCryptPasswordHasher;
 import com.eventsystem.infrastructure.security.JwtTokenService;
+import com.eventsystem.infrastructure.config.startup.StartupProperties;
 
 import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
 import com.eventsystem.infrastructure.persistence.springrepos.PostgresZoneRepository;
@@ -95,7 +96,7 @@ import java.util.Objects;
 @Configuration
 @EnableJpaRepositories(basePackages = "com.eventsystem.infrastructure.persistence.springrepos")
 @EntityScan(basePackages = { "com.eventsystem.domain" })
-@EnableConfigurationProperties(BootstrapProperties.class)
+@EnableConfigurationProperties({BootstrapProperties.class, StartupProperties.class})
 public class AppConfig {
 
     // --- Configuration constants ---
