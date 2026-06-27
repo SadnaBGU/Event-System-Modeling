@@ -8,8 +8,12 @@
 # Lines starting with '#' or '//' are comments. A trailing ';' is optional.
 # Quote an argument with "double quotes" to embed spaces or commas.
 #
-# Enable with:  INIT_ENABLED=true  INIT_STATE_FILE=config/initial-state.sample.txt
-# (or set eventsystem.init.enabled / eventsystem.init.state-file)
+# Startup with this file:
+#   STARTUP_MODE=INIT_FILE
+#   INIT_STATE_FILE=config/initial-state.sample.txt
+#
+# In INIT_FILE mode, startup resets the DB, creates the required admin/platform
+# baseline, and then replays this file.
 # ──────────────────────────────────────────────────────────────────────────────
 
 # 1. Register members (alias = username)
