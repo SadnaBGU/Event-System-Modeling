@@ -59,6 +59,7 @@ eventsystem:
     # INIT_FILE   = reset DB, bootstrap required admin/platform, then replay init file
     mode: ${STARTUP_MODE:EXISTING_DB}
     init-state-file: ${INIT_STATE_FILE:}
+    validate-external-systems: ${VALIDATE_EXTERNAL_SYSTEMS:true}
 
   # Optional initial-state loader (V3 §2.a.ii). When enabled, the file at
   # 'state-file' is replayed once at startup as a single all-or-nothing

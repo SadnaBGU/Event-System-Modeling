@@ -16,6 +16,12 @@ public class StartupProperties {
      */
     private String initStateFile;
 
+    /**
+     * Real application startup should validate external systems.
+     * Tests can disable this to avoid calling real/local WSEP services during context startup.
+     */
+    private boolean validateExternalSystems = true;
+
     public StartupMode getMode() {
         return mode;
     }
@@ -30,6 +36,14 @@ public class StartupProperties {
 
     public void setInitStateFile(String initStateFile) {
         this.initStateFile = initStateFile;
+    }
+
+    public boolean isValidateExternalSystems() {
+        return validateExternalSystems;
+    }
+
+    public void setValidateExternalSystems(boolean validateExternalSystems) {
+        this.validateExternalSystems = validateExternalSystems;
     }
 
     public void validateOrThrow() {
