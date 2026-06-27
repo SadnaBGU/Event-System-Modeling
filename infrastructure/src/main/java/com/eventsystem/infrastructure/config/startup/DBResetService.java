@@ -1,120 +1,70 @@
 package com.eventsystem.infrastructure.config.startup;
 
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataActiveOrderRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataDiscountPolicyRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataEventRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataLotteryRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataMemberRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPlatformRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataProductionCompanyRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchasePolicyRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataPurchaseRecordRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVenueRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataVirtualQueueRepository;
-import com.eventsystem.infrastructure.persistence.springrepos.SpringDataZoneRepository;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Infrastructure-only startup utility.
- *
- * Used by startup modes EMPTY_DB and INIT_FILE to guarantee a clean persisted
- * state before AdminBootstrap recreates the required platform/admin baseline.
- */
 @Service
 public class DBResetService {
 
-    private static final Logger log = LoggerFactory.getLogger(DBResetService.class);
+    private static final Logger logger = LoggerFactory.getLogger(DBResetService.class);
 
-    private final SpringDataActiveOrderRepository activeOrders;
-    private final SpringDataVirtualQueueRepository virtualQueues;
-    private final SpringDataLotteryRepository lotteries;
-    private final SpringDataPurchaseRecordRepository purchaseRecords;
-    private final SpringDataDiscountPolicyRepository discountPolicies;
-    private final SpringDataPurchasePolicyRepository purchasePolicies;
-    private final SpringDataZoneRepository zones;
-    private final SpringDataEventRepository events;
-    private final SpringDataVenueRepository venues;
-    private final SpringDataProductionCompanyRepository companies;
-    private final SpringDataPlatformRepository platform;
-    private final SpringDataMemberRepository members;
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    public DBResetService(
-            SpringDataActiveOrderRepository activeOrders,
-            SpringDataVirtualQueueRepository virtualQueues,
-            SpringDataLotteryRepository lotteries,
-            SpringDataPurchaseRecordRepository purchaseRecords,
-            SpringDataDiscountPolicyRepository discountPolicies,
-            SpringDataPurchasePolicyRepository purchasePolicies,
-            SpringDataZoneRepository zones,
-            SpringDataEventRepository events,
-            SpringDataVenueRepository venues,
-            SpringDataProductionCompanyRepository companies,
-            SpringDataPlatformRepository platform,
-            SpringDataMemberRepository members) {
-        this.activeOrders = activeOrders;
-        this.virtualQueues = virtualQueues;
-        this.lotteries = lotteries;
-        this.purchaseRecords = purchaseRecords;
-        this.discountPolicies = discountPolicies;
-        this.purchasePolicies = purchasePolicies;
-        this.zones = zones;
-        this.events = events;
-        this.venues = venues;
-        this.companies = companies;
-        this.platform = platform;
-        this.members = members;
-    }
-
+    /**
+     * REQ: SYS-01, SYS-02, PERS-06, PERS-07
+     *
+     * Startup reset is an infrastructure operation, not a business use-case delete.
+     * Use PostgreSQL TRUNCATE so EMPTY_DB / INIT_FILE starts from a truly clean state,
+     * without loading versioned entities and without optimistic-lock conflicts with
+     * startup/background cleanup jobs.
+     */
     @Transactional
     public void resetDatabase() {
-        log.warn("STARTUP_DB_RESET_START: deleting persisted state before bootstrap.");
+        logger.warn("STARTUP_DB_RESET_START: truncating persisted state before bootstrap.");
 
-        /*
-         * Important:
-         * Use deleteAll() instead of deleteAllInBatch().
-         * deleteAllInBatch() is faster, but it bypasses entity cascade handling and can
-         * break on element collections / join tables. Startup reset is not performance
-         * critical, so deleteAll() is safer.
-         *
-         * Delete dependent aggregates before their parents.
-         */
-        activeOrders.deleteAll();
-        virtualQueues.deleteAll();
-        lotteries.deleteAll();
-        purchaseRecords.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
 
-        discountPolicies.deleteAll();
-        purchasePolicies.deleteAll();
+        entityManager
+                .createNativeQuery("""
+                        TRUNCATE TABLE
+                            active_order_items,
+                            active_orders,
+                            virtual_queues,
+                            lottery_registrations,
+                            lottery_winners,
+                            lotteries,
+                            purchase_record_discounts,
+                            purchase_record_items,
+                            purchase_records,
+                            discount_policy_discounts,
+                            discount_policies,
+                            purchase_policies,
+                            event_dates,
+                            event_zones,
+                            seats,
+                            zones,
+                            events,
+                            venues,
+                            platform_system_admins,
+                            platform_payment_providers,
+                            platform_issuance_providers,
+                            platform_config,
+                            notifications,
+                            production_companies,
+                            members
+                        RESTART IDENTITY CASCADE
+                        """)
+                .executeUpdate();
 
-        zones.deleteAll();
-        events.deleteAll();
-        venues.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
 
-        companies.deleteAll();
-        platform.deleteAll();
-        members.deleteAll();
-
-        /*
-         * Flush after the full ordered delete sequence so startup fails immediately if
-         * mapping/order is wrong instead of failing later during admin bootstrap.
-         */
-        activeOrders.flush();
-        virtualQueues.flush();
-        lotteries.flush();
-        purchaseRecords.flush();
-        discountPolicies.flush();
-        purchasePolicies.flush();
-        zones.flush();
-        events.flush();
-        venues.flush();
-        companies.flush();
-        platform.flush();
-        members.flush();
-
-        log.warn("STARTUP_DB_RESET_SUCCESS: persisted state deleted.");
+        logger.warn("STARTUP_DB_RESET_SUCCESS: persisted state was truncated.");
     }
 }
