@@ -74,7 +74,8 @@ mvn spring-boot:run -pl infrastructure
 ### Running manually
 
 If you prefer to export the variables yourself, set the ones listed in
-[section 4](#4-configuration-file--environment-variables) and then run
+[section 4](#4-configuration-file--environment-variables) and
+[section 5](#5-startup-modes-and-initial-state-file), then run
 `mvn spring-boot:run -pl infrastructure`.
 
 ---
@@ -118,7 +119,8 @@ Set these for a **Google Cloud SQL (PostgreSQL)** instance:
 
 ### Admin & platform bootstrap variables
 
-On first startup the platform creates a singleton `Platform` and the initial system admin:
+On first startup, or after `EMPTY_DB` / `INIT_FILE` reset, the platform creates a singleton
+`Platform` and the required initial system admin:
 
 | Variable | Meaning |
 |---|---|
@@ -129,6 +131,15 @@ On first startup the platform creates a singleton `Platform` and the initial sys
 | `ADMIN_DOB` | Admin date of birth (`yyyy-MM-dd`) |
 | `JWT_SECRET` | HMAC-SHA256 signing secret (≥ 32 bytes) |
 
+### External systems
+
+The platform uses the WSEP external payment/ticketing system through infrastructure adapters.
+
+| Variable | Meaning | Example |
+|---|---|---|
+| `WSEP_BASE_URL` | External payment/ticketing base URL | `https://damp-lynna-wsep-1984852e.koyeb.app/` |
+| `VALIDATE_EXTERNAL_SYSTEMS` | Whether startup validates external systems before initialization | `true` |
+
 Other tunables (under `eventsystem.*` in the YAML): `bootstrap.queue-load-threshold`
 (how many users may reserve concurrently before the virtual queue engages),
 `bootstrap.default-reservation-timeout`, `security.token-validity`, `security.bcrypt-strength`.
@@ -137,26 +148,49 @@ A template of all keys is in [.env.example](.env.example).
 
 ---
 
-## 5. Initial-state file (optional)
+## 5. Startup modes and initial-state file
 
-Beyond the configuration file, the system can boot into a predefined **state** by
-replaying a list of use-case commands from an external file. The whole file runs as a
-**single transaction**: if any command is illegal or fails, the entire initialization
-is rolled back and **the server refuses to start** (all-or-nothing).
+Startup behavior is selected explicitly using `STARTUP_MODE`.
 
-### Enabling it
+Supported modes:
 
-Set these (in addition to the normal startup variables):
-
-| Variable | Meaning |
+| Mode | Behavior |
 |---|---|
-| `INIT_ENABLED` | `true` to run the loader at startup (default `false`) |
-| `INIT_STATE_FILE` | Path to the state file (filesystem path, or `classpath:`/`file:` resource) |
+| `EXISTING_DB` | Keep the current DB state. Bootstrap the required admin/platform baseline only if missing. Does not run an init file. |
+| `EMPTY_DB` | Reset persisted DB state, then create the required admin/platform baseline. Does not run an init file. |
+| `INIT_FILE` | Reset persisted DB state, create the required admin/platform baseline, then replay the configured initial-state file. |
 
-A ready sample lives at [config/initial-state.sample.txt](config/initial-state.sample.txt):
+### Environment variables
+
+Set these in your local `start-app.ps1`, `start-app.sh`, or shell environment:
+
+| Variable | Required | Meaning |
+|---|---:|---|
+| `STARTUP_MODE` | No | One of `EXISTING_DB`, `EMPTY_DB`, `INIT_FILE`. Default: `EXISTING_DB`. |
+| `INIT_STATE_FILE` | Only for `INIT_FILE` | Path to the initial-state file. Supports filesystem paths, `file:...`, and `classpath:...`. |
+| `VALIDATE_EXTERNAL_SYSTEMS` | No | Whether startup validates payment/ticketing availability before initialization. Default: `true` in the main profile, `false` in tests. |
+
+### Examples
+
+Start normally using the existing DB:
 
 ```powershell
-$env:INIT_ENABLED="true"
+$env:STARTUP_MODE="EXISTING_DB"
+$env:INIT_STATE_FILE=""
+.\start-app.ps1
+```
+
+Start from an empty DB with only the required admin/platform baseline:
+
+```powershell
+$env:STARTUP_MODE="EMPTY_DB"
+$env:INIT_STATE_FILE=""
+.\start-app.ps1
+```
+
+Start from an initial state file:
+```powershell
+$env:STARTUP_MODE="INIT_FILE"
 $env:INIT_STATE_FILE="config/initial-state.sample.txt"
 .\start-app.ps1
 ```
@@ -171,6 +205,21 @@ $env:INIT_STATE_FILE="config/initial-state.sample.txt"
 - Entities are referenced by **aliases** (a username, a company alias, an event alias…)
   declared by earlier commands. A `login(...)` makes that member the *actor* for
   subsequent authenticated commands.
+
+### Failure behavior
+
+Startup/config errors are fatal and stop the server with a clear startup error. Examples:
+
+- invalid `STARTUP_MODE`
+- `STARTUP_MODE=INIT_FILE` without `INIT_STATE_FILE`
+- configured init-state file does not exist
+- configured init-state file cannot be read
+- external payment/ticketing services are unavailable while `VALIDATE_EXTERNAL_SYSTEMS=true`
+
+Init-file content errors are handled differently. If the file is readable but contains an illegal command,
+the server logs a clear `INIT_FILE_FAILED` message, rolls back the init-file transaction, and continues
+running with the required admin/platform baseline.
+```
 
 ### Supported commands
 
