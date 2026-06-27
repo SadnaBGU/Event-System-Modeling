@@ -4,9 +4,12 @@ import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class CodePolicy implements IBasicPolicy {
 
+    @JsonProperty("discountCode")
     private final String discountCode;
 
     @Override
@@ -14,7 +17,8 @@ public final class CodePolicy implements IBasicPolicy {
         return PolicyType.CODE;
     }
 
-    public CodePolicy(String code) {
+    @JsonCreator
+    public CodePolicy(@JsonProperty("discountCode") String code) {
         if (code == null || code.isBlank()) {
             throw new PolicyException("Chosen code cannot be null, empty or blank");
         }
@@ -30,7 +34,6 @@ public final class CodePolicy implements IBasicPolicy {
         if (discountCode.equals(context.discountCode())) {
             return PolicyValidationResult.success();
         }
-
         return PolicyValidationResult.failure("Invalid coupon code");
     }
 }

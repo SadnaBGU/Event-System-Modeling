@@ -7,12 +7,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "type"
+        property = "policyClass"
 )
-// 2. המילון: איזה שם מקושר לאיזו מחלקה
 @JsonSubTypes({
         @JsonSubTypes.Type(value = com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy.class, name = "MaxTicketPolicy"),
         @JsonSubTypes.Type(value = com.eventsystem.domain.policy.rule.basic.MinTicketPolicy.class, name = "MinTicketPolicy"),
@@ -29,28 +29,28 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public interface IPolicy {
 
+    @JsonIgnore
     default PolicyType type() {
         return PolicyType.UNKNOWN;
     }
-    
+
     PolicyValidationResult evaluate(PurchaseContext context);
 
     @JsonIgnore
-    //check without exceptions (for discounts)
     default boolean validate(PurchaseContext context) {
         return evaluate(context).isSuccess();
     }
 
-    //if not valid- throw(for purchase policies)
     default void require(PurchaseContext context) {
         PolicyValidationResult result = evaluate(context);
         if (!result.isSuccess()) {
             throw new PurchasePolicyException(result.reason());
         }
     }
+
     @JsonIgnore
     boolean isValidPolicy();
+
     @JsonIgnore
     boolean isComposite();
-
 }
