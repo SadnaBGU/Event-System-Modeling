@@ -132,8 +132,7 @@ class StartupTest {
     @Test
     void bind_validExistingDbMode_bindsEnum() {
         StartupProperties props = bind(Map.of(
-                "eventsystem.startup.mode", "EXISTING_DB"
-        ));
+                "eventsystem.startup.mode", "EXISTING_DB"));
 
         assertThat(props.getMode()).isEqualTo(StartupMode.EXISTING_DB);
         assertThat(props.getInitStateFile()).isNull();
@@ -142,8 +141,7 @@ class StartupTest {
     @Test
     void bind_validEmptyDbMode_bindsEnum() {
         StartupProperties props = bind(Map.of(
-                "eventsystem.startup.mode", "EMPTY_DB"
-        ));
+                "eventsystem.startup.mode", "EMPTY_DB"));
 
         assertThat(props.getMode()).isEqualTo(StartupMode.EMPTY_DB);
     }
@@ -152,8 +150,7 @@ class StartupTest {
     void bind_validInitFileMode_bindsEnumAndPath() {
         StartupProperties props = bind(Map.of(
                 "eventsystem.startup.mode", "INIT_FILE",
-                "eventsystem.startup.init-state-file", "config/init.txt"
-        ));
+                "eventsystem.startup.init-state-file", "config/init.txt"));
 
         assertThat(props.getMode()).isEqualTo(StartupMode.INIT_FILE);
         assertThat(props.getInitStateFile()).isEqualTo("config/init.txt");
@@ -171,16 +168,16 @@ class StartupTest {
     @Test
     void bind_invalidStartupMode_failsAtBindingStage() {
         MapConfigurationPropertySource source = new MapConfigurationPropertySource(Map.of(
-                "eventsystem.startup.mode", "BAD_MODE"
-        ));
+                "eventsystem.startup.mode", "BAD_MODE"));
 
         assertThatThrownBy(() -> new Binder(source)
                 .bind("eventsystem.startup", StartupProperties.class)
                 .orElseThrow(() -> new AssertionError("Should not bind invalid startup mode")))
                 .isInstanceOf(BindException.class)
-                .hasMessageContaining("BAD_MODE");
+                .hasMessageContaining("eventsystem.startup.mode")
+                .hasRootCauseInstanceOf(IllegalArgumentException.class)
+                .hasRootCauseMessage("No enum constant " + StartupMode.class.getName() + ".BAD_MODE");
     }
-
     // ---------------------------------------------------------------------
     // StartupConfigValidator tests
     // ---------------------------------------------------------------------
