@@ -1,0 +1,5 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.eventsystem.infrastructure.config.startup.ConfigurationFileEnvironmentValidator
+
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.eventsystem.infrastructure.config.startup.YamlConfigurationFailureAnalyzer
