@@ -324,42 +324,222 @@ public class InitFileProcessor {
     }
 
     // ── Policies ──────────────────────────────────────────────────────────────
-
     private void setPurchasePolicy(InitCommand cmd, InitContext ctx) {
-        requireArity(cmd, 5);
+        /*
+         * Supported:
+         *
+         * New explicit format:
+         * set-purchase-policy(actor, companyAlias, ownerType, scope, "policyName",
+         * activate, ruleType, ruleValue)
+         *
+         * Examples:
+         * set-purchase-policy(u1, p1, COMPANY, COMPANY_WIDE, "Max 4 tickets", true,
+         * MAX_TICKETS, 4)
+         * set-purchase-policy(u1, p1, EVENT, e1, "18+ for e1", true, MIN_AGE, 18)
+         *
+         * Backward-compatible old format:
+         * set-purchase-policy(actor, companyAlias, "policyName", ruleType, value)
+         */
+        requireArity(cmd, 8);
+
         MemberId actor = actor(cmd, 0, ctx);
         CompanyId company = ctx.company(arg(cmd, 1), cmd.lineNumber());
-        PolicyRuleCommand rule = new PolicyRuleCommand(
-                arg(cmd, 3).toUpperCase(), parseInt(cmd, 4), null, null, null, null);
+
+        PolicyOwnerCommand ownerType = parseOwnerType(cmd, 2);
+        PolicyScopeCommand scope = parsePolicyScope(cmd, ctx, 3, ownerType);
+
+        String policyName = arg(cmd, 4);
+        boolean activate = parseBoolean(cmd, 5);
+        PolicyRuleCommand rule = parsePolicyRule(cmd, 6, 7);
+
         PurchasePolicyCommand command = new PurchasePolicyCommand(
                 actor.value(),
                 company.value(),
-                arg(cmd, 2),
-                new PolicyScopeCommand(true, Set.of()),
+                policyName,
+                scope,
                 rule,
-                true,
-                PolicyOwnerCommand.COMPANY);
+                activate,
+                ownerType);
+
         policyService.createPurchasePolicy(command);
     }
 
     private void setDiscountPolicy(InitCommand cmd, InitContext ctx) {
-        requireArity(cmd, 5);
+        /*
+         * Supported:
+         *
+         * New explicit format:
+         * set-discount-policy(actor, companyAlias, ownerType, scope, "policyName",
+         * stackable, activate, "discountName", percent,
+         * ruleType, ruleValue, visibility)
+         *
+         * Examples:
+         * set-discount-policy(u2, p1, COMPANY, COMPANY_WIDE, "Company Coupon Sale",
+         * false, true, "sale123", 20, CODE, sale123, HIDDEN)
+         *
+         * set-discount-policy(u2, p1, EVENT, e1, "Event Visible Sale",
+         * false, true, "Early bird", 20, ALLOW_ALL, -, VISIBLE)
+         *
+         * Backward-compatible old format:
+         * set-discount-policy(actor, companyAlias, "policyName", "discountName",
+         * percent)
+         */
+
+        requireArity(cmd, 12);
+
         MemberId actor = actor(cmd, 0, ctx);
         CompanyId company = ctx.company(arg(cmd, 1), cmd.lineNumber());
+
+        PolicyOwnerCommand ownerType = parseOwnerType(cmd, 2);
+        PolicyScopeCommand scope = parsePolicyScope(cmd, ctx, 3, ownerType);
+
+        String policyName = arg(cmd, 4);
+        boolean stackable = parseBoolean(cmd, 5);
+        boolean activate = parseBoolean(cmd, 6);
+
+        String discountName = arg(cmd, 7);
+        BigDecimal percent = new BigDecimal(arg(cmd, 8));
+        PolicyRuleCommand rule = parsePolicyRule(cmd, 9, 10);
+        String visibility = arg(cmd, 11).toUpperCase();
+
         DiscountCommand discount = new DiscountCommand(
-                arg(cmd, 3),
-                new BigDecimal(arg(cmd, 4)),
-                new PolicyRuleCommand("ALLOW_ALL", null, null, null, null, null));
+                discountName,
+                percent,
+                rule,
+                visibility,
+                null);
+
         DiscountPolicyCommand command = new DiscountPolicyCommand(
                 actor.value(),
                 company.value(),
-                arg(cmd, 2),
-                new PolicyScopeCommand(true, Set.of()),
+                policyName,
+                scope,
                 List.of(discount),
-                false,
-                true,
-                PolicyOwnerCommand.COMPANY);
+                stackable,
+                activate,
+                ownerType);
+
         policyService.createDiscountPolicy(command);
+    }
+
+    private PolicyOwnerCommand parseOwnerType(InitCommand cmd, int index) {
+        String raw = arg(cmd, index).trim().toUpperCase();
+        try {
+            return PolicyOwnerCommand.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            throw new InitFileException(cmd.lineNumber(),
+                    "invalid policy owner type '" + raw + "'. Valid: COMPANY, EVENT");
+        }
+    }
+
+    private PolicyScopeCommand parsePolicyScope(
+            InitCommand cmd,
+            InitContext ctx,
+            int index,
+            PolicyOwnerCommand ownerType) {
+        String raw = arg(cmd, index).trim();
+
+        if (raw.equalsIgnoreCase("COMPANY_WIDE") || raw.equalsIgnoreCase("ALL")) {
+            if (ownerType == PolicyOwnerCommand.EVENT) {
+                throw new InitFileException(cmd.lineNumber(),
+                        "EVENT-owned policy must use exactly one event alias as scope, not " + raw);
+            }
+            return new PolicyScopeCommand(true, Set.of());
+        }
+
+        Set<String> eventIds = Arrays.stream(raw.split("\\|"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(alias -> ctx.event(alias, cmd.lineNumber()).value())
+                .collect(Collectors.toSet());
+
+        if (eventIds.isEmpty()) {
+            throw new InitFileException(cmd.lineNumber(),
+                    "policy scope must be COMPANY_WIDE or one/more event aliases separated by '|'");
+        }
+
+        if (ownerType == PolicyOwnerCommand.EVENT && eventIds.size() != 1) {
+            throw new InitFileException(cmd.lineNumber(),
+                    "EVENT-owned policy must have exactly one event alias in scope");
+        }
+
+        return new PolicyScopeCommand(false, eventIds);
+    }
+
+    private PolicyRuleCommand parsePolicyRule(InitCommand cmd, int typeIndex, int valueIndex) {
+        String ruleType = arg(cmd, typeIndex).trim().toUpperCase();
+        String rawValue = arg(cmd, valueIndex).trim();
+
+        if (rawValue.equals("-") || rawValue.isBlank()) {
+            rawValue = "";
+        }
+
+        return switch (ruleType) {
+            case "ALLOW_ALL" -> new PolicyRuleCommand(
+                    "ALLOW_ALL",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
+            case "MIN_TICKETS", "MAX_TICKETS", "MIN_AGE" -> new PolicyRuleCommand(
+                    ruleType,
+                    parseIntLiteral(cmd, rawValue, "rule value for " + ruleType),
+                    null,
+                    null,
+                    null,
+                    null);
+            case "CODE" -> {
+                if (rawValue.isBlank()) {
+                    throw new InitFileException(cmd.lineNumber(),
+                            "CODE rule requires a coupon code value");
+                }
+                yield new PolicyRuleCommand(
+                        "CODE",
+                        null,
+                        rawValue,
+                        null,
+                        null,
+                        null);
+            }
+            case "BEFORE_DATE", "AFTER_DATE" -> {
+                if (rawValue.isBlank()) {
+                    throw new InitFileException(cmd.lineNumber(),
+                            ruleType + " rule requires a date value");
+                }
+                yield new PolicyRuleCommand(
+                        ruleType,
+                        null,
+                        null,
+                        rawValue,
+                        null,
+                        null);
+            }
+            default -> throw new InitFileException(cmd.lineNumber(),
+                    "unsupported policy rule type '" + ruleType
+                            + "'. Supported: ALLOW_ALL, MIN_TICKETS, MAX_TICKETS, MIN_AGE, CODE, BEFORE_DATE, AFTER_DATE");
+        };
+    }
+
+    private int parseIntLiteral(InitCommand cmd, String value, String label) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InitFileException(cmd.lineNumber(),
+                    "expected integer for " + label + " but got '" + value + "'");
+        }
+    }
+
+    private boolean parseBoolean(InitCommand cmd, int index) {
+        String value = arg(cmd, index).trim();
+        if (value.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (value.equalsIgnoreCase("false")) {
+            return false;
+        }
+        throw new InitFileException(cmd.lineNumber(),
+                "expected boolean true/false but got '" + value + "'");
     }
 
     // ── Reservation & checkout ────────────────────────────────────────────────

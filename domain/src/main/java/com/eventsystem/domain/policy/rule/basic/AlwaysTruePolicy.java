@@ -1,10 +1,17 @@
 package com.eventsystem.domain.policy.rule.basic;
+
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
-public enum AlwaysTruePolicy implements IBasicPolicy {
-    INSTANCE;
+public final class AlwaysTruePolicy implements IBasicPolicy {
+
+    public static final AlwaysTruePolicy INSTANCE = new AlwaysTruePolicy();
+
+    @JsonCreator
+    public AlwaysTruePolicy() {
+    }
 
     @Override
     public PolicyType type() {

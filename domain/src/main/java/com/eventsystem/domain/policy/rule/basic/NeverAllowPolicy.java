@@ -1,12 +1,18 @@
 package com.eventsystem.domain.policy.rule.basic;
+
+import com.eventsystem.domain.domainexceptions.PolicyException;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
-import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
-public enum NeverAllowPolicy
- implements IBasicPolicy {
-    INSTANCE;
+public final class NeverAllowPolicy implements IBasicPolicy {
+
+    public static final NeverAllowPolicy INSTANCE = new NeverAllowPolicy();
+
+    @JsonCreator
+    public NeverAllowPolicy() {
+    }
 
     @Override
     public PolicyType type() {

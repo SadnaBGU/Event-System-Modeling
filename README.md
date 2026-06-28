@@ -191,7 +191,7 @@ $env:INIT_STATE_FILE=""
 Start from an initial state file:
 ```powershell
 $env:STARTUP_MODE="INIT_FILE"
-$env:INIT_STATE_FILE="config/initial-state.sample.txt"
+$env:INIT_STATE_FILE="PathToDesiredInitStateFile"
 .\start-app.ps1
 ```
 
@@ -238,8 +238,8 @@ running with the required admin/platform baseline.
 | `create-standing-zone(actor, eventAlias, zoneAlias, "name", price, currency, capacity)` | adds a standing zone |
 | `create-seated-zone(actor, eventAlias, zoneAlias, "name", price, currency, rowSpec)` | adds a seated zone (`rowSpec` = `A:10\|B:8`) |
 | `publish-event(actor, eventAlias)` | publishes the event |
-| `set-purchase-policy(actor, companyAlias, "policyName", RULE_TYPE, value)` | e.g. `MAX_TICKETS, 4` |
-| `set-discount-policy(actor, companyAlias, "policyName", "discountName", percent)` | company-wide discount |
+| `set-purchase-policy(actor, companyAlias, ownerType, scope, "policyName", activate, ruleType, ruleValue)` | creates a purchase policy |
+| `set-discount-policy(actor, companyAlias, ownerType, scope, "policyName", stackable, activate, "discountName", percent, ruleType, ruleValue, visibility)` | creates a discount policy |
 | `open-lottery(actor, eventAlias, lotteryAlias)` | opens a lottery for the event |
 | `register-lottery(username, lotteryAlias)` | enters a member into the lottery |
 | `draw-lottery(actor, lotteryAlias, winnerCount)` | closes and draws winners |

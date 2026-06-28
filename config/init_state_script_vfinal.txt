@@ -1,0 +1,29 @@
+# Init Script Vfinal
+# Scenario:
+# Admin exists as a registered system administrator from bootstrap initialization.
+# Register User1, User2, User3 (over 18), User4.
+# Login User1, create company C1, create events E1/E2, then logout.
+# Note: logout not needed
+
+register(user1, password123, User, One, user1@example.com, 1990-01-01)
+register(user2, password123, User, Two, user2@example.com, 1990-01-02)
+register(user3, password123, User, Three, user3@example.com, 1990-01-03)
+register(user4, password123, User, Four, user4@example.com, 1990-01-04)
+
+login(user1, password123)
+
+open-production-company(user1, c1, "C1", "Production company C1", 4.5)
+
+# E1: 10 standing tickets and 10 seats.
+# Requires every zone to have a price and currency.
+# The scenario does not specify E1 price, so this uses 1.00 USD and 2.00
+create-event(user1, c1, e1, "E1", 2026-09-01T20:00, Concert, "Main Venue", "Event E1")
+create-standing-zone(user1, e1, e1_standing, "E1 Standing", 1.00, USD, 10)
+create-seated-zone(user1, e1, e1_seats, "E1 Seats", 2.00, USD, A:10)
+publish-event(user1, e1)
+
+# E2: 10 standing tickets and 10 seats, each ticket costing 10 dollars.
+create-event(user1, c1, e2, "E2", 2026-09-02T20:00, Concert, "Main Venue", "Event E2")
+create-standing-zone(user1, e2, e2_standing, "E2 Standing", 10.00, USD, 10)
+create-seated-zone(user1, e2, e2_seats, "E2 Seats", 10.00, USD, A:10)
+publish-event(user1, e2)

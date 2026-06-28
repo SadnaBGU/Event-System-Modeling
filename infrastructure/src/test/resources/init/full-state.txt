@@ -31,8 +31,8 @@ create-standing-zone(founder, summerfest, ga, "General Admission", 150.00, ILS, 
 create-seated-zone(founder, summerfest, vip, "VIP", 450.00, ILS, A:10|B:10)
 
 # Company purchase & discount policies
-set-purchase-policy(founder, acme, "Max 10 per order", MAX_TICKETS, 10)
-set-discount-policy(founder, acme, "Launch 10%", "Early Bird", 10)
+set-purchase-policy(founder, acme, COMPANY, COMPANY_WIDE, "Max 5 tickets", true, MAX_TICKETS, 5)
+set-discount-policy(founder, acme, COMPANY, COMPANY_WIDE, "Visible Discount", false, true, "Early Bird", 15, ALLOW_ALL, -, VISIBLE)
 
 # Publish so it is purchasable
 publish-event(founder, summerfest)
