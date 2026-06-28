@@ -9,6 +9,7 @@ import com.eventsystem.application.policy.policybuilder.PolicyScopeCommand;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.EventStatus;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.PolicyBuilder;
@@ -97,6 +98,8 @@ public class CompanyPolicyController {
             @RequestBody JsonNode requestBody) {
         Objects.requireNonNull(actor, "authenticatedMemberId must not be null");
 
+        requireEventEditable(new EventId(eventId));
+
         IPolicy policy = parsePolicyTree(requestBody);
 
         policyManagementService.createNewEventOwnedPurchasePolicy(
@@ -125,6 +128,7 @@ public class CompanyPolicyController {
                                                        @RequestBody DiscountPolicyRequest request) {
         Event event = eventRepository.findById(new EventId(eventId))
                 .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId));
+        requireDraft(event);
         PolicyScopeCommand scope = new PolicyScopeCommand(false, Set.of(eventId));
         policyManagementService.createDiscountPolicy(
                 toCommand(actor.value(), event.companyId().value(), scope, request));
@@ -172,6 +176,20 @@ public class CompanyPolicyController {
     public record DiscountPolicyRequest(String policyName, boolean stackable, List<DiscountItem> discounts) {}
 
     public record DiscountItem(String name, Double percent, String code, Integer minTickets, String endDate) {}
+
+    /** Loads the event and rejects the edit unless it is still a draft (V3: no policy edits after publish). */
+    private void requireEventEditable(EventId eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId.value()));
+        requireDraft(event);
+    }
+
+    private void requireDraft(Event event) {
+        if (event.status() != EventStatus.DRAFT) {
+            throw new IllegalStateException(
+                    "event policies can only be modified before the event is published");
+        }
+    }
 
     private IPolicy parsePolicyTree(JsonNode node) {
         Objects.requireNonNull(node, "requestBody must not be null");

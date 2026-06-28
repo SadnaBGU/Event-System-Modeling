@@ -6,8 +6,11 @@ import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.domainexceptions.CompanyDomainException;
 import com.eventsystem.domain.member.IMemberRepository;
+import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -138,6 +141,33 @@ public class ProductionCompanyService implements ICompanyPermissionServicePort{
         ProductionCompany company = loadCompany(companyId);
         company.acceptAppointment(target);
         productionCompanyRepository.save(company);
+    }
+
+    /** Resolve a member by username (V3: employees are appointed by username, not Member ID). */
+    public MemberId resolveMemberByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            throw new CompanyDomainException("username must not be blank");
+        }
+        return memberRepository.findByUsername(username.trim())
+                .map(Member::memberId)
+                .orElseThrow(() -> new CompanyDomainException("member not found: " + username));
+    }
+
+    /** All companies where {@code member} has an unaccepted (pending) appointment invitation. */
+    public List<PendingInvitation> listPendingInvitations(MemberId member) {
+        requireMemberExists(member);
+        List<PendingInvitation> invitations = new ArrayList<>();
+        for (ProductionCompany company : productionCompanyRepository.findAll()) {
+            company.pendingRole(member).ifPresent(role ->
+                    invitations.add(new PendingInvitation(
+                            company.companyId().value(),
+                            company.companyDetails().name(),
+                            role)));
+        }
+        return invitations;
+    }
+
+    public record PendingInvitation(String companyId, String companyName, String roleType) {
     }
 
     private ProductionCompany loadCompany(CompanyId companyId) {

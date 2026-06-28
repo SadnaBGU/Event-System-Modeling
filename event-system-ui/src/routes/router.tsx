@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
       {
         path: '/events/:eventId/policies',
         element: (
-          <RequireAuth roles={['COMPANY_OWNER', 'COMPANY_MANAGER']}>
+          <RequireAuth>
             <PolicyEditorPage scope="event" />
           </RequireAuth>
         ),

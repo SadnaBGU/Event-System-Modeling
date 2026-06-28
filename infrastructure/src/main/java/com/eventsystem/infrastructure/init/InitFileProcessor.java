@@ -125,6 +125,7 @@ public class InitFileProcessor {
         switch (cmd.name()) {
             case "register", "guest-registration" -> register(cmd, ctx);
             case "login" -> login(cmd, ctx);
+            case "logout" -> logout(cmd, ctx);
             case "open-production-company" -> openCompany(cmd, ctx);
             case "appoint-owner" -> appointOwner(cmd, ctx);
             case "appoint-manager" -> appointManager(cmd, ctx);
@@ -170,6 +171,15 @@ public class InitFileProcessor {
         LoginResponse resp = memberService.login(new LoginRequest(username, arg(cmd, 1)));
         ctx.putMember(username, resp.memberId());
         ctx.putToken(username, resp.token());
+    }
+
+    private void logout(InitCommand cmd, InitContext ctx) {
+        requireArity(cmd, 1);
+        String username = arg(cmd, 0);
+        // Validate the member is currently logged in, then clear their session token so
+        // any later authenticated command by this user would correctly fail.
+        ctx.token(username, cmd.lineNumber());
+        ctx.removeToken(username);
     }
 
     // ── Company ───────────────────────────────────────────────────────────────

@@ -19,14 +19,14 @@ export function RolesPage() {
     enabled: !!companyId,
   });
 
-  const [targetMemberId, setTarget] = useState('');
+  const [targetUsername, setTarget] = useState('');
   const [roleType, setRoleType] = useState<RoleType>('MANAGER');
   const [permissions, setPermissions] = useState<Permission[]>(['EVENT_INVENTORY_MANAGEMENT']);
 
   const appoint = useMutation({
     mutationFn: () =>
       rolesApi.appoint(companyId, {
-        targetMemberId,
+        targetUsername,
         roleType,
         permissionsList: permissions,
       }),
@@ -101,16 +101,16 @@ export function RolesPage() {
         className="form-stack"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!targetMemberId) return;
+          if (!targetUsername) return;
           appoint.mutate();
         }}
       >
         <label>
-          Target member ID
+          Username
           <input
-            value={targetMemberId}
+            value={targetUsername}
             onChange={(e) => setTarget(e.target.value)}
-            placeholder="MEM-XXXXX"
+            placeholder="username"
             required
           />
         </label>

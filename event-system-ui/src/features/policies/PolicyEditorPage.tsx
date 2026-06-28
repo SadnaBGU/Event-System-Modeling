@@ -4,6 +4,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { PolicyBundle, PurchaseNode } from '../../types/policies';
 import { policiesApi, type DiscountItemRequest } from '../../api/endpoints/policies';
+import { eventsApi } from '../../api/endpoints/events';
+import { useCompanyPermissions } from '../../auth/useCompanyPermissions';
 import { PurchaseNodeEditor, purchaseTemplates } from './PurchaseTreeEditor';
 import { previewPurchase } from './preview';
 import { friendlyError } from '../../lib/errors';
@@ -38,6 +40,19 @@ export function PolicyEditorPage({ scope }: Props) {
       scope === 'company' ? policiesApi.getCompany(id) : policiesApi.getEvent(id),
     enabled: !!id,
   });
+
+  // V3: event policies may only be edited while the event is a draft (before publish).
+  const eventQ = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => eventsApi.get(id),
+    enabled: scope === 'event' && !!id,
+  });
+  const eventLocked = scope === 'event' && !!eventQ.data && eventQ.data.status !== 'DRAFT';
+
+  // Authorization is derived from the backend (per-company roles), not client state:
+  // company scope uses the company id directly; event scope resolves it from the event.
+  const companyId = scope === 'company' ? id : eventQ.data?.companyId;
+  const perms = useCompanyPermissions(companyId);
 
   const [bundle, setBundle] = useState<PolicyBundle>({ discount: null, purchase: null });
 
@@ -84,7 +99,39 @@ export function PolicyEditorPage({ scope }: Props) {
       (d.kind !== 'coupon' || d.code.trim()),
   );
 
-  if (query.isLoading) return <p>Loading…</p>;
+  if (query.isLoading || (scope === 'event' && eventQ.isLoading) || perms.loading) {
+    return <p>Loading…</p>;
+  }
+
+  if (!perms.can('MODIFY_POLICIES')) {
+    return (
+      <section>
+        <Link
+          to={scope === 'company' ? `/companies/${id}` : `/events/${id}`}
+          className="btn ghost"
+          style={{ marginBottom: '1rem' }}
+        >
+          ← Back
+        </Link>
+        <h1 className="page-title">{scope === 'company' ? 'Company policies' : 'Event policies'}</h1>
+        <p className="empty">You don't have permission to edit these policies.</p>
+      </section>
+    );
+  }
+
+  if (eventLocked) {
+    return (
+      <section>
+        <Link to={`/events/${id}`} className="btn ghost" style={{ marginBottom: '1rem' }}>
+          ← Back
+        </Link>
+        <h1 className="page-title">Event policies</h1>
+        <p className="empty">
+          This event is published. Policies can only be edited while it is a draft.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section>

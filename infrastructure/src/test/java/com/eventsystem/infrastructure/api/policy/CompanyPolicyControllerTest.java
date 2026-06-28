@@ -2,7 +2,9 @@ package com.eventsystem.infrastructure.api.policy;
 
 import com.eventsystem.application.policy.PolicyManagementService;
 import com.eventsystem.domain.company.CompanyId;
+import com.eventsystem.domain.event.Event;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.event.EventStatus;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.rule.IPolicy;
@@ -30,8 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,6 +65,12 @@ class CompanyPolicyControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(companyPolicyController)
                 .setControllerAdvice(new com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler())
                 .build();
+
+        // Event policy edits are only allowed while the event is a draft; provide a draft
+        // event for the event-scoped tests. Lenient because company-scoped tests don't use it.
+        Event draftEvent = mock(Event.class);
+        lenient().when(draftEvent.status()).thenReturn(EventStatus.DRAFT);
+        lenient().when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(draftEvent));
     }
 
     // =========================================================

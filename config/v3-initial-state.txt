@@ -1,0 +1,36 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# V3 initial-state scenario (final-version preparation).
+#
+# Replayed once at startup as a single all-or-nothing transaction.
+# Enable with:  .\stav-up.ps1 -Init       (sets INIT_ENABLED=true + INIT_STATE_FILE)
+# Requires a clean database — re-running against a populated DB fails on the
+# duplicate username/company and aborts startup by design.
+#
+# The Admin already exists as a registered system administrator (seeded by the
+# bootstrap from the ADMIN_* env vars), so it is NOT registered here.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Register User1..User4 (User3 is explicitly over 18; all use adult DOBs).
+register(user1, Password1!, User, One, user1@example.com, 1995-01-01)
+register(user2, Password2!, User, Two, user2@example.com, 1996-02-02)
+register(user3, Password3!, User, Three, user3@example.com, 2000-03-03)
+register(user4, Password4!, User, Four, user4@example.com, 1998-04-04)
+
+# Login User1.
+login(user1, Password1!)
+
+# Create company C1 (User1 becomes the founder/owner).
+open-production-company(user1, c1, "C1", "Company C1", 5.0)
+
+# Create event E1 with 10 standing tickets and 10 seats (price unspecified -> free).
+create-event(user1, c1, e1, "E1", 2026-09-01T20:00, Concert, "Main Hall", "Event E1")
+create-standing-zone(user1, e1, e1std, "Standing", 0.00, USD, 10)
+create-seated-zone(user1, e1, e1seats, "Seated", 0.00, USD, A:10)
+
+# Create event E2 with 10 standing tickets and 10 seats, each ticket costing 10 dollars.
+create-event(user1, c1, e2, "E2", 2026-09-02T20:00, Concert, "Main Hall", "Event E2")
+create-standing-zone(user1, e2, e2std, "Standing", 10.00, USD, 10)
+create-seated-zone(user1, e2, e2seats, "Seated", 10.00, USD, A:10)
+
+# Logout User1.
+logout(user1)

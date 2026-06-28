@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { companiesApi } from '../../api/endpoints/companies';
 import { useAuthStore } from '../../auth/authStore';
@@ -8,8 +8,22 @@ import '../../components/common.css';
 
 export function CompaniesListPage() {
   const navigate = useNavigate();
-  const addRole = useAuthStore((s) => s.addRole);
+  const qc = useQueryClient();
+  const session = useAuthStore((s) => s.session);
   const list = useQuery({ queryKey: ['companies'], queryFn: () => companiesApi.list() });
+  const invitations = useQuery({
+    queryKey: ['invitations'],
+    queryFn: () => companiesApi.invitations(),
+    enabled: !!session,
+  });
+  const accept = useMutation({
+    mutationFn: (companyId: string) => companiesApi.acceptInvitation(companyId, session!.memberId),
+    onSuccess: () => {
+      toast.success('Appointment accepted');
+      qc.invalidateQueries({ queryKey: ['invitations'] });
+      qc.invalidateQueries({ queryKey: ['companies'] });
+    },
+  });
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
 
@@ -25,9 +39,9 @@ export function CompaniesListPage() {
       toast.success('Company created');
       setName('');
       setContact('');
-      // Promote the creator so company-scoped routes unlock. The backend treats this
-      // session as the owner; the UI mirrors that locally until a roles endpoint exists.
-      addRole('COMPANY_OWNER');
+      // The creator becomes the company owner on the backend; company-scoped screens
+      // resolve permissions from the backend roles, so no client-side role is needed.
+      qc.invalidateQueries({ queryKey: ['companies'] });
       if (company.companyId) navigate(`/companies/${company.companyId}`);
     },
   });
@@ -38,6 +52,42 @@ export function CompaniesListPage() {
       <p className="meta" style={{ marginTop: '-0.75rem', marginBottom: '1.5rem' }}>
         You only see companies you own or manage. Create one below to get started.
       </p>
+
+      {invitations.data && invitations.data.length > 0 && (
+        <div className="panel" style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem' }}>Pending invitations</h2>
+          <p className="meta" style={{ marginTop: 0 }}>
+            You've been invited to a role. Accept to gain its permissions and see the company.
+          </p>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Role</th>
+                <th aria-label="actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {invitations.data.map((inv) => (
+                <tr key={inv.companyId}>
+                  <td style={{ fontWeight: 500 }}>{inv.companyName}</td>
+                  <td><code>{inv.roleType}</code></td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={accept.isPending}
+                      onClick={() => accept.mutate(inv.companyId)}
+                    >
+                      Accept
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {list.isLoading && <p className="meta">Loading…</p>}
       {list.data && list.data.length === 0 && (

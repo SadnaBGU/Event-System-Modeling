@@ -24,6 +24,8 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -131,12 +133,17 @@ class CompanyControllerTest {
 @Test
     void appointRole_Owner_Returns200Ok() throws Exception {
         CompanyController.RoleRequest request = new CompanyController.RoleRequest("target-1", "OWNER", null);
+        when(productionCompanyService.resolveMemberByUsername("target-1"))
+                .thenReturn(new MemberId("target-1"));
 
         mockMvc.perform(post("/api/companies/comp-123/roles")
                 .requestAttr("authenticatedMemberId", new MemberId("actor-123"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+
+        verify(productionCompanyService).appointOwner(
+                eq(new CompanyId("comp-123")), eq(new MemberId("actor-123")), eq(new MemberId("target-1")));
     }
 
     @SuppressWarnings("null")
@@ -144,12 +151,18 @@ class CompanyControllerTest {
     void appointRole_Manager_Returns200Ok() throws Exception {
         CompanyController.RoleRequest request = new CompanyController.RoleRequest(
                 "target-1", "MANAGER", List.of("GENERATE_SALES_REPORT"));
+        when(productionCompanyService.resolveMemberByUsername("target-1"))
+                .thenReturn(new MemberId("target-1"));
 
         mockMvc.perform(post("/api/companies/comp-123/roles")
                 .requestAttr("authenticatedMemberId", new MemberId("actor-123"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+
+        verify(productionCompanyService).appointManager(
+                eq(new CompanyId("comp-123")), eq(new MemberId("actor-123")),
+                eq(new MemberId("target-1")), any());
     }
 
     @SuppressWarnings("null")

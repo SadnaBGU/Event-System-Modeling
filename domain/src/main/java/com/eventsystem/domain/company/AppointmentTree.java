@@ -272,6 +272,23 @@ public final class AppointmentTree {
         throw new CompanyDomainException("no pending appointment found for target");
     }
 
+    /**
+     * Returns the role ("OWNER"/"MANAGER") of a still-unaccepted appointment for the
+     * given member, or empty if the member has no pending appointment here.
+     */
+    public Optional<String> pendingRole(MemberId memberId) {
+        Objects.requireNonNull(memberId, "memberId must not be null");
+        Optional<OwnerNode> owner = findAnyOwner(memberId);
+        if (owner.isPresent() && !owner.get().isAccepted()) {
+            return Optional.of("OWNER");
+        }
+        Optional<ManagerNode> manager = findAnyManager(memberId);
+        if (manager.isPresent() && !manager.get().isAccepted()) {
+            return Optional.of("MANAGER");
+        }
+        return Optional.empty();
+    }
+
     private Optional<OwnerNode> removeOwnerFromTree(OwnerNode current, MemberId targetId) {
         Optional<OwnerNode> removedDirect = current.removeOwner(targetId);
         if (removedDirect.isPresent()) {
