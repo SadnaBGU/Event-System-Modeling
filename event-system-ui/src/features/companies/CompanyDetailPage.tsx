@@ -2,12 +2,15 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { companiesApi } from '../../api/endpoints/companies';
+import { useCompanyPermissions } from '../../auth/useCompanyPermissions';
 import { formatMoney } from '../../lib/format';
 import '../../components/common.css';
 
 export function CompanyDetailPage() {
   const { companyId = '' } = useParams();
   const qc = useQueryClient();
+  const perms = useCompanyPermissions(companyId);
+  const canViewSales = perms.can('GENERATE_SALES_REPORT');
 
   const company = useQuery({
     queryKey: ['company', companyId],
@@ -18,7 +21,7 @@ export function CompanyDetailPage() {
   const sales = useQuery({
     queryKey: ['sales', companyId],
     queryFn: () => companiesApi.salesReport(companyId),
-    enabled: !!companyId,
+    enabled: !!companyId && canViewSales,
   });
 
   const events = useQuery({
@@ -102,31 +105,35 @@ export function CompanyDetailPage() {
         </table>
       )}
 
-      <h2 style={{ fontSize: '1.05rem', marginTop: '1.5rem' }}>Sales report</h2>
-      {sales.isLoading && <p>Loading…</p>}
-      {sales.isError && <p className="empty">Could not load the sales report.</p>}
-      {sales.data && sales.data.length === 0 && (
-        <p className="empty">No sales yet.</p>
-      )}
-      {sales.data && sales.data.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Tickets sold</th>
-              <th>Gross revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sales.data.map((row) => (
-              <tr key={row.eventId}>
-                <td>{row.eventName}</td>
-                <td>{row.ticketsSold}</td>
-                <td>{formatMoney(row.grossRevenue)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {canViewSales && (
+        <>
+          <h2 style={{ fontSize: '1.05rem', marginTop: '1.5rem' }}>Sales report</h2>
+          {sales.isLoading && <p>Loading…</p>}
+          {sales.isError && <p className="empty">Could not load the sales report.</p>}
+          {sales.data && sales.data.length === 0 && (
+            <p className="empty">No sales yet.</p>
+          )}
+          {sales.data && sales.data.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Tickets sold</th>
+                  <th>Gross revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sales.data.map((row) => (
+                  <tr key={row.eventId}>
+                    <td>{row.eventName}</td>
+                    <td>{row.ticketsSold}</td>
+                    <td>{formatMoney(row.grossRevenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </section>
   );

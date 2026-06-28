@@ -35,3 +35,4 @@ docker-compose.yml
 .env
 *.ps1
 *.sh
+.env.cloud

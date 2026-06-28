@@ -37,6 +37,16 @@ export const companiesApi = {
   updateStatus: (companyId: string, body: CompanyStatusUpdate) =>
     api.patch<void>(`/companies/${companyId}/status`, body).then(() => undefined),
 
+  invitations: () =>
+    api
+      .get<{ companyId: string; companyName: string; roleType: string }[]>('/companies/mine/invitations')
+      .then((r) => r.data),
+
+  acceptInvitation: (companyId: string, memberId: string) =>
+    api
+      .post<void>(`/companies/${companyId}/roles/${memberId}/accept`)
+      .then(() => undefined),
+
   salesReport: (companyId: string) =>
     api
       .get<{

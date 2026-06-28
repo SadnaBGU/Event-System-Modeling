@@ -217,7 +217,7 @@ export interface CompanyRoleDto {
 }
 
 export interface AppointRoleRequest {
-  targetMemberId: string;
+  targetUsername: string;
   roleType: RoleType;
   permissionsList: Permission[];
 }

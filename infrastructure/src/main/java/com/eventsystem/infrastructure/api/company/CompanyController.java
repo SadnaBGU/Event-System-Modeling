@@ -94,7 +94,7 @@ public class CompanyController {
                                             @RequestBody RoleRequest request) {
         Objects.requireNonNull(request, "request must not be null");
         CompanyId id = new CompanyId(companyId);
-        MemberId target = new MemberId(request.targetMemberId());
+        MemberId target = productionCompanyService.resolveMemberByUsername(request.targetUsername());
         String roleType = request.roleType() == null ? "" : request.roleType().trim().toUpperCase();
 
         switch (roleType) {
@@ -104,6 +104,12 @@ public class CompanyController {
         }
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/mine/invitations")
+    public ResponseEntity<List<ProductionCompanyService.PendingInvitation>> myInvitations(
+            @RequestAttribute("authenticatedMemberId") MemberId actor) {
+        return ResponseEntity.ok(productionCompanyService.listPendingInvitations(actor));
     }
 
     @PostMapping("/{companyId}/roles/{targetMemberId}/accept")
@@ -167,7 +173,7 @@ public class CompanyController {
     public record CompanyStatusRequest(String status) {
     }
 
-    public record RoleRequest(String targetMemberId, String roleType, List<String> permissionsList) {
+    public record RoleRequest(String targetUsername, String roleType, List<String> permissionsList) {
     }
 
     public record CreateEventRequest(

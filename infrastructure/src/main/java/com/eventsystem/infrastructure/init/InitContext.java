@@ -50,6 +50,10 @@ final class InitContext {
         tokensByName.put(username, token);
     }
 
+    void removeToken(String username) {
+        tokensByName.remove(username);
+    }
+
     String token(String username, int line) {
         String token = tokensByName.get(username);
         if (token == null) {

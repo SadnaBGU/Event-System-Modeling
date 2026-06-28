@@ -203,6 +203,11 @@ public final class ProductionCompany implements Persistable<CompanyId> {
         appointmentTree.acceptAppointment(targetId);
     }
 
+    /** The role of a pending (unaccepted) appointment invitation for the member, if any. */
+    public synchronized java.util.Optional<String> pendingRole(MemberId memberId) {
+        return appointmentTree.pendingRole(memberId);
+    }
+
 
     public synchronized void updateDescription(String newDescription) {
         requireActive();
