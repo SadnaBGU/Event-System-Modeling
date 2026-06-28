@@ -282,6 +282,27 @@
   color: var(--text-faint);
 }
 
+.inline-form {
+  flex-direction: row;
+  align-items: flex-end;
+  max-width: none;
+}
+
+.inline-form label {
+  margin: 0;
+}
+
+.inline-form input {
+  height: 100%;
+  min-height: 3.2rem;
+  box-sizing: border-box;
+}
+
+.inline-form .btn {
+  height: 3.2rem;
+  box-sizing: border-box;
+}
+
 .totals {
   display: flex;
   justify-content: space-between;

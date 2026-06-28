@@ -303,8 +303,8 @@ export function EventDetailPage() {
         )}
         {canManageInventory && !lotteryExists && (
           <form
-            className="form-stack"
-            style={{ marginTop: '1rem' }}
+            className="form-stack inline-form"
+            // style={{ marginTop: '1rem' }}
             onSubmit={(ev2) => {
               ev2.preventDefault();
 
