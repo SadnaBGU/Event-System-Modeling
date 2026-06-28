@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
@@ -56,17 +57,26 @@ public class LotteryService {
     }
 
     public LotteryId openLottery(EventId eventId) {
+        return openLottery(eventId, Lottery.DEFAULT_REGISTRATION_DEADLINE);
+    }
+
+    public LotteryId openLottery(EventId eventId, Instant registrationDeadline) {
         Objects.requireNonNull(eventId, "eventId must not be null");
-        Lottery lottery = new Lottery(LotteryId.generate(), eventId);
+        Objects.requireNonNull(registrationDeadline, "registrationDeadline must not be null");
+        if (!registrationDeadline.isAfter(clock.instant())) {
+            throw new IllegalArgumentException("registrationDeadline must be in the future");
+        }
+        Lottery lottery = new Lottery(LotteryId.generate(), eventId, registrationDeadline);
         lotteries.save(lottery);
-        log.info("Lottery opened lotteryId={} eventId={}", lottery.getLotteryId().value(), eventId.value());
+        log.info("Lottery opened lotteryId={} eventId={} registrationDeadline={}",
+                lottery.getLotteryId().value(), eventId.value(), registrationDeadline);
         return lottery.getLotteryId();
     }
 
     public void register(MemberId memberId, LotteryId lotteryId) {
         Objects.requireNonNull(memberId, "memberId must not be null");
         Lottery lottery = load(lotteryId);
-        boolean added = lottery.register(memberId);
+        boolean added = lottery.register(memberId, clock.instant());
         lotteries.save(lottery);
         if (added) {
             log.info("Lottery registration lotteryId={} memberId={}", lotteryId.value(), memberId.value());
@@ -79,7 +89,7 @@ public class LotteryService {
 
         Lottery lottery = lotteries.findByEventId(eventId)
             .orElseThrow(() -> new LotteryNotFoundException(eventId));
-        boolean added = lottery.register(memberId);
+        boolean added = lottery.register(memberId, clock.instant());
         lotteries.save(lottery);
         if (added) {
             log.info("Lottery registration lotteryId={} eventId={} memberId={}",

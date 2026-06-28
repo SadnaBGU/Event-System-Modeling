@@ -84,8 +84,13 @@ export function EventDetailPage() {
     onError: (err) => toast.error(friendlyError(err, "Couldn't register for the lottery.")),
   });
 
+  const [lotteryDeadline, setLotteryDeadline] = useState('');
+
   const createLottery = useMutation({
-    mutationFn: () => lotteryApi.open(eventId),
+    mutationFn: () =>
+      lotteryApi.open(eventId, {
+        registrationDeadline: new Date(lotteryDeadline).toISOString(),
+      }),
     onSuccess: () => {
       toast.success('Lottery created.');
       qc.invalidateQueries({ queryKey: ['lottery', eventId] });
@@ -154,6 +159,9 @@ export function EventDetailPage() {
   const lotteryExists = lotteryQ.data?.exists ?? false;
   const lotteryOpen = lotteryQ.data?.status === 'REGISTRATION_OPEN';
   const lotteryDrawn = lotteryQ.data?.status === 'DRAWN';
+  const lotteryDeadlineInstant = lotteryQ.data?.registrationDeadline;
+  const lotteryDeadlinePassed = lotteryDeadlineInstant ? Date.now() > new Date(lotteryDeadlineInstant).getTime() : false;
+  const canCreateLottery = lotteryDeadline !== '' && new Date(lotteryDeadline).getTime() > Date.now();
 
   return (
     <section>
@@ -275,9 +283,9 @@ export function EventDetailPage() {
               }
               enterLottery.mutate();
             }}
-            disabled={enterLottery.isPending}
+            disabled={enterLottery.isPending || lotteryDeadlinePassed}
           >
-            {enterLottery.isPending ? 'Entering…' : '🎟️ Enter lottery'}
+            {enterLottery.isPending ? 'Entering…' : lotteryDeadlinePassed ? 'Lottery closed' : '🎟️ Enter lottery'}
           </button>
         )}
 
@@ -294,18 +302,43 @@ export function EventDetailPage() {
           </span>
         )}
         {canManageInventory && !lotteryExists && (
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => createLottery.mutate()}
-            disabled={createLottery.isPending}
+          <form
+            className="form-stack"
+            style={{ marginTop: '1rem' }}
+            onSubmit={(ev2) => {
+              ev2.preventDefault();
+
+              if (!canCreateLottery) {
+                toast.info('Choose a future lottery deadline.');
+                return;
+              }
+
+              createLottery.mutate();
+            }}
           >
-            {createLottery.isPending ? 'Creating…' : '➕ Create lottery'}
-          </button>
+            <label>
+              Lottery entry deadline
+              <input
+                type="datetime-local"
+                value={lotteryDeadline}
+                onChange={(ev2) => setLotteryDeadline(ev2.target.value)}
+                required
+              />
+            </label>
+
+            <button
+              type="submit"
+              className="btn ghost"
+              disabled={createLottery.isPending || !canCreateLottery}
+            >
+              {createLottery.isPending ? 'Creating…' : '➕ Create lottery'}
+            </button>
+          </form>
         )}
         {canManage && lotteryExists && (
           <span className="meta" style={{ alignSelf: 'center' }}>
             Lottery: {lotteryQ.data?.status?.toLowerCase().replace('_', ' ')}
+            {lotteryDeadlineInstant && ` · entries until ${formatDateTime(lotteryDeadlineInstant)}`}
           </span>
         )}
         {canManageInventory && lotteryExists && !lotteryDrawn && (

@@ -14,6 +14,8 @@ import java.util.random.RandomGenerator;
 @Table(name = "lotteries")
 public class Lottery implements Persistable<LotteryId> {
 
+    public static final Instant DEFAULT_REGISTRATION_DEADLINE = Instant.parse("9999-12-31T23:59:59Z");
+
     @EmbeddedId
     private LotteryId lotteryId;
 
@@ -38,6 +40,9 @@ public class Lottery implements Persistable<LotteryId> {
     @Column(name = "status", nullable = false)
     private LotteryStatus status;
 
+    @Column(name = "registration_deadline", nullable = false)
+    private Instant registrationDeadline;
+
     @Column(name = "draw_timestamp")
     private Instant drawTimestamp;
 
@@ -48,8 +53,13 @@ public class Lottery implements Persistable<LotteryId> {
     protected Lottery() {}
 
     public Lottery(LotteryId lotteryId, EventId eventId) {
+        this(lotteryId, eventId, DEFAULT_REGISTRATION_DEADLINE);
+    }
+
+    public Lottery(LotteryId lotteryId, EventId eventId, Instant registrationDeadline) {
         this.lotteryId = Objects.requireNonNull(lotteryId, "lotteryId must not be null");
         this.eventId = Objects.requireNonNull(eventId, "eventId must not be null");
+        this.registrationDeadline = Objects.requireNonNull(registrationDeadline, "registrationDeadline must not be null");
         this.registrations = new HashSet<>();
         this.winners = new HashSet<>();
         this.status = LotteryStatus.REGISTRATION_OPEN;
@@ -57,9 +67,17 @@ public class Lottery implements Persistable<LotteryId> {
     }
 
     public synchronized boolean register(MemberId memberId) {
+        return register(memberId, Instant.now());
+    }
+
+    public synchronized boolean register(MemberId memberId, Instant now) {
         Objects.requireNonNull(memberId, "memberId must not be null");
+        Objects.requireNonNull(now, "now must not be null");
         if (status != LotteryStatus.REGISTRATION_OPEN) {
             throw new IllegalStateException("Lottery registration is " + status);
+        }
+        if (now.isAfter(registrationDeadline)) {
+            throw new IllegalStateException("Lottery registration deadline has passed");
         }
         return registrations.add(memberId);
     }
@@ -124,6 +142,7 @@ public class Lottery implements Persistable<LotteryId> {
     public LotteryId getLotteryId() { return lotteryId; }
     public EventId getEventId() { return eventId; }
     public LotteryStatus getStatus() { return status; }
+    public Instant getRegistrationDeadline() { return registrationDeadline; }
     public Instant getDrawTimestamp() { return drawTimestamp; }
 
     public Set<MemberId> getRegistrations() {

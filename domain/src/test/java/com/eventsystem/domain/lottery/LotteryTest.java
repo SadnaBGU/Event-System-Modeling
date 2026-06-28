@@ -94,6 +94,16 @@ class LotteryTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void registerAfterDeadlineThrows() {
+        Lottery l = new Lottery(LotteryId.generate(), eventId, NOW.plusSeconds(60));
+
+        assertThat(l.register(new MemberId("m1"), NOW)).isTrue();
+        assertThatThrownBy(() -> l.register(new MemberId("m2"), NOW.plusSeconds(61)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("deadline");
+    }
+
     // ==========================================
     // Close
     // ==========================================
