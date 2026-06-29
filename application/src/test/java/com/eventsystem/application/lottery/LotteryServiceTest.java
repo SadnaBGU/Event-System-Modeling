@@ -51,7 +51,7 @@ class LotteryServiceTest {
     void register_DelegatesToLotteryAndSaves() {
         EventId eventId = new EventId("EV-1");
         MemberId memberId = new MemberId("M-1");
-        Lottery lottery = new Lottery(LotteryId.generate(), eventId);
+        Lottery lottery = new Lottery(LotteryId.generate(), eventId, NOW.plusSeconds(60));
         
         when(repo.findByEventId(eventId)).thenReturn(Optional.of(lottery));
 
@@ -59,6 +59,39 @@ class LotteryServiceTest {
 
         verify(repo).save(lottery);
         assertThat(lottery.getRegistrations()).contains(memberId);
+    }
+
+    @Test
+    void openLottery_SavesFutureDeadline() {
+        EventId eventId = new EventId("EV-1");
+        Instant deadline = NOW.plusSeconds(60);
+
+        LotteryId lotteryId = service.openLottery(eventId, deadline);
+
+        verify(repo).save(argThat(lottery ->
+                lottery.getLotteryId().equals(lotteryId)
+                        && lottery.getEventId().equals(eventId)
+                        && lottery.getRegistrationDeadline().equals(deadline)));
+    }
+
+    @Test
+    void openLottery_RejectsPastDeadline() {
+        assertThatThrownBy(() -> service.openLottery(new EventId("EV-1"), NOW.minusSeconds(1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("future");
+    }
+
+    @Test
+    void register_ThrowsAfterDeadline() {
+        EventId eventId = new EventId("EV-1");
+        Lottery lottery = new Lottery(LotteryId.generate(), eventId, NOW.minusSeconds(1));
+
+        when(repo.findByEventId(eventId)).thenReturn(Optional.of(lottery));
+
+        assertThatThrownBy(() -> service.register(new MemberId("M-1"), eventId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("deadline");
+        verify(repo, never()).save(lottery);
     }
 
     @Test

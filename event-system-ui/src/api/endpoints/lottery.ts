@@ -4,6 +4,11 @@ import type { LotteryRegistrationRequest } from '../../types/api';
 export interface LotteryStatusDto {
   exists: boolean;
   status: 'REGISTRATION_OPEN' | 'CLOSED' | 'DRAWN' | null;
+  registrationDeadline: string | null;
+}
+
+export interface OpenLotteryRequest {
+  registrationDeadline: string;
 }
 
 export interface LotteryWinnerDto {
@@ -21,8 +26,13 @@ export const lotteryApi = {
       .then(() => undefined),
 
   /** Organiser: open a lottery for an event (requires event-management permission). */
-  open: (eventId: string) =>
-    api.post<{ lotteryId: string; status: string }>(`/events/${eventId}/lottery`).then((r) => r.data),
+  open: (eventId: string, body: OpenLotteryRequest) =>
+    api
+      .post<{ lotteryId: string; status: string; registrationDeadline: string }>(
+        `/events/${eventId}/lottery`,
+        body,
+      )
+      .then((r) => r.data),
 
   /** Organiser: close registration and draw winners (requires event-management permission). */
   draw: (eventId: string, winnerCount: number) =>

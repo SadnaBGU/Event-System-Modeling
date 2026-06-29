@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,20 +67,28 @@ public class EventLotteryController {
     @PostMapping("")
     public ResponseEntity<Map<String, Object>> openLottery(
             @PathVariable String eventId,
-            @RequestAttribute("authenticatedMemberId") MemberId actor) {
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @RequestBody OpenLotteryRequest body) {
         EventId eId = new EventId(eventId);
         requireManagePermission(actor, eId);
+        if (body == null || body.registrationDeadline() == null) {
+            throw new IllegalArgumentException("registrationDeadline is required");
+        }
 
         if (lotteryRepository.findByEventId(eId).isPresent()) {
             throw new IllegalStateException("A lottery already exists for this event");
         }
 
-        LotteryId lotteryId = lotteryService.openLottery(eId);
+        LotteryId lotteryId = lotteryService.openLottery(eId, body.registrationDeadline());
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("lotteryId", lotteryId.value());
         payload.put("status", "REGISTRATION_OPEN");
+        payload.put("registrationDeadline", body.registrationDeadline().toString());
         return ResponseEntity.status(201).body(payload);
     }
+
+    /** Request body for opening a lottery: registration is allowed until this instant. */
+    public record OpenLotteryRequest(Instant registrationDeadline) {}
 
     /** Public read: whether a lottery exists for this event and its current status. */
     @GetMapping("")
@@ -88,6 +97,7 @@ public class EventLotteryController {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("exists", lottery.isPresent());
         payload.put("status", lottery.map(l -> l.getStatus().name()).orElse(null));
+        payload.put("registrationDeadline", lottery.map(l -> l.getRegistrationDeadline().toString()).orElse(null));
         return ResponseEntity.ok(payload);
     }
 

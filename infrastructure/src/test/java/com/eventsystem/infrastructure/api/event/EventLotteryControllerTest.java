@@ -28,8 +28,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +86,45 @@ class EventLotteryControllerTest {
                 .andExpect(status().isCreated());
 
         verify(lotteryService).register(eq(new MemberId("M-1")), any(EventId.class));
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("POST /api/events/{eventId}/lottery opens lottery with deadline")
+    void openLottery_WithDeadline_ReturnsCreated() throws Exception {
+        Event event = mock(Event.class);
+        when(event.companyId()).thenReturn(new CompanyId("C-1"));
+        when(eventRepository.findById(any())).thenReturn(java.util.Optional.of(event));
+        when(permissionService.canManageEvents(any(), any())).thenReturn(true);
+        LotteryId lotteryId = new LotteryId("L-1");
+        when(lotteryService.openLottery(any(EventId.class), any(Instant.class))).thenReturn(lotteryId);
+
+        mockMvc.perform(post("/api/events/E-1/lottery")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"registrationDeadline\":\"2026-12-31T18:30:00Z\"}")
+                        .requestAttr("authenticatedMemberId", new MemberId("M-1")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.lotteryId").value("L-1"))
+                .andExpect(jsonPath("$.registrationDeadline").value("2026-12-31T18:30:00Z"));
+
+        verify(lotteryService).openLottery(
+                eq(new EventId("E-1")),
+                argThat(deadline -> deadline.equals(Instant.parse("2026-12-31T18:30:00Z"))));
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    @DisplayName("GET /api/events/{eventId}/lottery returns deadline")
+    void getLotteryStatus_ReturnsDeadline() throws Exception {
+        Lottery lottery = mock(Lottery.class);
+        when(lottery.getStatus()).thenReturn(LotteryStatus.REGISTRATION_OPEN);
+        when(lottery.getRegistrationDeadline()).thenReturn(Instant.parse("2026-12-31T18:30:00Z"));
+        when(lotteryRepository.findByEventId(any())).thenReturn(java.util.Optional.of(lottery));
+
+        mockMvc.perform(get("/api/events/E-1/lottery"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(true))
+                .andExpect(jsonPath("$.registrationDeadline").value("2026-12-31T18:30:00Z"));
     }
 
     @SuppressWarnings("null")
