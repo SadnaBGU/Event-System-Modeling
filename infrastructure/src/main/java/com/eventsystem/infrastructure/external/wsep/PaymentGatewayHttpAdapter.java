@@ -54,9 +54,18 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
 
             String response = client.post(params);
 
+            // WSEP pay has three outcomes: a numeric transaction id (approved), "-1" (declined),
+            // or anything else (an unexpected response that must NOT count as a payment).
             if (WsepResponseParser.isFailure(response)) {
                 log.warn("WSEP payment declined for orderId={}", orderId);
-                return PaymentResult.failed("Payment declined by WSEP");
+                return PaymentResult.failed(
+                        "Your card was declined. Please check the card number, expiry date and CVV, then try again.");
+            }
+
+            if (!WsepResponseParser.isPayTransactionId(response)) {
+                log.error("Unexpected WSEP payment response for orderId={}: {}", orderId, response);
+                return PaymentResult.failed(
+                        "We received an unexpected response from the payment provider. Your card was not charged — please try again later.");
             }
 
             log.info("WSEP payment succeeded for orderId={}, transactionId={}", orderId, response.trim());

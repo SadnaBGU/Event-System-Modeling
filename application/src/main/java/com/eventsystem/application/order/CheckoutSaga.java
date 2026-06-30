@@ -156,9 +156,12 @@ public class CheckoutSaga {
         }
         
         if (!paymentResult.success()) {
-            logger.warn("Checkout failed for order: Payment declined. Reason: {}", paymentResult.errorMessage());
-            notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment declined");
-            throw new PaymentFailedException(paymentResult.errorMessage());
+            String reason = (paymentResult.errorMessage() == null || paymentResult.errorMessage().isBlank())
+                    ? "Your payment could not be completed."
+                    : paymentResult.errorMessage();
+            logger.warn("Checkout failed for order: Payment declined. Reason: {}", reason);
+            notificationPort.sendPurchaseFailure(order.getBuyerRef(), reason);
+            throw new PaymentFailedException(reason);
         }
 
         logger.info("Payment successful. Proceeding with ticket issuance.");

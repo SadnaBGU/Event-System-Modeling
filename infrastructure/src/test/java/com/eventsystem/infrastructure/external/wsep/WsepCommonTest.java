@@ -32,6 +32,20 @@ class WsepCommonTest {
         assertFalse(WsepResponseParser.isFailure("TIX-ABC"));
     }
 
+    // REQ: SYS-03, ROB-01 - a successful pay is a numeric transaction id; -1 and any other
+    // body (an unexpected response) are not, so they must not be accepted as a payment.
+    @Test
+    void responseParser_mapsPayTransactionId() {
+        assertTrue(WsepResponseParser.isPayTransactionId("12345"));
+        assertTrue(WsepResponseParser.isPayTransactionId(" 100 "));
+
+        assertFalse(WsepResponseParser.isPayTransactionId("-1"));
+        assertFalse(WsepResponseParser.isPayTransactionId("986-UNRECOGNIZED"));
+        assertFalse(WsepResponseParser.isPayTransactionId("OK"));
+        assertFalse(WsepResponseParser.isPayTransactionId("  "));
+        assertFalse(WsepResponseParser.isPayTransactionId(null));
+    }
+
     // REQ: SYS-03 - refund success is represented by "1".
     @Test
     void responseParser_mapsSuccessOne() {
@@ -108,5 +122,50 @@ class WsepCommonTest {
     @Test
     void fromJson_whenMalformedJson_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> WsepPaymentDetails.fromJson("{not-json"));
+    }
+
+    private static String paymentJson(String cvv) {
+        return """
+                {
+                  "card_number": "2222333344445555",
+                  "month": "4",
+                  "year": "2026",
+                  "holder": "Israel Israelovice",
+                  "cvv": "%s",
+                  "id": "20444444"
+                }
+                """.formatted(cvv);
+    }
+
+    // REQ: ROB-01, UC 9 - a missing CVV yields a short, CVV-specific message (not a generic failure).
+    @Test
+    void fromJson_whenCvvMissing_messageNamesCvv() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> WsepPaymentDetails.fromJson(paymentJson("")));
+        assertTrue(ex.getMessage().contains("CVV"), "message should name CVV: " + ex.getMessage());
+    }
+
+    // REQ: ROB-01, UC 9 - a non-numeric CVV is rejected with a CVV-specific message.
+    @Test
+    void fromJson_whenCvvNotNumeric_messageNamesCvv() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> WsepPaymentDetails.fromJson(paymentJson("12a")));
+        assertTrue(ex.getMessage().contains("CVV"), "message should name CVV: " + ex.getMessage());
+    }
+
+    // REQ: ROB-01, UC 9 - a wrong-length CVV is rejected with a CVV-specific message.
+    @Test
+    void fromJson_whenCvvWrongLength_messageNamesCvv() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> WsepPaymentDetails.fromJson(paymentJson("12")));
+        assertTrue(ex.getMessage().contains("CVV"), "message should name CVV: " + ex.getMessage());
+    }
+
+    // REQ: ROB-01 - a malformed JSON message stays generic and does NOT leak field-level wording.
+    @Test
+    void fromJson_whenMalformedJson_messageIsFormatGeneric() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> WsepPaymentDetails.fromJson("{not-json"));
+        assertTrue(ex.getMessage().contains("valid format"), "message: " + ex.getMessage());
     }
 }

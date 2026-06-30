@@ -359,7 +359,9 @@ class CheckoutSagaTest {
             checkoutSaga.executeCheckout(ORDER_ID, "INVALID_TOKEN", "DISCOUNT10");
         });
 
-        verify(notificationPort).sendPurchaseFailure(eq(testBuyer), eq("Payment declined"));
+        // The purchase-failure notification now carries the specific decline reason
+        // rather than a generic "Payment declined".
+        verify(notificationPort).sendPurchaseFailure(eq(testBuyer), eq("Insufficient funds"));
         verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
         verify(purchaseRecordRepository, never()).append(any());
     }
