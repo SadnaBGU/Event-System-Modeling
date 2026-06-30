@@ -61,9 +61,17 @@ api.interceptors.response.use(
     const message = body?.message ?? fallback;
 
     if (status === 401) {
-      useAuthStore.getState().clear();
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
-      toast.error('Your session expired. Please sign in again.');
+      const reqUrl = error.config?.url ?? '';
+      if (reqUrl.startsWith('/auth/login')) {
+        // A 401 from the login endpoint means bad credentials, not an expired session.
+        // Don't clear state or show the misleading "session expired" toast — LoginPage also
+        // renders an inline error.
+        toast.error('Invalid username or password.');
+      } else {
+        useAuthStore.getState().clear();
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+        toast.error('Your session expired. Please sign in again.');
+      }
     } else if (status === 403) {
       toast.error(message || 'You do not have permission to perform this action.');
     } else if (status && status >= 400 && status < 500) {
