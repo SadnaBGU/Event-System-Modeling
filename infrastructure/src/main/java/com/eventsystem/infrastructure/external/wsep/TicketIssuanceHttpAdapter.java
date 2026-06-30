@@ -2,12 +2,14 @@ package com.eventsystem.infrastructure.external.wsep;
 
 import com.eventsystem.application.order.ITicketIssuancePort;
 import com.eventsystem.application.order.IssuanceResult;
+import com.eventsystem.application.order.TicketIssuanceItem;
 import com.eventsystem.domain.order.BuyerReference;
-import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.infrastructure.external.wsep.common.WsepAction;
 import com.eventsystem.infrastructure.external.wsep.common.WsepCommunicationException;
 import com.eventsystem.infrastructure.external.wsep.common.WsepHttpClient;
 import com.eventsystem.infrastructure.external.wsep.common.WsepResponseParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -27,14 +29,20 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
     private static final Logger log = LoggerFactory.getLogger(TicketIssuanceHttpAdapter.class);
 
     private final WsepHttpClient client;
+    private final ObjectMapper objectMapper;
 
     public TicketIssuanceHttpAdapter(WsepHttpClient client) {
         this.client = client;
+        this.objectMapper = new ObjectMapper();
     }
 
     @Override
-    public IssuanceResult issueTickets(String eventId, String activeOrderId, List<OrderItem> items,
-            BuyerReference buyer) {
+    public IssuanceResult issueTickets(
+            String eventId,
+            String activeOrderId,
+            List<TicketIssuanceItem> items,
+            BuyerReference buyer
+    ) {
         if (items == null || items.isEmpty()) {
             log.warn("WSEP ticket issuance requested for empty order, eventId={}, activeOrderId={}",
                     eventId, activeOrderId);
@@ -43,64 +51,147 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
 
         log.info("Calling WSEP issue_ticket for eventId={}, activeOrderId={}, itemCount={}",
                 eventId, activeOrderId, items.size());
+
         List<String> issuedTicketIds = new ArrayList<>();
 
         try {
             String customerId = resolveCustomerId(buyer);
 
-            for (OrderItem item : items) {
+            for (TicketIssuanceItem item : items) {
                 String ticketId = issueSingleItem(eventId, customerId, item);
                 issuedTicketIds.add(ticketId);
             }
 
             log.info("WSEP ticket issuance succeeded for eventId={}, activeOrderId={}, issuedTicketCount={}",
                     eventId, activeOrderId, issuedTicketIds.size());
+
             return IssuanceResult.successful(issuedTicketIds);
 
         } catch (WsepCommunicationException e) {
             log.error(
                     "WSEP ticket issuance communication failure for eventId={}, activeOrderId={}. Rolling back {} issued tickets",
-                    eventId, activeOrderId, issuedTicketIds.size(), e);
+                    eventId, activeOrderId, issuedTicketIds.size(), e
+            );
             rollbackIssuedTicketsBestEffort(issuedTicketIds);
             throw e;
 
         } catch (Exception e) {
             log.warn(
                     "WSEP ticket issuance failed for eventId={}, activeOrderId={}. Rolling back {} issued tickets. Reason={}",
-                    eventId, activeOrderId, issuedTicketIds.size(), e.getMessage());
+                    eventId, activeOrderId, issuedTicketIds.size(), e.getMessage()
+            );
             rollbackIssuedTicketsBestEffort(issuedTicketIds);
             return IssuanceResult.failed(e.getMessage());
         }
     }
 
-    private String issueSingleItem(String eventId, String customerId, OrderItem item) {
+    private String issueSingleItem(String eventId, String customerId, TicketIssuanceItem item) {
+        validateTicketIssuanceItem(item);
+
         Map<String, String> params = new LinkedHashMap<>();
         params.put("action_type", WsepAction.ISSUE_TICKET.actionType());
         params.put("customer_id", customerId);
         params.put("event_id", eventId);
-        params.put("zone", item.getZoneId());
 
-        boolean isSeatingZoneTicket = isAssignedSeat(item);
-        if (isSeatingZoneTicket) {
+        // WSEP examples use the external/display zone name, not our internal UUID.
+        params.put("zone", item.zoneName());
+
+        boolean assignedSeat = item.isAssignedSeat();
+
+        if (assignedSeat) {
             params.put("is_seating", "true");
             params.put("seats", seatsJson(item));
         } else {
-            params.put("quantity", String.valueOf(item.getQuantity()));
+            params.put("quantity", String.valueOf(item.quantity()));
         }
-        log.debug("Calling WSEP issue_ticket for eventId={}, zone={}, assignedSeat={}, quantity={}",
-                eventId, item.getZoneId(), isSeatingZoneTicket, item.getQuantity());
+
+        log.debug(
+                "Calling WSEP issue_ticket for eventId={}, zoneName={}, assignedSeat={}, quantity={}, seatId={}, rowLabel={}, seatNumber={}",
+                eventId,
+                item.zoneName(),
+                assignedSeat,
+                item.quantity(),
+                item.seatId(),
+                item.rowLabel(),
+                item.seatNumber()
+        );
+
+        log.warn("""
+                DEBUG WSEP issue_ticket params:
+                action_type={}
+                customer_id={}
+                event_id={}
+                zone={}
+                assignedSeat={}
+                quantity={}
+                seatId={}
+                rowLabel={}
+                seatNumber={}
+                seats={}
+                fullParams={}
+                """,
+                params.get("action_type"),
+                params.get("customer_id"),
+                params.get("event_id"),
+                params.get("zone"),
+                assignedSeat,
+                item.quantity(),
+                item.seatId(),
+                item.rowLabel(),
+                item.seatNumber(),
+                params.get("seats"),
+                params
+        );
 
         String response = client.post(params);
 
         if (WsepResponseParser.isFailure(response)) {
-            log.warn("WSEP issue_ticket rejected for eventId={}, zone={}, assignedSeat={}",
-                    eventId, item.getZoneId(), isSeatingZoneTicket);
+            log.warn("WSEP issue_ticket rejected for eventId={}, zoneName={}, assignedSeat={}, response={}",
+                    eventId, item.zoneName(), assignedSeat, response);
             throw new IllegalStateException("Ticket issuance rejected by WSEP");
         }
 
-        log.debug("WSEP issue_ticket succeeded for eventId={}, zone={}, ticketId={}",
-                eventId, item.getZoneId(), response.trim());
+        log.debug("WSEP issue_ticket succeeded for eventId={}, zoneName={}, ticketId={}",
+                eventId, item.zoneName(), response.trim());
+
         return response.trim();
+    }
+
+    private void validateTicketIssuanceItem(TicketIssuanceItem item) {
+        if (item == null) {
+            throw new IllegalArgumentException("Ticket issuance item must not be null");
+        }
+
+        if (item.zoneName() == null || item.zoneName().isBlank()) {
+            throw new IllegalArgumentException("zoneName is required for ticket issuance");
+        }
+
+        if (item.quantity() <= 0) {
+            throw new IllegalArgumentException("quantity must be positive for ticket issuance");
+        }
+
+        if (item.isAssignedSeat()) {
+            if (item.rowLabel() == null || item.rowLabel().isBlank()) {
+                throw new IllegalArgumentException("rowLabel is required for assigned seating ticket issuance");
+            }
+
+            if (item.seatNumber() == null) {
+                throw new IllegalArgumentException("seatNumber is required for assigned seating ticket issuance");
+            }
+        }
+    }
+
+    private String seatsJson(TicketIssuanceItem item) {
+        try {
+            return objectMapper.writeValueAsString(List.of(
+                    Map.of(
+                            "row", item.rowLabel(),
+                            "seat", item.seatNumber()
+                    )
+            ));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize assigned seating data for WSEP", e);
+        }
     }
 
     private void rollbackIssuedTicketsBestEffort(List<String> issuedTicketIds) {
@@ -138,15 +229,6 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
         }
     }
 
-    private boolean isAssignedSeat(OrderItem item) {
-        return item.getSeatId() != null && !item.getSeatId().isBlank();
-    }
-
-    private String seatsJson(OrderItem item) {
-        SeatParts seatParts = SeatParts.fromSeatId(item.getSeatId());
-        return "[{\"row\":" + seatParts.row() + ",\"seat\":" + seatParts.seat() + "}]";
-    }
-
     private String resolveCustomerId(BuyerReference buyer) {
         if (buyer == null) {
             throw new IllegalArgumentException("Buyer reference must not be null");
@@ -161,48 +243,5 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
         }
 
         throw new IllegalArgumentException("Buyer reference must contain memberId or sessionId");
-    }
-
-    private record SeatParts(String row, String seat) {
-
-        static SeatParts fromSeatId(String seatId) {
-            if (seatId == null || seatId.isBlank()) {
-                throw new IllegalArgumentException("seatId must not be blank for assigned seating");
-            }
-
-            String trimmed = seatId.trim();
-
-            if (trimmed.contains(":")) {
-                String[] parts = trimmed.split(":", 2);
-                return new SeatParts(parts[0].trim(), parts[1].trim());
-            }
-
-            if (trimmed.contains("-")) {
-                String[] parts = trimmed.split("-", 2);
-                return new SeatParts(parts[0].trim(), parts[1].trim());
-            }
-
-            if (trimmed.toLowerCase().contains("row=") && trimmed.toLowerCase().contains("seat=")) {
-                String[] parts = trimmed.split(",");
-                String row = "0";
-                String seat = trimmed;
-
-                for (String part : parts) {
-                    String[] keyValue = part.split("=", 2);
-
-                    if (keyValue.length == 2 && keyValue[0].trim().equalsIgnoreCase("row")) {
-                        row = keyValue[1].trim();
-                    }
-
-                    if (keyValue.length == 2 && keyValue[0].trim().equalsIgnoreCase("seat")) {
-                        seat = keyValue[1].trim();
-                    }
-                }
-
-                return new SeatParts(row, seat);
-            }
-
-            return new SeatParts("0", trimmed);
-        }
     }
 }

@@ -9,6 +9,8 @@ import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.zone.IZoneRepository;
+import com.eventsystem.domain.zone.Row;
+import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
@@ -28,6 +30,7 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.purchaserecord.PurchaseRecord;
 import com.eventsystem.domain.shared.Money;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +48,7 @@ import static org.mockito.Mockito.*;
 @Transactional
 public class CheckoutSagaIntegrationHappyPathTest {
 
-        private PurchaseContext context = TestPurchaseContexts.contextWithZoneSubtotal(
+        private final PurchaseContext context = TestPurchaseContexts.contextWithZoneSubtotal(
                         new EventId("event-1"),
                         new CompanyId("company-1"),
                         new ZoneId("zone-1"),
@@ -64,34 +67,72 @@ public class CheckoutSagaIntegrationHappyPathTest {
                 IPurchasePolicyValidationPort purchasePolicyPort = mock(IPurchasePolicyValidationPort.class);
                 IDiscountApplicationPort discountPort = mock(IDiscountApplicationPort.class);
 
-                CheckoutSaga saga = new CheckoutSaga(orderRepo, purchaseRepo, paymentGateway, ticketIssuance,
-                                notificationPort, zoneRepo, purchasePolicyPort, discountPort, eventQuery);
+                CheckoutSaga saga = new CheckoutSaga(
+                                orderRepo,
+                                purchaseRepo,
+                                paymentGateway,
+                                ticketIssuance,
+                                notificationPort,
+                                zoneRepo,
+                                purchasePolicyPort,
+                                discountPort,
+                                eventQuery);
 
-                // create an active order with a single item
                 OrderFactory factory = new OrderFactory();
                 BuyerReference buyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "member-1");
-                ActiveOrder order = factory.createOrder(buyer, "event-1", Instant.now().plusSeconds(60));
-                order.addItem(new OrderItem("zone-1", "seat-1", 1, Money.of(BigDecimal.valueOf(50), "USD")));
-                when(orderRepo.findById(order.getOrderId())).thenReturn(Optional.of(order));
-                when(purchasePolicyPort.createPurchaseContext(new EventId(order.getEventId()), order.getBuyerRef(),
-                                order.getItems())).thenReturn(context);
-                PolicyValidationResult successResult = new PolicyValidationResult(true, null);
-                when(purchasePolicyPort.evaluatePurchasePolicyFor(any())).thenReturn(successResult);
+
+                ActiveOrder order = factory.createOrder(
+                                buyer,
+                                "event-1",
+                                Instant.now().plusSeconds(60));
+
+                order.addItem(new OrderItem(
+                                "zone-1",
+                                "seat-1",
+                                1,
+                                Money.of(BigDecimal.valueOf(50), "USD")));
+
+                when(orderRepo.findById(order.getOrderId()))
+                                .thenReturn(Optional.of(order));
+
+                when(purchasePolicyPort.createPurchaseContext(
+                                any(EventId.class),
+                                any(BuyerReference.class),
+                                anyList()))
+                                .thenReturn(context);
+
+                when(purchasePolicyPort.evaluatePurchasePolicyFor(any(PurchaseContext.class)))
+                                .thenReturn(new PolicyValidationResult(true, null));
+
                 DiscountSummary summary = DiscountSummary.noDiscountSummary();
-                DiscountSnapshot discount = new DiscountSnapshot("No Discount", Money.of(BigDecimal.ZERO, "USD"));
-                when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class))).thenReturn(summary);
-                when(discountPort.discountSnapshotFromSummary(any(DiscountSummary.class), any(Money.class))).thenReturn(discount);
-                when(eventQuery.getEventSnapshot(anyString())).thenReturn(
-                                new EventSnapshot("event-1", "Concert", "ProdCo", LocalDate.now(), "Venue"));
+                DiscountSnapshot discount = new DiscountSnapshot(
+                                "No Discount",
+                                Money.of(BigDecimal.ZERO, "USD"));
+
+                when(discountPort.calculateDiscountSummary(any(PurchaseContext.class), any(Money.class)))
+                                .thenReturn(summary);
+
+                when(discountPort.discountSnapshotFromSummary(any(DiscountSummary.class), any(Money.class)))
+                                .thenReturn(discount);
+
+                when(eventQuery.getEventSnapshot(anyString()))
+                                .thenReturn(new EventSnapshot(
+                                                "event-1",
+                                                "Concert",
+                                                "ProdCo",
+                                                LocalDate.now(),
+                                                "Venue"));
 
                 when(paymentGateway.charge(eq(order.getOrderId()), any(), eq(order.getBuyerRef()), anyString()))
                                 .thenReturn(PaymentResult.successful("TXN-1"));
 
-                when(ticketIssuance.issueTickets(eq(order.getEventId()), eq(order.getOrderId()), anyList(),
+                when(ticketIssuance.issueTickets(
+                                eq(order.getEventId()),
+                                eq(order.getOrderId()),
+                                anyList(),
                                 eq(order.getBuyerRef())))
                                 .thenReturn(IssuanceResult.successful("ISS-1"));
 
-                // execute
                 doAnswer(invocation -> {
                         Runnable action = invocation.getArgument(1);
                         action.run();
@@ -100,23 +141,35 @@ public class CheckoutSagaIntegrationHappyPathTest {
 
                 Zone mockZone = mock(Zone.class);
                 when(mockZone.zoneType()).thenReturn(ZoneType.SEATED);
-                when(zoneRepo.findById(new ZoneId("zone-1"))).thenReturn(Optional.of(mockZone));
+                when(mockZone.zoneName()).thenReturn("VIP");
+                when(mockZone.rows()).thenReturn(List.of(
+                                new Row(
+                                                "A",
+                                                List.of(new Seat(
+                                                                new SeatId("seat-1"),
+                                                                "A",
+                                                                1)))));
+
+                when(zoneRepo.findById(new ZoneId("zone-1")))
+                                .thenReturn(Optional.of(mockZone));
+
                 CheckoutResult result = saga.executeCheckout(order.getOrderId(), "token-123", null);
 
-                // verify checkoutresult:
                 assertEquals(List.of("ISS-1"), result.issuedTicketCodes());
                 assertEquals(OrderStatus.CHECKED_OUT.name(), result.orderStatus());
 
                 verify(mockZone).markSold(new SeatId("seat-1"));
                 verify(zoneRepo).save(mockZone);
-                // verify purchase record appended and notification sent
+
                 ArgumentCaptor<PurchaseRecord> captor = ArgumentCaptor.forClass(PurchaseRecord.class);
                 verify(purchaseRepo).append(captor.capture());
+
                 PurchaseRecord rec = captor.getValue();
                 assertNotNull(rec.getRecordId());
 
                 verify(orderRepo).save(order);
                 verify(notificationPort).sendPurchaseSuccess(order.getBuyerRef(), rec.getRecordId());
+
                 assertEquals(OrderStatus.CHECKED_OUT, order.getStatus());
         }
 }
