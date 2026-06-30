@@ -64,7 +64,7 @@ public class WsepHttpClient {
             String responseBody = response.body();
             if (responseBody == null || responseBody.isBlank()) {
                 log.warn("WSEP returned empty response body, action_type={}", actionType);
-                throw new WsepCommunicationException("WSEP returned an empty response");
+                throw new WsepEmptyResponseException("WSEP returned an empty response");
             }
 
             return responseBody.trim();

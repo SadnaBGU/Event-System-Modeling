@@ -70,7 +70,45 @@ class PaymentGatewayHttpAdapterTest {
 
             assertFalse(result.success());
             assertNull(result.transactionId());
-            assertTrue(result.errorMessage().contains("Payment declined"));
+            assertTrue(result.errorMessage().toLowerCase().contains("declined"));
+        }
+    }
+
+    // REQ: SYS-03, UC 9 - an unexpected WSEP pay response (neither a transaction id nor -1)
+    // must NOT be treated as a successful payment, and yields an informative message.
+    @Test
+    void charge_whenWsepReturnsUnexpected_returnsUnexpectedFailureNotSuccess() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "986-UNRECOGNIZED");
+
+            PaymentGatewayHttpAdapter adapter =
+                    new PaymentGatewayHttpAdapter(new WsepHttpClient(server.properties()));
+
+            PaymentResult result = adapter.charge("order-1", USD_1000, BUYER, VALID_PAYMENT_JSON);
+
+            assertFalse(result.success());
+            assertNull(result.transactionId());
+            assertTrue(result.errorMessage().toLowerCase().contains("unexpected"),
+                    "message should flag an unexpected response: " + result.errorMessage());
+        }
+    }
+
+    // REQ: SYS-03, UC 9 - WSEP answering HTTP 200 with an empty body (the live "unexpected"
+    // case, e.g. CVV 986) is reported as an unexpected response, not a decline or a crash.
+    @Test
+    void charge_whenWsepReturnsEmptyBody_returnsUnexpectedFailure() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "");
+
+            PaymentGatewayHttpAdapter adapter =
+                    new PaymentGatewayHttpAdapter(new WsepHttpClient(server.properties()));
+
+            PaymentResult result = adapter.charge("order-1", USD_1000, BUYER, VALID_PAYMENT_JSON);
+
+            assertFalse(result.success());
+            assertNull(result.transactionId());
+            assertTrue(result.errorMessage().toLowerCase().contains("unexpected"),
+                    "empty body should be reported as unexpected: " + result.errorMessage());
         }
     }
 
@@ -99,6 +137,32 @@ class PaymentGatewayHttpAdapterTest {
             PaymentResult result = adapter.charge("order-1", USD_1000, BUYER, "{bad-json");
 
             assertFalse(result.success());
+            assertEquals(0, server.requestCount());
+        }
+    }
+
+    // REQ: ROB-01, UC 9 - an invalid CVV fails with a CVV-specific message and never calls WSEP.
+    @Test
+    void charge_whenCvvInvalid_returnsCvvMessageWithoutHttpCall() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            PaymentGatewayHttpAdapter adapter =
+                    new PaymentGatewayHttpAdapter(new WsepHttpClient(server.properties()));
+
+            String badCvv = """
+                    {
+                      "card_number": "2222333344445555",
+                      "month": "4",
+                      "year": "2026",
+                      "holder": "Israel Israelovice",
+                      "cvv": "12",
+                      "id": "20444444"
+                    }
+                    """;
+
+            PaymentResult result = adapter.charge("order-1", USD_1000, BUYER, badCvv);
+
+            assertFalse(result.success());
+            assertTrue(result.errorMessage().contains("CVV"), "message should name CVV: " + result.errorMessage());
             assertEquals(0, server.requestCount());
         }
     }

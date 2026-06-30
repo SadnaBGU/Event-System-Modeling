@@ -7,6 +7,7 @@ import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.infrastructure.external.wsep.common.WsepAction;
 import com.eventsystem.infrastructure.external.wsep.common.WsepCommunicationException;
+import com.eventsystem.infrastructure.external.wsep.common.WsepEmptyResponseException;
 import com.eventsystem.infrastructure.external.wsep.common.WsepHttpClient;
 import com.eventsystem.infrastructure.external.wsep.common.WsepResponseParser;
 import com.eventsystem.infrastructure.external.wsep.common.WsepPaymentDetails;
@@ -27,6 +28,9 @@ import org.slf4j.LoggerFactory;
 public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentGatewayHttpAdapter.class);
+
+    private static final String UNEXPECTED_RESPONSE_MESSAGE =
+            "We received an unexpected response from the payment provider, so your payment could not be confirmed. Please try again.";
 
     private final WsepHttpClient client;
 
@@ -54,18 +58,32 @@ public class PaymentGatewayHttpAdapter implements IPaymentGatewayPort {
 
             String response = client.post(params);
 
+            // WSEP pay has three outcomes: a numeric transaction id (approved), "-1" (declined),
+            // or anything else (an unexpected response that must NOT count as a payment).
             if (WsepResponseParser.isFailure(response)) {
                 log.warn("WSEP payment declined for orderId={}", orderId);
-                return PaymentResult.failed("Payment declined by WSEP");
+                return PaymentResult.failed(
+                        "Your card was declined. Please check the card number, expiry date and CVV, then try again.");
+            }
+
+            if (!WsepResponseParser.isPayTransactionId(response)) {
+                log.error("Unexpected WSEP payment response for orderId={}: {}", orderId, response);
+                return PaymentResult.failed(UNEXPECTED_RESPONSE_MESSAGE);
             }
 
             log.info("WSEP payment succeeded for orderId={}, transactionId={}", orderId, response.trim());
             return PaymentResult.successful(response.trim());
 
+        } catch (WsepEmptyResponseException e) {
+            // WSEP answered (HTTP 200) but with an empty body — an unexpected response, not a
+            // normal decline and not a connectivity failure. Fail the payment with a clear message.
+            log.error("WSEP returned an empty payment response for orderId={}", orderId);
+            return PaymentResult.failed(UNEXPECTED_RESPONSE_MESSAGE);
+
         } catch (WsepCommunicationException e) {
             log.error("WSEP payment communication failure for orderId={}", orderId, e);
             throw e;
-            
+
         } catch (Exception e) {
             log.warn("WSEP payment request failed before/after call for orderId={}: {}", orderId, e.getMessage());
             return PaymentResult.failed(e.getMessage());
