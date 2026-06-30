@@ -93,6 +93,25 @@ class PaymentGatewayHttpAdapterTest {
         }
     }
 
+    // REQ: SYS-03, UC 9 - WSEP answering HTTP 200 with an empty body (the live "unexpected"
+    // case, e.g. CVV 986) is reported as an unexpected response, not a decline or a crash.
+    @Test
+    void charge_whenWsepReturnsEmptyBody_returnsUnexpectedFailure() throws Exception {
+        try (WsepTestServer server = new WsepTestServer()) {
+            server.enqueue(200, "");
+
+            PaymentGatewayHttpAdapter adapter =
+                    new PaymentGatewayHttpAdapter(new WsepHttpClient(server.properties()));
+
+            PaymentResult result = adapter.charge("order-1", USD_1000, BUYER, VALID_PAYMENT_JSON);
+
+            assertFalse(result.success());
+            assertNull(result.transactionId());
+            assertTrue(result.errorMessage().toLowerCase().contains("unexpected"),
+                    "empty body should be reported as unexpected: " + result.errorMessage());
+        }
+    }
+
     // REQ: ROB-01, TST-17, UC 9, UAT-29 - payment gateway timeout/down is propagated as communication failure.
     @Test
     void charge_whenWsepHttpFails_throwsCommunicationException() throws Exception {
