@@ -11,6 +11,12 @@ export function CompanyDetailPage() {
   const qc = useQueryClient();
   const perms = useCompanyPermissions(companyId);
   const canViewSales = perms.can('GENERATE_SALES_REPORT');
+  // Each management action is gated by the specific permission it needs, so a manager
+  // with only VENUE_CONFIGURATION (venue editing) never sees policy or event-detail editing.
+  const canEditPolicies = perms.can('MODIFY_POLICIES');
+  const canCreateEvents = perms.can('EVENT_INVENTORY_MANAGEMENT');
+  const canManageRoles = perms.isOwner || perms.isAdmin;
+  const canChangeStatus = perms.isOwner || perms.isAdmin;
 
   const company = useQuery({
     queryKey: ['company', companyId],
@@ -52,10 +58,16 @@ export function CompanyDetailPage() {
       {c.contactDetails && <p className="meta">{c.contactDetails}</p>}
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-        <Link to={`/companies/${companyId}/roles`} className="btn">Manage roles</Link>
-        <Link to={`/companies/${companyId}/policies`} className="btn">Company policies</Link>
-        <Link to={`/companies/${companyId}/events/new`} className="btn">New event</Link>
-        {c.status === 'ACTIVE' ? (
+        {canManageRoles && (
+          <Link to={`/companies/${companyId}/roles`} className="btn">Manage roles</Link>
+        )}
+        {canEditPolicies && (
+          <Link to={`/companies/${companyId}/policies`} className="btn">Company policies</Link>
+        )}
+        {canCreateEvents && (
+          <Link to={`/companies/${companyId}/events/new`} className="btn">New event</Link>
+        )}
+        {canChangeStatus && c.status === 'ACTIVE' ? (
           <button
             type="button"
             className="btn ghost"
@@ -64,7 +76,7 @@ export function CompanyDetailPage() {
           >
             Suspend
           </button>
-        ) : c.status === 'SUSPENDED' ? (
+        ) : canChangeStatus && c.status === 'SUSPENDED' ? (
           <button
             type="button"
             className="btn ghost"
