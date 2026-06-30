@@ -19,7 +19,7 @@ spring:
 eventsystem:
   security:
     jwt-secret: "test_test_test_test_test_test_te"
-    token-validity: PT5M
+    token-validity: PT20M
     bcrypt-strength: 4
   recovery:
     enabled: false
