@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.policy.discount.Discount;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.policy.shared.ZonePurchaseContext;
@@ -31,6 +32,18 @@ public final class PolicyTestFixtures {
 
     private PolicyTestFixtures() {
     }
+
+        public static PurchaseContext contextForGuest(PurchaseContext c) {
+        return new PurchaseContext(
+                c.eventId(),
+                c.companyId(),
+                c.zones(),
+                BuyerType.GUEST,
+                c.buyerBirthDate(),
+                c.purchaseDate(),
+                c.discountCode());
+    }
+    
 
     public static PurchaseContext contextWithTickets(ZoneId... zones) {
         return contextForCompanyAndEvent(
@@ -80,6 +93,7 @@ public final class PolicyTestFixtures {
                 eventId,
                 companyId,
                 zoneContextsFromTicketZones(zones),
+                BuyerType.MEMBER,
                 buyerBirthDate,
                 PURCHASE_DATE,
                 discountCode);
@@ -96,6 +110,7 @@ public final class PolicyTestFixtures {
                 eventId,
                 companyId,
                 zoneContextsFromTicketZones(zones),
+                BuyerType.MEMBER,
                 buyerBirthDate,
                 purchaseDate,
                 discountCode);
@@ -112,6 +127,7 @@ public final class PolicyTestFixtures {
                 eventId,
                 companyId,
                 zones,
+                BuyerType.MEMBER,
                 buyerBirthDate,
                 purchaseDate,
                 discountCode);

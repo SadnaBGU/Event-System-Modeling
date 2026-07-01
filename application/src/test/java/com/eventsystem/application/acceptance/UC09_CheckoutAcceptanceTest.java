@@ -4,6 +4,7 @@ import com.eventsystem.application.appexceptions.IssuanceFailedException;
 import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.PaymentFailedException;
 import com.eventsystem.application.order.CheckoutResult;
+import com.eventsystem.application.order.TicketIssuanceItem;
 import com.eventsystem.domain.order.OrderStatus;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.BuyerReference;
@@ -84,7 +85,7 @@ class UC09_CheckoutAcceptanceTest {
 
         assertThat(app.ticketing.attempts).isEqualTo(1);
         assertThat(app.ticketing.lastIssuedItems).hasSize(2);
-        assertThat(app.ticketing.lastIssuedItems.stream().mapToInt(OrderItem::getQuantity).sum())
+        assertThat(app.ticketing.lastIssuedItems.stream().mapToInt(TicketIssuanceItem::quantity).sum())
                 .isEqualTo(5);
 
         assertThat(app.order(orderId).getStatus()).isEqualTo(OrderStatus.CHECKED_OUT);

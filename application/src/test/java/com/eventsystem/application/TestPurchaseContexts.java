@@ -2,6 +2,7 @@ package com.eventsystem.application;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.policy.shared.ZonePurchaseContext;
@@ -67,6 +68,7 @@ public final class TestPurchaseContexts {
                 eventId,
                 companyId,
                 zoneContextsFromTicketZones(List.of(zones)),
+                BuyerType.MEMBER,
                 buyerBirthDate,
                 purchaseDate,
                 discountCode
@@ -91,6 +93,7 @@ public final class TestPurchaseContexts {
                                 Money.of(new BigDecimal(subtotal), DEFAULT_CURRENCY)
                         )
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 LocalDate.now(),
                 null
@@ -125,6 +128,7 @@ public final class TestPurchaseContexts {
                 eventId,
                 companyId,
                 zoneContextsFromOrderItems(items),
+                BuyerType.MEMBER,
                 buyerBirthDate,
                 purchaseDate,
                 discountCode
