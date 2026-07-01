@@ -52,18 +52,17 @@ public class CheckoutSaga {
     private final IPurchasePolicyValidationPort purchasePolicyPort;
     private final IDiscountApplicationPort discountPort;
 
-    
-    private final IEventQueryPort eventQueryPort; 
+    private final IEventQueryPort eventQueryPort;
 
     public CheckoutSaga(IActiveOrderRepository orderRepository,
-                        IPurchaseRecordRepository purchaseRecordRepository,
-                        IPaymentGatewayPort paymentGateway,
-                        ITicketIssuancePort ticketIssuance,
-                        INotificationPort notificationPort,
-                        IZoneRepository zoneRepository,
-                        IPurchasePolicyValidationPort purchasePolicyPort,
-                        IDiscountApplicationPort discountPort,
-                        IEventQueryPort eventQueryPort) {
+            IPurchaseRecordRepository purchaseRecordRepository,
+            IPaymentGatewayPort paymentGateway,
+            ITicketIssuancePort ticketIssuance,
+            INotificationPort notificationPort,
+            IZoneRepository zoneRepository,
+            IPurchasePolicyValidationPort purchasePolicyPort,
+            IDiscountApplicationPort discountPort,
+            IEventQueryPort eventQueryPort) {
         this.orderRepository = orderRepository;
         this.purchaseRecordRepository = purchaseRecordRepository;
         this.paymentGateway = paymentGateway;
@@ -76,16 +75,22 @@ public class CheckoutSaga {
     }
 
     /**
-     * This method orchestrates the entire checkout process for an active order. It includes:
+     * This method orchestrates the entire checkout process for an active order. It
+     * includes:
      * 1. Validating the order and its expiration.
-     * 2. Validating purchase policies before discounts (as required by Stream 4 instructions).
+     * 2. Validating purchase policies before discounts (as required by Stream 4
+     * instructions).
      * 3. Calculating the total price and applying discounts.
      * 4. Charging the payment through the PaymentGateway.
-     * 5. Issuing tickets through the TicketIssuance service (distributed transaction).
-     * 6. If any step fails, compensating actions are taken (e.g., refunding payment, unlocking seats).
-     * 7. If all steps succeed, a purchase record is created, the order is marked as checked out, and a success notification is sent.
-      * 
-      * Note: This method assumes that the caller has already verified that the order exists and belongs to the buyer.
+     * 5. Issuing tickets through the TicketIssuance service (distributed
+     * transaction).
+     * 6. If any step fails, compensating actions are taken (e.g., refunding
+     * payment, unlocking seats).
+     * 7. If all steps succeed, a purchase record is created, the order is marked as
+     * checked out, and a success notification is sent.
+     * 
+     * Note: This method assumes that the caller has already verified that the order
+     * exists and belongs to the buyer.
      */
     /**
      * REQ: INV-10, ROB-01, UC 9, UAT-26, UAT-29, UAT-30
@@ -94,8 +99,10 @@ public class CheckoutSaga {
      * Success: payment + ticket issuing succeed, reserved inventory becomes SOLD,
      * purchase record is saved, and the order becomes CHECKED_OUT.
      *
-     * Compensation: if payment succeeds but ticket issuing fails, refund is requested,
-     * reserved inventory is released, the order becomes CANCELLED, and no purchase record is saved.
+     * Compensation: if payment succeeds but ticket issuing fails, refund is
+     * requested,
+     * reserved inventory is released, the order becomes CANCELLED, and no purchase
+     * record is saved.
      */
     @Transactional(noRollbackFor = IssuanceFailedException.class)
     public CheckoutResult executeCheckout(String orderId, String paymentToken, String discountCode) {
@@ -106,30 +113,33 @@ public class CheckoutSaga {
                     logger.warn("Checkout failed: Order not found");
                     return new OrderNotFoundException(orderId);
                 });
-        
+
         if (order.isExpired()) {
             logger.warn("Checkout failed: Order reservation timer has expired");
             throw new ActiveOrderHasExpiredException(orderId);
         }
 
         // 2. Validating purchase policies before discounts
-        PurchaseContext context = purchasePolicyPort.createPurchaseContext( new EventId(order.getEventId()), order.getBuyerRef(), order.getItems());
+        PurchaseContext context = purchasePolicyPort.createPurchaseContext(new EventId(order.getEventId()),
+                order.getBuyerRef(), order.getItems());
         PolicyValidationResult policyValidationResult;
         try {
             policyValidationResult = purchasePolicyPort.evaluatePurchasePolicyFor(context);
         } catch (Exception e) {
             logger.error("Error during purchase policy validation: {}", e.getMessage());
-            throw new OrderViolatesPolicyException("Error validating purchase policy for order " + orderId + ": " + e.getMessage());
+            throw new OrderViolatesPolicyException(
+                    "Error validating purchase policy for order " + orderId + ": " + e.getMessage());
         }
-        
+
         if (!policyValidationResult.isSuccess()) {
             logger.warn("Checkout failed: Order violates purchase policy for event {}", order.getEventId());
             logger.warn("Reason: {}", policyValidationResult.reason());
-            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event " + order.getEventId() +"Reason:" + policyValidationResult.reason());
+            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event "
+                    + order.getEventId() + "Reason:" + policyValidationResult.reason());
         }
 
         // 3. Calculating the total price and applying discounts
-        
+
         Money finalAmount;
         DiscountSnapshot discount;
         try {
@@ -154,7 +164,7 @@ public class CheckoutSaga {
             notificationPort.sendPurchaseFailure(order.getBuyerRef(), "Payment processing error: " + e.getMessage());
             throw new PaymentFailedException("Payment processing failed for order " + orderId + ": " + e.getMessage());
         }
-        
+
         if (!paymentResult.success()) {
             String reason = (paymentResult.errorMessage() == null || paymentResult.errorMessage().isBlank())
                     ? "Your payment could not be completed."
@@ -166,10 +176,14 @@ public class CheckoutSaga {
 
         logger.info("Payment successful. Proceeding with ticket issuance.");
 
-        // 5. Issuing tickets through the TicketIssuance service (distributed transaction)
+        // 5. Issuing tickets through the TicketIssuance service (distributed
+        // transaction)
         IssuanceResult issuanceResult;
         try {
-            issuanceResult = ticketIssuance.issueTickets(order.getEventId(), orderId, order.getItems(), order.getBuyerRef());
+            List<TicketIssuanceItem> issuanceItems = buildTicketIssuanceItems(order.getItems());
+
+            issuanceResult = ticketIssuance.issueTickets(order.getEventId(), orderId, issuanceItems, order.getBuyerRef());
+            
         } catch (Exception e) {
             logger.error("Ticket issuance threw an exception for order {}. Triggering compensation.", orderId, e);
 
@@ -177,38 +191,36 @@ public class CheckoutSaga {
                     order,
                     paymentResult,
                     finalAmount,
-                    "Ticket issuance service failed: " + e.getMessage()
-            );
+                    "Ticket issuance service failed: " + e.getMessage());
 
             throw new IssuanceFailedException("Ticket issuance failed for order " + orderId + ": " + e.getMessage());
         }
-        
+
         if (!issuanceResult.success()) {
             logger.warn(
                     "Checkout failed for order {}: ticket issuance rejected request. Reason: {}",
                     orderId,
-                    issuanceResult.errorMessage()
-            );
+                    issuanceResult.errorMessage());
 
             compensateAfterTicketIssuanceFailure(
                     order,
                     paymentResult,
                     finalAmount,
-                    "Ticket issuance failed: " + issuanceResult.errorMessage()
-            );
+                    "Ticket issuance failed: " + issuanceResult.errorMessage());
 
             throw new IssuanceFailedException(
-                    "Ticket issuance failed for order " + orderId + ": " + issuanceResult.errorMessage()
-            );
+                    "Ticket issuance failed for order " + orderId + ": " + issuanceResult.errorMessage());
         }
 
-        // 6. If all steps succeed, we create a purchase record, mark the order as checked out, and send a success notification
+        // 6. If all steps succeed, we create a purchase record, mark the order as
+        // checked out, and send a success notification
         markReservedInventoryAsSold(order.getItems());
         EventSnapshot eventSnapshot = eventQueryPort.getEventSnapshot(order.getEventId());
         BuyerSnapshot buyerSnapshot = new BuyerSnapshot("Member " + order.getBuyerRef().memberId());
-        
+
         List<PurchasedItem> purchasedItems = order.getItems().stream()
-                .map(item -> new PurchasedItem(item.getZoneId(), item.getSeatId(), item.getQuantity(), item.getUnitPrice()))
+                .map(item -> new PurchasedItem(item.getZoneId(), item.getSeatId(), item.getQuantity(),
+                        item.getUnitPrice()))
                 .collect(Collectors.toList());
 
         PurchaseRecord receipt = PurchaseRecord.create(
@@ -219,10 +231,10 @@ public class CheckoutSaga {
                 finalAmount,
                 List.of(discount),
                 paymentResult.transactionId(),
-                issuanceResult.issuanceConfirmationId()
-        );
+                issuanceResult.issuanceConfirmationId());
 
-        // 7. Append the purchase record, mark order as CHECKED_OUT, and send notification
+        // 7. Append the purchase record, mark order as CHECKED_OUT, and send
+        // notification
         purchaseRecordRepository.append(receipt);
         order.checkout();
         orderRepository.save(order);
@@ -231,15 +243,14 @@ public class CheckoutSaga {
         logger.info(
                 "Checkout process completed successfully for orderId: {}. Receipt recordId: {}",
                 orderId,
-                receipt.getRecordId()
-        );
+                receipt.getRecordId());
 
         return new CheckoutResult(orderId, receipt.getRecordId(), order.getStatus().name(), finalAmount,
-                                     paymentResult.transactionId(), issuanceResult.issuedTicketCodes());
+                paymentResult.transactionId(), issuanceResult.issuedTicketCodes());
     }
 
     private void compensateAfterTicketIssuanceFailure(ActiveOrder order, PaymentResult paymentResult,
-                                                        Money finalAmount, String reason) {
+            Money finalAmount, String reason) {
         requestRefund(order, paymentResult, finalAmount, reason);
 
         List<OrderItem> cancelledItems = order.cancel();
@@ -248,26 +259,23 @@ public class CheckoutSaga {
 
         safeNotifyPurchaseFailure(
                 order,
-                "Technical error during ticket issuance. Refund was requested."
-        );
+                "Technical error during ticket issuance. Refund was requested.");
     }
 
     private void requestRefund(ActiveOrder order, PaymentResult paymentResult,
-                                                        Money finalAmount, String reason) {
+            Money finalAmount, String reason) {
         try {
             paymentGateway.refund(paymentResult.transactionId(), finalAmount, reason);
             logger.info(
                     "Refund requested for order {} and transaction {}",
                     order.getOrderId(),
-                    paymentResult.transactionId()
-            );
+                    paymentResult.transactionId());
         } catch (Exception refundError) {
             logger.error(
                     "CRITICAL: refund failed for order {} and transaction {} after ticket issuance failure",
                     order.getOrderId(),
                     paymentResult.transactionId(),
-                    refundError
-            );
+                    refundError);
         }
     }
 
@@ -278,8 +286,7 @@ public class CheckoutSaga {
             zoneRepository.withLock(zoneId, () -> {
                 Zone zone = zoneRepository.findById(zoneId)
                         .orElseThrow(() -> new IllegalStateException(
-                                "Zone " + item.getZoneId() + " not found while releasing reserved inventory"
-                        ));
+                                "Zone " + item.getZoneId() + " not found while releasing reserved inventory"));
 
                 if (zone.zoneType() == ZoneType.STANDING) {
                     zone.releaseStanding(item.getQuantity());
@@ -299,8 +306,7 @@ public class CheckoutSaga {
             zoneRepository.withLock(zoneId, () -> {
                 Zone zone = zoneRepository.findById(zoneId)
                         .orElseThrow(() -> new IllegalStateException(
-                                "Zone " + item.getZoneId() + " not found while finalizing sold inventory"
-                        ));
+                                "Zone " + item.getZoneId() + " not found while finalizing sold inventory"));
 
                 if (zone.zoneType() == ZoneType.STANDING) {
                     zone.markSoldStanding(item.getQuantity());
@@ -316,8 +322,7 @@ public class CheckoutSaga {
     private SeatId requireSeatId(OrderItem item, String operation) {
         if (item.getSeatId() == null || item.getSeatId().isBlank()) {
             throw new IllegalStateException(
-                    "Missing seat id while " + operation + " in zone " + item.getZoneId()
-            );
+                    "Missing seat id while " + operation + " in zone " + item.getZoneId());
         }
 
         return new SeatId(item.getSeatId());
@@ -330,8 +335,48 @@ public class CheckoutSaga {
             logger.warn(
                     "Failed to send purchase-failure notification for order {}",
                     order.getOrderId(),
-                    notificationError
-            );
+                    notificationError);
         }
+    }
+
+    private List<TicketIssuanceItem> buildTicketIssuanceItems(List<OrderItem> orderItems) {
+        return orderItems.stream()
+                .map(this::toTicketIssuanceItem)
+                .toList();
+    }
+
+    private TicketIssuanceItem toTicketIssuanceItem(OrderItem item) {
+        ZoneId zoneId = new ZoneId(item.getZoneId());
+
+        Zone zone = zoneRepository.findById(zoneId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Zone " + item.getZoneId() + " not found while preparing ticket issuance"));
+
+        if (zone.zoneType() == ZoneType.STANDING) {
+            return new TicketIssuanceItem(
+                    item.getZoneId(),
+                    zone.zoneName(),
+                    item.getQuantity(),
+                    null,
+                    null,
+                    null);
+        }
+
+        SeatId seatId = requireSeatId(item, "preparing seated ticket issuance");
+
+        var seat = zone.rows().stream()
+                .flatMap(row -> row.seats().stream())
+                .filter(s -> s.seatId().equals(seatId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Seat " + item.getSeatId() + " not found in zone " + item.getZoneId()));
+
+        return new TicketIssuanceItem(
+                item.getZoneId(),
+                zone.zoneName(),
+                item.getQuantity(),
+                item.getSeatId(),
+                seat.rowLabel(),
+                seat.seatNumber());
     }
 }

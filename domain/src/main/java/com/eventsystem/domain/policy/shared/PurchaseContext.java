@@ -2,6 +2,7 @@ package com.eventsystem.domain.policy.shared;
 
 import com.eventsystem.domain.company.CompanyId;
 import com.eventsystem.domain.event.EventId;
+import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.ZoneId;
 
@@ -17,6 +18,7 @@ public record PurchaseContext(
         EventId eventId,
         CompanyId companyId,
         Map<ZoneId, ZonePurchaseContext> zones,
+        BuyerType buyerType,
         LocalDate buyerBirthDate,
         LocalDate purchaseDate,
         String discountCode) {
@@ -27,9 +29,10 @@ public record PurchaseContext(
         Objects.requireNonNull(eventId, "eventId must not be null");
         Objects.requireNonNull(companyId, "companyId must not be null");
         Objects.requireNonNull(zones, "zones must not be null");
-        Objects.requireNonNull(buyerBirthDate, "buyerBirthDate must not be null");
+        Objects.requireNonNull(buyerType, "buyerType must not be null");
         Objects.requireNonNull(purchaseDate, "purchaseDate must not be null");
 
+        validateBirthDateForBuyerType(buyerType, buyerBirthDate);
         validateZones(zones);
 
         zones = Collections.unmodifiableMap(new LinkedHashMap<>(zones));
@@ -106,6 +109,7 @@ public record PurchaseContext(
                 eventId,
                 companyId,
                 zones,
+                buyerType,
                 buyerBirthDate,
                 purchaseDate,
                 code);
@@ -116,6 +120,7 @@ public record PurchaseContext(
                 eventId,
                 companyId,
                 zones,
+                buyerType,
                 buyerBirthDate,
                 newPurchaseDate,
                 discountCode);
@@ -139,6 +144,7 @@ public record PurchaseContext(
                 eventId,
                 companyId,
                 filteredZones,
+                buyerType,
                 buyerBirthDate,
                 purchaseDate,
                 discountCode);
@@ -175,5 +181,11 @@ public record PurchaseContext(
         return discountCode == null || discountCode.isBlank()
                 ? null
                 : discountCode.trim();
+    }
+
+    private static void validateBirthDateForBuyerType(BuyerType buyerType, LocalDate buyerBirthDate) {
+        if (buyerType == BuyerType.MEMBER && buyerBirthDate == null) {
+            throw new IllegalArgumentException("buyerBirthDate must not be null for member buyers");
+        }
     }
 }

@@ -4,6 +4,8 @@ public enum PolicyType {
     ALWAYS_TRUE,
     NEVER_ALLOW,
 
+    REQUIRE_MEMBER,
+
     MIN_TICKETS,
     MAX_TICKETS,
     MIN_AGE,

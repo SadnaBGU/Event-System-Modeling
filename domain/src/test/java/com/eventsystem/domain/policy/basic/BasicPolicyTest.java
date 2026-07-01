@@ -10,6 +10,7 @@ import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
 import com.eventsystem.domain.policy.rule.basic.MinAgePolicy;
 import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
 import com.eventsystem.domain.policy.rule.basic.NeverAllowPolicy;
+import com.eventsystem.domain.policy.rule.basic.RequireMemberPolicy;
 import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
@@ -332,6 +333,66 @@ class BasicPolicyTest {
                 .isInstanceOf(PolicyException.class)
                 .hasMessageContaining("Purchase policy restricts current purchase");
     }
+
+    @Test
+void RequireMemberPolicy_evaluateValidateAndRequireRejectGuest() {
+    PurchaseContext memberContext = contextWithBirthDate(
+            LocalDate.now().minusYears(18).minusDays(1),
+            REGULAR_ZONE);
+    PurchaseContext guestContext = contextForGuest(memberContext);
+
+    PolicyValidationResult guestResult = RequireMemberPolicy.INSTANCE.evaluate(guestContext);
+
+    assertThat(guestResult.isSuccess()).isFalse();
+    assertThat(guestResult.reason()).contains("Purchase restricted to signed members only");
+    assertThat(RequireMemberPolicy.INSTANCE.validate(guestContext)).isFalse();
+
+    assertThatThrownBy(() -> RequireMemberPolicy.INSTANCE.require(guestContext))
+            .isInstanceOf(PolicyException.class)
+            .hasMessageContaining("Purchase restricted to signed members only");
+}
+
+@Test
+void RequireMemberPolicy_evaluateValidateAndRequireAcceptsMember() {
+    PurchaseContext memberContext = contextWithBirthDate(
+            LocalDate.now().minusYears(18).minusDays(1),
+            REGULAR_ZONE);
+
+    PolicyValidationResult result = RequireMemberPolicy.INSTANCE.evaluate(memberContext);
+
+    assertThat(result.isSuccess()).isTrue();
+    assertThat(RequireMemberPolicy.INSTANCE.validate(memberContext)).isTrue();
+
+    assertThatCode(() -> RequireMemberPolicy.INSTANCE.require(memberContext))
+            .doesNotThrowAnyException();
+}
+
+@Test
+void MinAgePolicy_evaluateValidateAndRequireRejectGuestAcceptsValidMember() {
+    MinAgePolicy policy = new MinAgePolicy(18);
+
+    PurchaseContext memberContext = contextWithBirthDate(
+            LocalDate.now().minusYears(18).minusDays(1),
+            REGULAR_ZONE);
+    PurchaseContext guestContext = contextForGuest(memberContext);
+
+    PolicyValidationResult memberResult = policy.evaluate(memberContext);
+    PolicyValidationResult guestResult = policy.evaluate(guestContext);
+
+    assertThat(guestResult.isSuccess()).isFalse();
+    assertThat(guestResult.reason()).contains("Purchase restricted to signed members only");
+    assertThat(policy.validate(guestContext)).isFalse();
+
+    assertThatThrownBy(() -> policy.require(guestContext))
+            .isInstanceOf(PurchasePolicyException.class)
+            .hasMessageContaining("Purchase restricted to signed members only");
+
+    assertThat(memberResult.isSuccess()).isTrue();
+    assertThat(policy.validate(memberContext)).isTrue();
+
+    assertThatCode(() -> policy.require(memberContext))
+            .doesNotThrowAnyException();
+}
 
     // PP-05 / PP-06 / DP-06 / DP-07:
     // Basic policies expose the correct PolicyType used by conflict detection and

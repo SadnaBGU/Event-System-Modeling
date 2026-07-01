@@ -59,6 +59,8 @@ import com.eventsystem.domain.purchaserecord.EventSnapshot;
 import com.eventsystem.domain.purchaserecord.IPurchaseRecordRepository;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
+import com.eventsystem.domain.zone.Row;
+import com.eventsystem.domain.zone.Seat;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
 import com.eventsystem.domain.zone.ZoneId;
@@ -153,7 +155,17 @@ class CheckoutSagaTest {
         mockWithLockExecution();
 
         Zone mockZone = mock(Zone.class);
+
         when(mockZone.zoneType()).thenReturn(ZoneType.SEATED);
+        when(mockZone.zoneName()).thenReturn("VIP");
+        when(mockZone.rows()).thenReturn(List.of(
+                new Row(
+                        "A",
+                        List.of(new Seat(
+                                new SeatId("SEAT-42"),
+                                "A",
+                                42)))));
+
         when(zoneRepository.findById(new ZoneId(zoneId))).thenReturn(Optional.of(mockZone));
 
         return mockZone;
@@ -163,7 +175,10 @@ class CheckoutSagaTest {
         mockWithLockExecution();
 
         Zone mockZone = mock(Zone.class);
+
         when(mockZone.zoneType()).thenReturn(ZoneType.STANDING);
+        when(mockZone.zoneName()).thenReturn(zoneId);
+
         when(zoneRepository.findById(new ZoneId(zoneId))).thenReturn(Optional.of(mockZone));
 
         return mockZone;
@@ -171,7 +186,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_HappyPath_CompletesSuccessfullyAndReturnsTicketCodes() {
-        // REQ: INV-10, UC 9, UAT-26
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
@@ -203,7 +217,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_HappyPath_ForStandingZone_MarksStandingInventorySold() {
-        // REQ: INV-10, UC 9, UAT-26
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
@@ -246,7 +259,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_TicketIssuanceFails_TriggersRefundReleaseCancelAndNoReceipt() {
-        // REQ: INV-10, ROB-01, UC 9, UAT-30
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
@@ -275,7 +287,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_TicketIssuanceFails_ForStandingZone_ReleasesStandingQuantityAndCancelsOrder() {
-        // REQ: INV-10, ROB-01, UC 9, UAT-30
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
@@ -359,8 +370,6 @@ class CheckoutSagaTest {
             checkoutSaga.executeCheckout(ORDER_ID, "INVALID_TOKEN", "DISCOUNT10");
         });
 
-        // The purchase-failure notification now carries the specific decline reason
-        // rather than a generic "Payment declined".
         verify(notificationPort).sendPurchaseFailure(eq(testBuyer), eq("Insufficient funds"));
         verify(ticketIssuance, never()).issueTickets(any(), any(), any(), any());
         verify(purchaseRecordRepository, never()).append(any());
@@ -368,7 +377,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_IssuanceThrowsException_TriggersRefundReleaseCancelAndNoReceipt() {
-        // REQ: INV-10, ROB-01, UC 9, UAT-29/UAT-30
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
@@ -460,15 +468,8 @@ class CheckoutSagaTest {
         verify(purchaseRecordRepository, never()).append(any());
     }
 
-    // Transactional related tests
     @Test
     void executeCheckout_IsTransactionalAndDoesNotRollbackCompensationOnIssuanceFailure() throws Exception {
-        // REQ: PERS-05, INV-10, ROB-01, UC 9, UAT-30
-        // V3 requires each use case to be a transaction boundary.
-        // For ticket issuance failure after payment, compensation must be committed:
-        // refund requested, inventory released, order cancelled, and no purchase record
-        // saved.
-
         Transactional transactional = CheckoutSaga.class
                 .getMethod("executeCheckout", String.class, String.class, String.class)
                 .getAnnotation(Transactional.class);
@@ -478,7 +479,6 @@ class CheckoutSagaTest {
 
     @Test
     void executeCheckout_WhenRefundThrowsAfterIssuanceFailure_StillReleasesInventoryCancelsOrderAndNoReceipt() {
-        // REQ: INV-10, ROB-01, UC 9, UAT-30
         mockSuccessfulPolicyValidation();
         mockNoDiscount();
 
