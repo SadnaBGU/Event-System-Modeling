@@ -51,11 +51,6 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
     }
 
-    @ExceptionHandler(AccountSuspendedReadOnlyException.class)
-    public ResponseEntity<Map<String, Object>> handleSuspendedReadOnlyException(AccountSuspendedReadOnlyException ex, HttpServletRequest request) {
-        return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
-    }
-
     // 2b. Conflict situations - already exists (409 Conflict)
     @ExceptionHandler(AlreadyExistsOrderException.class)
     public ResponseEntity<Map<String, Object>> handleAlreadyExistsOrder(AlreadyExistsOrderException ex,

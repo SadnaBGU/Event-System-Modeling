@@ -53,6 +53,7 @@ public class CheckoutSaga {
     private final IDiscountApplicationPort discountPort;
 
     private final IEventQueryPort eventQueryPort;
+    private final QueueService queueService;
 
     public CheckoutSaga(IActiveOrderRepository orderRepository,
             IPurchaseRecordRepository purchaseRecordRepository,
@@ -63,6 +64,28 @@ public class CheckoutSaga {
             IPurchasePolicyValidationPort purchasePolicyPort,
             IDiscountApplicationPort discountPort,
             IEventQueryPort eventQueryPort) {
+        this(orderRepository,
+            purchaseRecordRepository,
+            paymentGateway,
+            ticketIssuance,
+            notificationPort,
+            zoneRepository,
+            purchasePolicyPort,
+            discountPort,
+            eventQueryPort,
+            null);
+        }
+
+        public CheckoutSaga(IActiveOrderRepository orderRepository,
+            IPurchaseRecordRepository purchaseRecordRepository,
+            IPaymentGatewayPort paymentGateway,
+            ITicketIssuancePort ticketIssuance,
+            INotificationPort notificationPort,
+            IZoneRepository zoneRepository,
+            IPurchasePolicyValidationPort purchasePolicyPort,
+            IDiscountApplicationPort discountPort,
+            IEventQueryPort eventQueryPort,
+            QueueService queueService) {
         this.orderRepository = orderRepository;
         this.purchaseRecordRepository = purchaseRecordRepository;
         this.paymentGateway = paymentGateway;
@@ -72,6 +95,7 @@ public class CheckoutSaga {
         this.purchasePolicyPort = purchasePolicyPort;
         this.discountPort = discountPort;
         this.eventQueryPort = eventQueryPort;
+        this.queueService = queueService;
     }
 
     /**
@@ -238,6 +262,7 @@ public class CheckoutSaga {
         purchaseRecordRepository.append(receipt);
         order.checkout();
         orderRepository.save(order);
+        advanceQueueIfPossible(order.getEventId());
 
         notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.getRecordId());
         logger.info(
@@ -256,6 +281,7 @@ public class CheckoutSaga {
         List<OrderItem> cancelledItems = order.cancel();
         releaseReservedInventory(cancelledItems);
         orderRepository.save(order);
+        advanceQueueIfPossible(order.getEventId());
 
         safeNotifyPurchaseFailure(
                 order,
@@ -336,6 +362,17 @@ public class CheckoutSaga {
                     "Failed to send purchase-failure notification for order {}",
                     order.getOrderId(),
                     notificationError);
+        }
+    }
+
+    private void advanceQueueIfPossible(String eventId) {
+        if (queueService == null) {
+            return;
+        }
+        try {
+            queueService.processNextBatch(eventId);
+        } catch (RuntimeException e) {
+            logger.warn("Failed to advance queue immediately for event {}", eventId, e);
         }
     }
 

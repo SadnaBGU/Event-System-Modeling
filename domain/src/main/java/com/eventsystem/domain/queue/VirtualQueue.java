@@ -114,7 +114,9 @@ public class VirtualQueue implements Persistable<String> {
 
         expireTokens();
 
-        int currentAdmittedCount = admittedSet.size();
+        int currentAdmittedCount = (int) admittedSet.stream()
+                .filter(token -> !token.isConsumed())
+                .count();
         int availableSlots = maxConcurrentAdmissions - currentAdmittedCount;
         
         List<AdmissionToken> newlyAdmitted = new ArrayList<>();
@@ -132,6 +134,7 @@ public class VirtualQueue implements Persistable<String> {
 
     public synchronized void revokeAdmission(BuyerReference buyer) {
         admittedSet.removeIf(token -> token.getBuyerRef().equals(buyer));
+        waitingEntries.removeIf(entry -> entry.getVisitorRef().equals(buyer));
     }
 
     public synchronized boolean isAdmitted(BuyerReference visitor) {

@@ -38,6 +38,7 @@ public class QueueService {
      * Enforces queue admission on high concurrent load.
      * If queue flow is not required, returns immediately.
      */
+    @Transactional
     public void requireAdmissionOrEnqueueOnHighLoad(String eventId, BuyerReference buyer) {
         if (!isHighLoad(eventId)) {
             return;
@@ -49,6 +50,16 @@ public class QueueService {
 
         if (!queue.isAdmitted(buyer)) {
             throw new QueueAdmissionRequiredException(eventId);
+        }
+
+        // Buyer is entering checkout now, so this admission slot can be consumed and
+        // immediately reused by the next waiting buyer.
+        queue.consumeTokenFor(buyer);
+        List<AdmissionToken> newlyAdmitted = queue.admitNextGroup(TOKEN_VALIDITY_MINUTES);
+        queueRepository.save(queue);
+
+        for (AdmissionToken token : newlyAdmitted) {
+            notificationPort.sendQueueTurnArrived(token.getBuyerRef(), eventId);
         }
     }
 
@@ -109,6 +120,7 @@ public class QueueService {
         queueRepository.findAll().forEach(queue -> processNextBatch(queue.getEventId()));
     }
 
+    @Transactional(readOnly = true)
     public AdmissionStatus getAdmissionStatus(String eventId, BuyerReference buyer) {
         return queueRepository.findByEvent(eventId)
                 .map(queue -> new AdmissionStatus(queue.isAdmitted(buyer), queue.positionOf(buyer)))

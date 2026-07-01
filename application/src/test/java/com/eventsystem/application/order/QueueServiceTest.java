@@ -76,6 +76,24 @@ class QueueServiceTest {
     }
 
     @Test
+    void requireAdmissionOrEnqueueOnHighLoad_overThreshold_admitted_consumesAndAdmitsNext() {
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
+        when(mockQueue.isAdmitted(testBuyer)).thenReturn(true);
+
+        BuyerReference nextBuyer = new BuyerReference(BuyerType.MEMBER, "sess-2", "user-456");
+        AdmissionToken nextToken = mock(AdmissionToken.class);
+        when(nextToken.getBuyerRef()).thenReturn(nextBuyer);
+        when(mockQueue.admitNextGroup(anyInt())).thenReturn(List.of(nextToken));
+
+        assertDoesNotThrow(() -> queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer));
+
+        verify(mockQueue).consumeTokenFor(testBuyer);
+        verify(mockQueue).admitNextGroup(anyInt());
+        verify(notificationPort).sendQueueTurnArrived(nextBuyer, EVENT_ID);
+    }
+
+    @Test
     void requireAdmissionOrEnqueueOnHighLoad_overThreshold_inactiveQueue_reactivatesAndThrowsQueueRequired() {
         when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
