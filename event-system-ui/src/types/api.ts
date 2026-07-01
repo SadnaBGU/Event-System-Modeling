@@ -233,6 +233,32 @@ export interface AppointRoleRequest {
   permissionsList: Permission[];
 }
 
+export interface AppointmentManagerNodeDto {
+  memberId: string;
+  memberUsername: string;
+  roleType: 'MANAGER';
+  appointerId: string;
+  appointerUsername: string;
+  permissions: Permission[];
+  managers: AppointmentManagerNodeDto[];
+}
+
+export interface AppointmentOwnerNodeDto {
+  memberId: string;
+  memberUsername: string;
+  roleType: 'OWNER';
+  appointerId: string | null;
+  appointerUsername: string | null;
+  owners: AppointmentOwnerNodeDto[];
+  managers: AppointmentManagerNodeDto[];
+}
+
+export interface CompanyAppointmentTreeDto {
+  companyId: string;
+  companyName: string;
+  root: AppointmentOwnerNodeDto;
+}
+
 // ---------- Event creation (company side) ----------
 // Matches backend CompanyController.CreateEventRequest.
 export interface CreateEventRequest {
