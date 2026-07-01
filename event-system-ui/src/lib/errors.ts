@@ -10,27 +10,23 @@ import axios from 'axios';
  */
 export function friendlyError(err: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(err)) {
-    const status = err.response?.status;
-
-    switch (status) {
-      case 400:
-        return 'Some details are invalid. Please check your input and try again.';
-      case 401:
-        return 'Your session expired. Please sign in again.';
-      case 403:
-        return "You don't have permission to do this action.";
-      case 404:
-        return 'The requested item could not be found.';
-      case 409:
-        return 'This action conflicts with the current state. Refresh and try again.';
-      case 422:
-        return 'This action is not allowed right now.';
-      default:
-        if (status && status >= 500) return 'The server had a problem. Please try again shortly.';
-        if (!err.response) return 'Network problem. Check your connection and try again.';
-        return fallback;
+    if (!err.response) {
+      return STATUS_MESSAGES[0];
     }
+
+    const status = err.response.status;
+
+    if (STATUS_MESSAGES[status]) {
+      return STATUS_MESSAGES[status];
+    }
+
+    if (status >= 500) {
+      return STATUS_MESSAGES[500];
+    }
+
+    return fallback;
   }
+
   return fallback;
 }
 
@@ -47,3 +43,14 @@ export function apiErrorCode(err: unknown): string | undefined {
 
   return undefined;
 }
+
+const STATUS_MESSAGES: Record<number, string> = {
+  0: 'Network problem. Check your connection and try again.',
+  400: 'Some details are invalid. Please check your input and try again.',
+  401: 'Your session expired. Please sign in again.',
+  403: "You don't have permission to do this action.",
+  404: 'The requested item could not be found.',
+  409: 'This action conflicts with the current state. Refresh and try again.',
+  422: 'This action is not allowed right now.',
+  500: 'The server had a problem. Please try again shortly.',
+};

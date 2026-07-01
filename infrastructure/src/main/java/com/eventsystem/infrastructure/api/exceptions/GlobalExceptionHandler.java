@@ -8,6 +8,7 @@ import com.eventsystem.application.appexceptions.IssuanceFailedException;
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
+import com.eventsystem.application.appexceptions.OrderViolatesPolicyException;
 import com.eventsystem.application.appexceptions.LotteryNotFoundException;
 
 import org.springframework.dao.DataAccessException;
@@ -86,6 +87,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleDomainAndValidationExceptions(RuntimeException ex,
             HttpServletRequest request) {
+        if (ex instanceof OrderViolatesPolicyException) {
+            return buildPurchasePolicyViolatedResponse((OrderViolatesPolicyException)ex, request);
+        }
         // If this is a general exception that wasn't caught above, return 400 with the
         // original message (V2 requirement for client)
         return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
@@ -97,6 +101,13 @@ public class GlobalExceptionHandler {
             IssuanceFailedException ex,
             HttpServletRequest request) {
         return buildIssuanceFailedException(ex, request);
+    }
+
+    @ExceptionHandler(OrderViolatesPolicyException.class)
+    public ResponseEntity<Map<String, Object>> handleOrderPurchasePolicyViolationException(
+            OrderViolatesPolicyException ex,
+            HttpServletRequest request) {
+        return buildPurchasePolicyViolatedResponse(ex, request);
     }
 
     private ResponseEntity<Map<String, Object>> buildErrorResponse(Exception ex, HttpStatus status,
@@ -133,6 +144,7 @@ public class GlobalExceptionHandler {
         if (ex instanceof NotAuthorizedException || ex instanceof SecurityException) return "FORBIDDEN";
         if (ex instanceof AlreadyExistsOrderException) return "CONFLICT";
         if (ex instanceof MemberNotFoundException || ex instanceof OrderNotFoundException || ex instanceof LotteryNotFoundException) return "NOT_FOUND";
+        if (ex instanceof OrderViolatesPolicyException) return ((OrderViolatesPolicyException)ex).getOriginalMsg().isBlank() ? "PURCHASE_POLICY_ERROR" : "PURCHASE_POLICY_VIOLATION";
         // Default for domain/validation/runtime exceptions
         return "DOMAIN_ERROR";
     }
@@ -148,6 +160,22 @@ public class GlobalExceptionHandler {
         errorBody.put("message", ex.getMessage());
         errorBody.put("orderCancelled", true);
         errorBody.put("redirectToEvent", true);
+        errorBody.put("path", request.getRequestURI());
+
+        return new ResponseEntity<>(errorBody, HttpStatus.CONFLICT);
+    }
+
+    private ResponseEntity<Map<String, Object>> buildPurchasePolicyViolatedResponse(
+            OrderViolatesPolicyException ex,
+            HttpServletRequest request) {
+        Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("timestamp", Instant.now().toString());
+        errorBody.put("status", HttpStatus.CONFLICT.value());
+        errorBody.put("errorType", ex.getClass().getSimpleName());
+        String errCode = ex.getOriginalMsg().isBlank() ? "PURCHASE_POLICY_ERROR" : "PURCHASE_POLICY_VIOLATION";
+        errorBody.put("errorCode", errCode);
+        errorBody.put("message", ex.getMessage());
+        errorBody.put("policyReason", ex.getOriginalMsg());
         errorBody.put("path", request.getRequestURI());
 
         return new ResponseEntity<>(errorBody, HttpStatus.CONFLICT);
