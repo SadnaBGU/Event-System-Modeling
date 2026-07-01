@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -136,8 +137,11 @@ public class MemberService implements IMemberInformationPort{
         Member member = members.findByUsername(req.username())
                 .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
 
+        // Keep status in sync so expired temporary suspensions can log in again.
+        member.refreshSuspensionStatusAt(Instant.now());
+
         if (member.getStatus() == MemberStatus.CANCELLED) {
-            throw new AuthenticationException("Invalid credentials");
+            throw new AuthenticationException("User account has been cancelled");
         }
         if (!passwordHasher.matches(req.plaintextPassword(), member.getHashedCredentials())) {
             log.info("Failed login attempt username={}", req.username());

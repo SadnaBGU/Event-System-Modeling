@@ -87,6 +87,31 @@ class AdminControllerTest {
 
     @SuppressWarnings("null")
     @Test
+    void suspendMemberByUsername_temporaryDuration_returns200() throws Exception {
+        mockMvc.perform(post("/api/admin/members/by-username/{username}/suspensions", "alice")
+                        .requestAttr("authenticatedMemberId", adminId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"durationDays\": 3, \"reason\": \"Repeated abuse\"}"))
+                .andExpect(status().isOk());
+
+        verify(adminService).suspendMemberByUsername(adminId, "alice", Duration.ofDays(3), "Repeated abuse");
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    void suspendMemberByUsername_notFound_returns400() throws Exception {
+        doThrow(new IllegalArgumentException("Member not found: ghost"))
+                .when(adminService).suspendMemberByUsername(any(), any(), any(), any());
+
+        mockMvc.perform(post("/api/admin/members/by-username/{username}/suspensions", "ghost")
+                        .requestAttr("authenticatedMemberId", adminId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"durationDays\": 1}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @SuppressWarnings("null")
+    @Test
     void suspendMember_notAdmin_returns403() throws Exception {
         doThrow(new NotAuthorizedException("not-admin"))
                 .when(adminService).suspendMember(any(), any(), any(), any());
