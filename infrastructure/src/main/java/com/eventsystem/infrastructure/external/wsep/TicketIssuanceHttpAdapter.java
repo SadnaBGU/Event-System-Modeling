@@ -37,12 +37,7 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
     }
 
     @Override
-    public IssuanceResult issueTickets(
-            String eventId,
-            String activeOrderId,
-            List<TicketIssuanceItem> items,
-            BuyerReference buyer
-    ) {
+    public IssuanceResult issueTickets(String eventId, String activeOrderId, List<TicketIssuanceItem> items, BuyerReference buyer ) {
         if (items == null || items.isEmpty()) {
             log.warn("WSEP ticket issuance requested for empty order, eventId={}, activeOrderId={}",
                     eventId, activeOrderId);
@@ -114,33 +109,6 @@ public class TicketIssuanceHttpAdapter implements ITicketIssuancePort {
                 item.seatId(),
                 item.rowLabel(),
                 item.seatNumber()
-        );
-
-        log.warn("""
-                DEBUG WSEP issue_ticket params:
-                action_type={}
-                customer_id={}
-                event_id={}
-                zone={}
-                assignedSeat={}
-                quantity={}
-                seatId={}
-                rowLabel={}
-                seatNumber={}
-                seats={}
-                fullParams={}
-                """,
-                params.get("action_type"),
-                params.get("customer_id"),
-                params.get("event_id"),
-                params.get("zone"),
-                assignedSeat,
-                item.quantity(),
-                item.seatId(),
-                item.rowLabel(),
-                item.seatNumber(),
-                params.get("seats"),
-                params
         );
 
         String response = client.post(params);

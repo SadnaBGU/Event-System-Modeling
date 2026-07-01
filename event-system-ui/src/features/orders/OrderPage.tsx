@@ -4,12 +4,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ordersApi } from '../../api/endpoints/orders';
 import { eventsApi } from '../../api/endpoints/events';
-import { friendlyError } from '../../lib/errors';
+import { friendlyError, apiErrorCode} from '../../lib/errors';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { InteractiveSeatMap } from '../../components/InteractiveSeatMap';
 import '../../components/common.css';
 
+const TICKET_ISSUANCE_FAILURE = 'TICKET_ISSUANCE_FAILURE';
+
 export function OrderPage() {
+
+  const [cancelledCheckoutPopup, setCancelledCheckoutPopup] = useState<{
+        message: string;
+        eventId?: string;
+      } | null>(null);
+
   const { orderId = '' } = useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -83,7 +91,29 @@ export function OrderPage() {
       navigate('/history');
     },
     onError: (err) => {
-      toast.error(friendlyError(err, "Checkout couldn't be completed."));
+      if (apiErrorCode(err) === TICKET_ISSUANCE_FAILURE) {
+        const eventId = orderQ.data?.eventId;
+
+        qc.invalidateQueries({ queryKey: ['order', orderId] });
+        qc.invalidateQueries({ queryKey: ['zone-seats'] });
+
+        if (eventId) {
+          qc.invalidateQueries({ queryKey: ['event', eventId] });
+        }
+
+        setCancelledCheckoutPopup({
+          eventId,
+          message: friendlyError(
+            'Ticket Issuance Failed!',
+            'Ticket Issuance Failure has occurred!\n a refund was requested for purchase'
+          )
+        });
+
+        return;
+      }
+      else{
+        toast.error(friendlyError(err, "Checkout couldn't be completed."));
+      }
     },
   });
 
@@ -107,6 +137,64 @@ export function OrderPage() {
 
   return (
     <section>
+      {cancelledCheckoutPopup && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checkout-failed-title"
+            style={{
+              width: 'min(520px, calc(100vw - 2rem))',
+              background: '#161b22',
+              border: '1px solid #30363d',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              color: '#e6edf3',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.45)',
+            }}
+          >
+            <h2 id="checkout-failed-title" style={{ marginTop: 0 }}>
+              Checkout failed!
+            </h2>
+
+           <p>
+            <strong>Ticket issuance error has occurred.</strong>
+          </p>
+
+          <p>
+            <strong>A refund was requested for this purchase.</strong>
+          </p>
+
+            <p className="meta">
+              You will be returned to the event page, where you can start a new order.
+            </p>
+
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                if (cancelledCheckoutPopup.eventId) {
+                  navigate(`/events/${cancelledCheckoutPopup.eventId}`, { replace: true });
+                } else {
+                  navigate('/events', { replace: true });
+                }
+              }}
+            >
+              Back to event
+            </button>
+          </div>
+        </div>
+      )}
       <h1 className="page-title">Your cart</h1>
       {event && (
         <p className="meta">
@@ -275,7 +363,7 @@ export function OrderPage() {
         <button
           className="btn success"
           type="submit"
-          disabled={checkout.isPending || order.items.length === 0}
+          disabled={checkout.isPending || order.items.length === 0 || !!cancelledCheckoutPopup}
         >
           {checkout.isPending ? 'Processing…' : `Pay ${formatMoney(subtotal.amount, subtotal.currency)}`}
         </button>
