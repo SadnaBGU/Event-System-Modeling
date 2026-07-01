@@ -2,10 +2,12 @@ package com.eventsystem.infrastructure.api.orders;
 
 import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.BuyerRefernceDTO;
+import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.infrastructure.api.order.ApplyDiscountRequest;
 import com.eventsystem.infrastructure.api.order.CreateOrderRequest;
 import com.eventsystem.infrastructure.api.order.OrdersRestController;
 import com.eventsystem.infrastructure.api.order.RemoveItemRequest;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -248,6 +251,48 @@ class OrdersRestControllerUnitTest {
         var response = controller.getOrder("ORD-9");
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(dto);
+    }
+
+    // =========================================================
+    // previewDiscount Branches
+    // =========================================================
+
+    @Test
+    void previewDiscount_validInput_returnsOk() {
+        ApplyDiscountRequest req = new ApplyDiscountRequest();
+        req.discountCode = "SAVE10";
+        OrderPricingPreviewDTO dto = new OrderPricingPreviewDTO(
+                BigDecimal.valueOf(100),
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(90),
+                "USD"
+        );
+        when(orderService.previewDiscount("ORD-1", "SAVE10")).thenReturn(dto);
+
+        var response = controller.previewDiscount("ORD-1", req);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(dto);
+    }
+
+    @Test
+    void previewDiscount_invalidInputs_throwException() {
+        ApplyDiscountRequest nullCodeReq = new ApplyDiscountRequest();
+        ApplyDiscountRequest blankCodeReq = new ApplyDiscountRequest();
+        blankCodeReq.discountCode = "   ";
+
+        assertThatThrownBy(() -> controller.previewDiscount(null, blankCodeReq))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("orderId is required");
+        assertThatThrownBy(() -> controller.previewDiscount("ORD-1", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("discountCode is required");
+        assertThatThrownBy(() -> controller.previewDiscount("ORD-1", nullCodeReq))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("discountCode is required");
+        assertThatThrownBy(() -> controller.previewDiscount("ORD-1", blankCodeReq))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("discountCode is required");
     }
 
     // =========================================================

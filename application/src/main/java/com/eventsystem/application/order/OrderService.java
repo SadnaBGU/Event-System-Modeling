@@ -3,6 +3,7 @@ package com.eventsystem.application.order;
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.appexceptions.ZoneApplicationException;
+import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.domain.domainexceptions.ZoneDomainException;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.lottery.ILotteryRepository;
@@ -14,6 +15,9 @@ import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderFactory;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.domain.policy.discount.DiscountSummary;
+import com.eventsystem.domain.policy.shared.PurchaseContext;
+import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
 import com.eventsystem.domain.zone.SeatId;
 import com.eventsystem.domain.zone.Zone;
@@ -23,6 +27,7 @@ import com.eventsystem.domain.zone.ZoneType;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,14 +44,24 @@ public class OrderService {
     private final IZoneRepository zoneRepository;
     private final OrderFactory orderFactory;
     private final ILotteryRepository lotteryRepository;
+    private final IDiscountApplicationPort discountApplicationPort;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
     public OrderService(IActiveOrderRepository orderRepository, IZoneRepository zoneRepository, OrderFactory orderFactory, ILotteryRepository lotteryRepository) {
+        this(orderRepository, zoneRepository, orderFactory, lotteryRepository, null);
+    }
+
+    public OrderService(IActiveOrderRepository orderRepository,
+                        IZoneRepository zoneRepository,
+                        OrderFactory orderFactory,
+                        ILotteryRepository lotteryRepository,
+                        IDiscountApplicationPort discountApplicationPort) {
         this.orderRepository = orderRepository;
         this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;
         this.lotteryRepository = lotteryRepository;
+        this.discountApplicationPort = discountApplicationPort;
     }
 
     /**
@@ -246,5 +261,37 @@ public class OrderService {
         ActiveOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Active order " + orderId + " not found"));
         return ActiveOrderDTO.fromDomain(order);
+    }
+
+    public OrderPricingPreviewDTO previewDiscount(String orderId, String discountCode) {
+        if (discountApplicationPort == null) {
+            throw new IllegalStateException("Discount preview is not configured");
+        }
+
+        ActiveOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Active order " + orderId + " not found"));
+
+        String normalizedCode = discountCode == null ? null : discountCode.trim();
+        if (normalizedCode != null && normalizedCode.isBlank()) {
+            normalizedCode = null;
+        }
+
+        Money subtotal = order.calculateBaseTotal();
+        PurchaseContext context = discountApplicationPort.createPurchaseContext(
+                new EventId(order.getEventId()),
+                order.getBuyerRef(),
+                order.getItems(),
+                normalizedCode
+        );
+
+        DiscountSummary summary = discountApplicationPort.calculateDiscountSummary(context, subtotal);
+        if (normalizedCode != null && summary.totalDiscount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Invalid or inapplicable discount code");
+        }
+
+        Money discount = Money.of(summary.totalDiscount(), subtotal.currency());
+        Money total = subtotal.subtract(discount);
+
+        return new OrderPricingPreviewDTO(subtotal.amount(), discount.amount(), total.amount(), subtotal.currency());
     }
 }

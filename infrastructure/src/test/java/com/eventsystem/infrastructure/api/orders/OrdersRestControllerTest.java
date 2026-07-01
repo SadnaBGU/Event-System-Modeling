@@ -4,10 +4,12 @@ import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.BuyerRefernceDTO;
+import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
+import com.eventsystem.infrastructure.api.order.ApplyDiscountRequest;
 import com.eventsystem.infrastructure.api.exceptions.GlobalExceptionHandler;
 import com.eventsystem.infrastructure.api.order.CreateOrderRequest;
 import com.eventsystem.infrastructure.api.order.OrdersRestController;
@@ -28,6 +30,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -163,4 +166,42 @@ class OrdersRestControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted());
     }
+
+                @SuppressWarnings("null")
+                @Test
+                @DisplayName("POST /api/orders/{orderId}/discount returns pricing preview")
+                void previewDiscount_ValidRequest_ReturnsOk() throws Exception {
+                ApplyDiscountRequest request = new ApplyDiscountRequest();
+                request.discountCode = "SAVE10";
+
+                when(orderService.previewDiscount("ORDER-1", "SAVE10"))
+                    .thenReturn(new OrderPricingPreviewDTO(
+                        BigDecimal.valueOf(100),
+                        BigDecimal.valueOf(10),
+                        BigDecimal.valueOf(90),
+                        "USD"
+                    ));
+
+                mockMvc.perform(post("/api/orders/ORDER-1/discount")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.subtotal").value(100))
+                    .andExpect(jsonPath("$.discount").value(10))
+                    .andExpect(jsonPath("$.total").value(90))
+                    .andExpect(jsonPath("$.currency").value("USD"));
+                }
+
+                @SuppressWarnings("null")
+                @Test
+                @DisplayName("POST /api/orders/{orderId}/discount validates request body")
+                void previewDiscount_MissingCode_ReturnsBadRequest() throws Exception {
+                ApplyDiscountRequest request = new ApplyDiscountRequest();
+
+                mockMvc.perform(post("/api/orders/ORDER-1/discount")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("discountCode is required"));
+                }
 }
