@@ -56,12 +56,22 @@ api.interceptors.response.use(
   },
   (error: AxiosError<ApiErrorBody>) => {
     const status = error.response?.status;
-    const errorCode = (error.response?.data as any)?.code;
+    const errorCode = error.response?.data?.errorCode;
+    const requestPath = error.config?.url ?? '';
+    const isPublicRequest = PUBLIC_PATHS.some((p) => requestPath.startsWith(p));
 
     if (status === 401) {
-      useAuthStore.getState().clear();
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
-      toast.error('Your session expired. Please sign in again.');
+      if (!isPublicRequest) {
+        useAuthStore.getState().clear();
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+      }
+      if (errorCode === 'ACCOUNT_SUSPENDED') {
+        toast.error('Your account is suspended. Contact support or an administrator.');
+      } else if (errorCode === 'AUTH_INVALID') {
+        toast.error('Sign in failed. Check your username and password.');
+      } else {
+        toast.error('Your session expired. Please sign in again.');
+      }
     } else if (status === 403) {
       if (errorCode === 'ACCOUNT_SUSPENDED') {
         toast.error('Your account is suspended. You can view only.');

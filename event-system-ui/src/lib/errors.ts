@@ -33,3 +33,17 @@ export function friendlyError(err: unknown, fallback = 'Something went wrong'): 
   }
   return fallback;
 }
+
+export function apiErrorCode(err: unknown): string | undefined {
+  if (axios.isAxiosError(err)) {
+    const code = err.response?.data?.errorCode;
+    return typeof code === 'string' ? code : undefined;
+  }
+
+  if (err && typeof err === 'object') {
+    const maybeErr = err as { errorCode?: unknown };
+    return typeof maybeErr.errorCode === 'string' ? maybeErr.errorCode : undefined;
+  }
+
+  return undefined;
+}

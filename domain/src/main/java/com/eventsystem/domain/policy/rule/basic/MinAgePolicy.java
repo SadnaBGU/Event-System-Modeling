@@ -3,6 +3,7 @@ package com.eventsystem.domain.policy.rule.basic;
 import java.time.Period;
 
 import com.eventsystem.domain.domainexceptions.PolicyException;
+import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.policy.rule.PolicyType;
 import com.eventsystem.domain.policy.shared.PolicyValidationResult;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
@@ -32,6 +33,10 @@ public final class MinAgePolicy implements IBasicPolicy {
 
     @Override
     public PolicyValidationResult evaluate(PurchaseContext context) {
+        PolicyValidationResult memRes = RequireMemberPolicy.INSTANCE.evaluate(context);
+        if (!memRes.isSuccess()) {
+            return memRes;
+        }
         int age = Period.between(context.buyerBirthDate(), context.purchaseDate()).getYears();
 
         if (age >= minAge) {

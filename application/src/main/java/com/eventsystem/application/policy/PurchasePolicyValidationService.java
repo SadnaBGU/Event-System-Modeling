@@ -205,6 +205,7 @@ public class PurchasePolicyValidationService implements IPurchasePolicyValidatio
                 eventId,
                 companyId,
                 buildZonePurchaseContexts(items),
+                buyerRef.type(),
                 buyerBirthday,
                 LocalDate.now(),
                 null);

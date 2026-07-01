@@ -291,6 +291,7 @@ public class DiscountApplicationService implements IDiscountApplicationPort {
                                 eventId,
                                 companyId,
                                 buildZonePurchaseContexts(items),
+                                buyerRef.type(),
                                 buyerBirthday,
                                 LocalDate.now(),
                                 discountCode);

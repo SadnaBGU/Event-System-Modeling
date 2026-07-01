@@ -52,6 +52,9 @@ export function ProfilePage() {
         Username <strong>{me.data.username}</strong> (cannot be changed) ·
         Status <code>{me.data.status}</code>
       </p>
+      <p className="meta">
+        Member ID <code>{me.data.memberId}</code> ·
+      </p>
 
       <form
         className="form-stack"

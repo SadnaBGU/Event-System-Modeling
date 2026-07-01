@@ -147,6 +147,19 @@ public class AdminService {
                 duration == null ? "PERMANENT" : duration, reason != null ? reason : "N/A");
     }
 
+    /**
+     * Suspends a member resolved by username.
+     */
+    public void suspendMemberByUsername(MemberId actor, String username, Duration duration, String reason) {
+        requireAdmin(actor);
+        Member member = loadMemberByUsername(username);
+        member.suspend(Instant.now(), duration, reason);
+        memberRepo.save(member);
+        log.info("Member {} ({}) suspended by admin={}, duration={}, reason={}",
+                member.getUsername(), member.getMemberId().value(), actor.value(),
+                duration == null ? "PERMANENT" : duration, reason != null ? reason : "N/A");
+    }
+
     // ── II.6.8 — Unsuspend member ────────────────────────────────────────────
 
     public void unsuspendMember(MemberId actor, MemberId target) {
@@ -205,6 +218,14 @@ public class AdminService {
     private Member loadMember(MemberId memberId) {
         return memberRepo.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId.value()));
+    }
+
+    private Member loadMemberByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("username must not be blank");
+        }
+        return memberRepo.findByUsername(username.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Member not found: " + username));
     }
 
     private static PlatformDto toDto(Platform p) {

@@ -11,10 +11,20 @@ export const adminApi = {
     api.delete<void>(`/admin/companies/${companyId}`).then(() => undefined),
 
   // Suspensions — backend AdminController
-  suspend: (memberId: string, body: SuspendRequest) =>
+  suspendByMemberId: (memberId: string, body: SuspendRequest) =>
     api
       .post<void>(`/admin/members/${memberId}/suspensions`, body)
       .then(() => undefined),
+
+  suspendByUsername: (username: string, body: SuspendRequest) =>
+    api
+      .post<void>(`/admin/members/by-username/${encodeURIComponent(username)}/suspensions`, body)
+      .then(() => undefined),
+
+  suspend: (target: { memberId: string } | { username: string }, body: SuspendRequest) =>
+    'memberId' in target
+      ? adminApi.suspendByMemberId(target.memberId, body)
+      : adminApi.suspendByUsername(target.username, body),
 
   unsuspend: (memberId: string) =>
     api

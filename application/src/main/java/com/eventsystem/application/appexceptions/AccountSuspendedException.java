@@ -1,11 +1,8 @@
 package com.eventsystem.application.appexceptions;
 
-/**
- * AccountSuspendedException
- */
-public class AccountSuspendedException extends RuntimeException {
+/** Raised when a suspended account attempts to authenticate or use an authenticated endpoint. */
+public class AccountSuspendedException extends AuthenticationException {
     public AccountSuspendedException() {
-        super("Account is suspended. No access allowed.");
+        super("User account has been suspended");
     }
-
 }

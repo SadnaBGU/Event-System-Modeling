@@ -27,16 +27,22 @@ export function SuspensionsPage() {
     queryFn: () => adminApi.listSuspensions(),
   });
 
-  const [targetMemberId, setTarget] = useState('');
+  const [targetType, setTargetType] = useState<'memberId' | 'username'>('username');
+  const [targetValue, setTarget] = useState('');
   const [duration, setDuration] = useState<string>('1'); // empty string => permanent
   const [reason, setReason] = useState('');
 
   const suspend = useMutation({
     mutationFn: () =>
-      adminApi.suspend(targetMemberId, {
-        durationDays: duration === '' ? null : Number(duration),
-        reason: reason || undefined,
-      }),
+      adminApi.suspend(
+        targetType === 'memberId'
+          ? { memberId: targetValue.trim() }
+          : { username: targetValue.trim() },
+        {
+          durationDays: duration === '' ? null : Number(duration),
+          reason: reason || undefined,
+        },
+      ),
     onSuccess: () => {
       toast.success('The member was suspended successfully.');
       setTarget('');
@@ -103,16 +109,23 @@ export function SuspensionsPage() {
         className="form-stack"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!targetMemberId) return;
+          if (!targetValue.trim()) return;
           suspend.mutate();
         }}
       >
         <label>
-          Member ID
+          Find member by
+          <select value={targetType} onChange={(e) => setTargetType(e.target.value as 'memberId' | 'username')}>
+            <option value="username">Username</option>
+            <option value="memberId">Member ID</option>
+          </select>
+        </label>
+        <label>
+          {targetType === 'memberId' ? 'Member ID' : 'Username'}
           <input
-            value={targetMemberId}
+            value={targetValue}
             onChange={(e) => setTarget(e.target.value)}
-            placeholder="MEM-XXXXX"
+            placeholder={targetType === 'memberId' ? 'MEM-XXXXX' : 'e.g. john_doe'}
             required
           />
         </label>

@@ -258,7 +258,10 @@ class ApplicationAcceptanceFixture {
                 5.0);
     }
 
-    /** Creates and saves the singleton platform (INITIALIZING) with one admin; returns the admin id. */
+    /**
+     * Creates and saves the singleton platform (INITIALIZING) with one admin;
+     * returns the admin id.
+     */
     MemberId initPlatformWithAdmin(String adminId) {
         MemberId admin = memberId(adminId);
         platformRepo.save(new Platform(admin, Duration.ofMinutes(10), 100));
@@ -604,15 +607,23 @@ class ApplicationAcceptanceFixture {
 
         Mode mode = Mode.SUCCESS;
         int attempts;
-        List<OrderItem> lastIssuedItems = List.of();
+
+        String lastEventId;
+        String lastActiveOrderId;
+        BuyerReference lastBuyer;
+        List<TicketIssuanceItem> lastIssuedItems = List.of();
 
         @Override
         public IssuanceResult issueTickets(
                 String eventId,
                 String activeOrderId,
-                List<OrderItem> items,
+                List<TicketIssuanceItem> items,
                 BuyerReference buyer) {
+
             attempts++;
+            lastEventId = eventId;
+            lastActiveOrderId = activeOrderId;
+            lastBuyer = buyer;
             lastIssuedItems = List.copyOf(items);
 
             if (mode == Mode.THROW_EXCEPTION) {
