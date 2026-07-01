@@ -52,7 +52,7 @@ export function EditEventPage() {
       });
     },
     onSuccess: () => {
-      toast.success('Event updated');
+      toast.success('Event details were updated successfully.');
       navigate(`/events/${eventId}`);
     },
     onError: (err) => toast.error(friendlyError(err, "Couldn't update the event.")),

@@ -56,22 +56,19 @@ api.interceptors.response.use(
   },
   (error: AxiosError<ApiErrorBody>) => {
     const status = error.response?.status;
-    const body = error.response?.data;
-    const fallback = error.message || 'Request failed';
-    const message = body?.message ?? fallback;
 
     if (status === 401) {
       useAuthStore.getState().clear();
       window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
       toast.error('Your session expired. Please sign in again.');
     } else if (status === 403) {
-      toast.error(message || 'You do not have permission to perform this action.');
+      toast.error('You are not allowed to perform this action.');
     } else if (status && status >= 400 && status < 500) {
-      toast.error(message);
+      toast.error('We could not complete your request. Please review your details and try again.');
     } else if (status && status >= 500) {
-      toast.error('The server is having trouble. Please try again shortly.');
+      toast.error('Our server ran into a problem. Please try again in a moment.');
     } else if (!error.response) {
-      toast.error('Network error. Check your connection and try again.');
+      toast.error('Network problem detected. Check your connection and try again.');
     }
 
     return Promise.reject(error);

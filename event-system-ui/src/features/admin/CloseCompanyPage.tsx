@@ -10,7 +10,7 @@ export function CloseCompanyPage() {
   const close = useMutation({
     mutationFn: () => adminApi.closeCompany(companyId),
     onSuccess: () => {
-      toast.success('Company closed');
+      toast.success('The company was closed successfully.');
       setCompanyId('');
     },
   });

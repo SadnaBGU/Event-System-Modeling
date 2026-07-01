@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { extractApiMessage } from '../api/client';
 
 /**
  * Turns any thrown error (Axios or otherwise) into a short, clear, user-facing
@@ -12,27 +11,25 @@ import { extractApiMessage } from '../api/client';
 export function friendlyError(err: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
-    // Prefer a backend-provided message when it's short and meaningful.
-    const apiMsg = err.response?.data?.message as string | undefined;
 
     switch (status) {
       case 400:
-        return apiMsg ?? 'Some details are invalid. Please check and try again.';
+        return 'Some details are invalid. Please check your input and try again.';
       case 401:
         return 'Your session expired. Please sign in again.';
       case 403:
-        return "You don't have permission to do that.";
+        return "You don't have permission to do this action.";
       case 404:
-        return apiMsg ?? 'Not found.';
+        return 'The requested item could not be found.';
       case 409:
-        return apiMsg ?? 'That action conflicts with the current state.';
+        return 'This action conflicts with the current state. Refresh and try again.';
       case 422:
-        return apiMsg ?? 'That action is not allowed right now.';
+        return 'This action is not allowed right now.';
       default:
         if (status && status >= 500) return 'The server had a problem. Please try again shortly.';
         if (!err.response) return 'Network problem. Check your connection and try again.';
-        return apiMsg ?? fallback;
+        return fallback;
     }
   }
-  return extractApiMessage(err, fallback);
+  return fallback;
 }

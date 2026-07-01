@@ -19,7 +19,7 @@ export function CompaniesListPage() {
   const accept = useMutation({
     mutationFn: (companyId: string) => companiesApi.acceptInvitation(companyId, session!.memberId),
     onSuccess: () => {
-      toast.success('Appointment accepted');
+      toast.success('Appointment accepted. Your access was updated.');
       qc.invalidateQueries({ queryKey: ['invitations'] });
       qc.invalidateQueries({ queryKey: ['companies'] });
     },
@@ -36,7 +36,7 @@ export function CompaniesListPage() {
         contactDetails: contact || `${name} — production company`,
       }),
     onSuccess: (company) => {
-      toast.success('Company created');
+      toast.success('Company created successfully.');
       setName('');
       setContact('');
       // The creator becomes the company owner on the backend; company-scoped screens

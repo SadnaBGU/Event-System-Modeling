@@ -38,7 +38,7 @@ export function SuspensionsPage() {
         reason: reason || undefined,
       }),
     onSuccess: () => {
-      toast.success('Member suspended');
+      toast.success('The member was suspended successfully.');
       setTarget('');
       setReason('');
       qc.invalidateQueries({ queryKey: ['admin', 'suspensions'] });
@@ -48,7 +48,7 @@ export function SuspensionsPage() {
   const unsuspend = useMutation({
     mutationFn: (mid: string) => adminApi.unsuspend(mid),
     onSuccess: () => {
-      toast.success('Suspension lifted');
+      toast.success('The suspension was lifted successfully.');
       qc.invalidateQueries({ queryKey: ['admin', 'suspensions'] });
     },
   });

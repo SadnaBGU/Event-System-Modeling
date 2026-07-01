@@ -50,7 +50,7 @@ export function OrderPage() {
     mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.addItem(orderId, item),
     onSuccess: (_data, item) => {
       const n = item.quantity ?? 1;
-      toast.success(n > 1 ? `${n} tickets added to cart` : 'Added to cart');
+      toast.success(n > 1 ? `${n} tickets were added to your cart.` : 'The ticket was added to your cart.');
       setPricingPreview(null);
       refetchOrder();
       refetchSeats();
@@ -91,7 +91,7 @@ export function OrderPage() {
       });
     },
     onSuccess: () => {
-      toast.success('Purchase submitted — check your receipts.');
+      toast.success('Purchase submitted successfully. Check your receipts shortly.');
       qc.invalidateQueries({ queryKey: ['history'] });
       // Backend processes checkout asynchronously; bounce to receipts so the user can poll.
       navigate('/history');
@@ -105,7 +105,7 @@ export function OrderPage() {
     mutationFn: () => ordersApi.applyDiscount(orderId, { discountCode: discount.trim() }),
     onSuccess: (data) => {
       setPricingPreview(data);
-      toast.success('Discount applied. Totals were updated.');
+      toast.success('Discount applied successfully. Your totals were updated.');
     },
     onError: (err) => {
       setPricingPreview(null);

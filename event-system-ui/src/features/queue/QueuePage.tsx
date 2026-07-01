@@ -21,7 +21,7 @@ export function QueuePage() {
   const enter = useMutation({
     mutationFn: () => queueApi.enter(eventId),
     onSuccess: () => {
-      toast.success('Joined the queue');
+      toast.success('You joined the virtual queue.');
       qc.invalidateQueries({ queryKey: ['queue', eventId] });
     },
   });
@@ -29,7 +29,7 @@ export function QueuePage() {
   const leave = useMutation({
     mutationFn: () => queueApi.leave(eventId),
     onSuccess: () => {
-      toast.success('Left the queue');
+      toast.success('You left the virtual queue.');
       qc.invalidateQueries({ queryKey: ['queue', eventId] });
     },
   });
