@@ -38,16 +38,12 @@ export function OrderPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState('');
   // WSEP expects the payment token to be JSON with card_number, month, year, holder, cvv, id.
-  const [payment, setPayment] = useState(
-    JSON.stringify({
-      card_number: '4111111111111111',
-      month: '12',
-      year: '2030',
-      holder: 'Test Buyer',
-      cvv: '123',
-      id: '123456789',
-    }),
-  );
+  const [cardNumber, setCardNumber] = useState('4111111111111111');
+  const [month, setMonth] = useState('12');
+  const [year, setYear] = useState('2030');
+  const [holder, setHolder] = useState('Test Buyer');
+  const [cvv, setCvv] = useState('123');
+  const [id, setId] = useState('123456789');
 
   const refetchOrder = () => qc.invalidateQueries({ queryKey: ['order', orderId] });
   const refetchSeats = () => qc.invalidateQueries({ queryKey: ['zone-seats'] });
@@ -78,12 +74,22 @@ export function OrderPage() {
   });
 
   const checkout = useMutation({
-    mutationFn: () =>
-      ordersApi.checkout({
+    mutationFn: () => {
+      const paymentToken = JSON.stringify({
+        card_number: cardNumber,
+        month,
+        year,
+        holder,
+        cvv,
+        id,
+      });
+
+      return ordersApi.checkout({
         orderId,
-        paymentToken: payment,
+        paymentToken,
         discountCode: discount || undefined,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success('Purchase submitted — check your receipts.');
       qc.invalidateQueries({ queryKey: ['history'] });
@@ -348,10 +354,71 @@ export function OrderPage() {
           checkout.mutate();
         }}
       >
-        <label>
-          Payment token
-          <input value={payment} onChange={(e) => setPayment(e.target.value)} required />
-        </label>
+        <div className="payment-section">
+          <h3>Credit Card Details</h3>
+
+          <label>
+            Card Number
+            <input
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value)}
+              placeholder="4111111111111111"
+              required
+            />
+          </label>
+
+          <div className="row">
+            <label>
+              Month
+              <input
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                placeholder="12"
+                required
+              />
+            </label>
+
+            <label>
+              Year
+              <input
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="2030"
+                required
+              />
+            </label>
+
+            <label>
+              CVV
+              <input
+                value={cvv}
+                onChange={(e) => setCvv(e.target.value)}
+                placeholder="123"
+                required
+              />
+            </label>
+          </div>
+
+          <label>
+            Card Holder
+            <input
+              value={holder}
+              onChange={(e) => setHolder(e.target.value)}
+              placeholder="Test Buyer"
+              required
+            />
+          </label>
+
+          <label>
+            ID
+            <input
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              placeholder="123456789"
+              required
+            />
+          </label>
+        </div>
         <label>
           Discount code (optional)
           <input
