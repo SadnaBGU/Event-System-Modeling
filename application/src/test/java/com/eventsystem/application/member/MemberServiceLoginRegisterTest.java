@@ -1,7 +1,6 @@
 package com.eventsystem.application.member;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
-import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
@@ -156,18 +155,21 @@ class MemberServiceLoginRegisterTest {
     }
 
     @Test
-    void loginRejectsSuspendedMember() {
+    void loginAllowsSuspendedMember() {
         Member m = new Member(MemberId.generate(), "jon", CREDS, DETAILS);
         m.suspend(Instant.now(), null, "Banned by admin");
         when(members.findByUsername("jon")).thenReturn(Optional.of(m));
+        when(hasher.matches("pw", CREDS)).thenReturn(true);
+        when(tokens.issueToken(eq(m.getMemberId()), any())).thenReturn("token-suspended");
+        Instant exp = Instant.now().plusSeconds(3600);
+        when(tokens.verifyToken("token-suspended")).thenReturn(
+                new TokenClaims(m.getMemberId(), Instant.now(), exp));
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("jon", "pw")))
-                .isInstanceOf(AccountSuspendedException.class)
-                .hasMessageContaining("suspended");
+        LoginResponse resp = service.login(new LoginRequest("jon", "pw"));
 
         assertThat(m.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
-        verify(hasher, never()).matches(any(), any());
-        verify(tokens, never()).issueToken(any(), any());
+        assertThat(resp.token()).isEqualTo("token-suspended");
+        assertThat(resp.memberId()).isEqualTo(m.getMemberId());
     }
 
     @Test

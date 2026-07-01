@@ -73,7 +73,11 @@ api.interceptors.response.use(
         toast.error('Your session expired. Please sign in again.');
       }
     } else if (status === 403) {
-      toast.error('You are not allowed to perform this action.');
+      if (errorCode === 'ACCOUNT_SUSPENDED') {
+        toast.error('Your account is suspended. You can view only.');
+      } else {
+        toast.error('You are not allowed to perform this action.');
+      }
     } else if (status === 404 && errorCode === 'NOT_FOUND') {
       toast.error('The requested item could not be found.');
     } else if (status === 409 && errorCode === 'CONFLICT') {

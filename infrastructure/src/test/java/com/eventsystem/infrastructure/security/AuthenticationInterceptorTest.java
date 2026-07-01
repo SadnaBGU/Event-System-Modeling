@@ -1,6 +1,6 @@
 package com.eventsystem.infrastructure.security;
 
-import com.eventsystem.application.appexceptions.AccountSuspendedException;
+import com.eventsystem.application.appexceptions.AccountSuspendedReadOnlyException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
@@ -66,7 +66,7 @@ class AuthenticationInterceptorTest {
     }
 
     @Test
-        void preHandle_postWithSuspendedMemberThrowsAccountSuspendedException() {
+        void preHandle_postWithSuspendedMemberThrowsAccountSuspendedReadOnlyException() {
         MemberId memberId = new MemberId("member-2");
         Member member = new Member(memberId);
         member.suspend(Instant.now().minus(1, ChronoUnit.HOURS), null, "test suspension");
@@ -79,12 +79,12 @@ class AuthenticationInterceptorTest {
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
         assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
-                .isInstanceOf(AccountSuspendedException.class)
+                                .isInstanceOf(AccountSuspendedReadOnlyException.class)
                 .hasMessageContaining("suspended");
     }
 
     @Test
-    void preHandle_getWithSuspendedMemberAlsoThrowsAccountSuspendedException() {
+        void preHandle_getWithSuspendedMemberAllowsReadOnlyAccess() {
         MemberId memberId = new MemberId("member-3");
         Member member = new Member(memberId);
         member.suspend(Instant.now().minus(1, ChronoUnit.HOURS), null, "test suspension");
@@ -96,9 +96,10 @@ class AuthenticationInterceptorTest {
                 .thenReturn(new ITokenService.TokenClaims(memberId, Instant.EPOCH, Instant.EPOCH.plusSeconds(60)));
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
-                .isInstanceOf(AccountSuspendedException.class)
-                .hasMessageContaining("suspended");
+        boolean allowed = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+        assertThat(allowed).isTrue();
+        assertThat(request.getAttribute("authenticatedMemberId")).isEqualTo(memberId);
     }
 
     // test that suspended members actually stay suspended when they should not 

@@ -1,7 +1,6 @@
 package com.eventsystem.application.member;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
-import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.LoginRequest;
@@ -143,9 +142,6 @@ public class MemberService implements IMemberInformationPort{
 
         if (member.getStatus() == MemberStatus.CANCELLED) {
             throw new AuthenticationException("User account has been cancelled");
-        }
-        if (member.getStatus() == MemberStatus.SUSPENDED) {
-            throw new AccountSuspendedException();
         }
         if (!passwordHasher.matches(req.plaintextPassword(), member.getHashedCredentials())) {
             log.info("Failed login attempt username={}", req.username());

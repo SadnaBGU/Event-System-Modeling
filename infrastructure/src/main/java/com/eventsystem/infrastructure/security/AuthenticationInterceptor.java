@@ -1,7 +1,7 @@
 package com.eventsystem.infrastructure.security;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
-import com.eventsystem.application.appexceptions.AccountSuspendedException;
+import com.eventsystem.application.appexceptions.AccountSuspendedReadOnlyException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.IMemberRepository;
@@ -67,12 +67,12 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             ITokenService.TokenClaims claims = tokenService.verifyToken(token);
             MemberId memberId = claims.subject();
 
-            // 4. Enforce suspended account check for every authenticated request.
+            // 4. Enforce suspended account read-only mode.
             Member member = memberRepository.findById(memberId)
                     .orElseThrow(() -> new MemberNotFoundException(memberId));
             // Refresh status to allow expired temporary suspensions to become ACTIVE.
-            if (verifySuspensionAndSave(member)) {
-                throw new AccountSuspendedException();
+            if (!"GET".equalsIgnoreCase(method) && verifySuspensionAndSave(member)) {
+                throw new AccountSuspendedReadOnlyException();
             }
 
             // 5. Inject the MemberId into the request!
