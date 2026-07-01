@@ -26,17 +26,7 @@ public class EventQueueController {
             @RequestAttribute(name = "authenticatedMemberId", required = false) MemberId authenticatedMember,
             @RequestParam(name = "sessionId", required = false) String sessionId
     ) {
-        BuyerReference buyer;
-        if (authenticatedMember != null) {
-            buyer = new BuyerReference(BuyerType.MEMBER, sessionId, authenticatedMember.value());
-        } else if (sessionId != null && !sessionId.isBlank()) {
-            buyer = new BuyerReference(BuyerType.GUEST, sessionId, null);
-        } else {
-            throw new IllegalArgumentException("Either authenticated member or sessionId is required");
-        }
-
-        queueService.enqueueVisitor(eventId, buyer);
-        return ResponseEntity.status(201).build();
+        throw new IllegalStateException("Manual queue entry is disabled. Queue entry is automatic under high load.");
     }
 
     @GetMapping("/status")

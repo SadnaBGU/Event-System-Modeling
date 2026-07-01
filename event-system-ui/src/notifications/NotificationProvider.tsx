@@ -10,6 +10,7 @@ function toastMessageForNotification(n: NotificationDto): string {
         case 'EVENT_CANCELLED':
             return 'An event was cancelled. Open your notifications for full details.';
         case 'QUEUE_ADMITTED':
+        case 'QUEUE_TURN_ARRIVED':
             return 'It is your turn in the virtual queue. You can continue to checkout now.';
         case 'ORDER_CONFIRMED':
             return 'Your purchase was confirmed successfully.';

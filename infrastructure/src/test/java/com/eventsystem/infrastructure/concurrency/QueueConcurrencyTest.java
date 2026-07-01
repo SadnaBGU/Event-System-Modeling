@@ -1,6 +1,7 @@
 package com.eventsystem.infrastructure.concurrency;
 
 import com.eventsystem.application.order.QueueService;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.queue.VirtualQueue;
@@ -44,7 +45,8 @@ class QueueConcurrencyTest {
     @BeforeEach
     void setUp() {
         INotificationPort mockNotificationPort = mock(INotificationPort.class);
-        service = new QueueService(repository, mockNotificationPort);
+        IActiveOrderRepository mockActiveOrderRepo = mock(IActiveOrderRepository.class);
+        service = new QueueService(repository, mockActiveOrderRepo, mockNotificationPort);
 
         txTemplate.executeWithoutResult(status -> {
             service.enqueueVisitor(eventId, new BuyerReference(BuyerType.MEMBER, "init-session", "init-user"));

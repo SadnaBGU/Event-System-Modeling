@@ -26,6 +26,23 @@ export function OrderPage() {
     enabled: !!orderQ.data?.eventId,
   });
 
+  const seatLabelsQ = useQuery({
+    queryKey: ['event-seat-labels', eventQ.data?.eventId, eventQ.data?.zones.map((z) => z.zoneId).join(',')],
+    enabled: !!eventQ.data,
+    queryFn: async () => {
+      const seatedZones = (eventQ.data?.zones ?? []).filter((z) => z.zoneType === 'SEATED');
+      const zonesWithSeats = await Promise.all(seatedZones.map((z) => eventsApi.zoneSeats(z.zoneId)));
+
+      const labels = new Map<string, string>();
+      for (const zone of zonesWithSeats) {
+        for (const seat of zone.seats) {
+          labels.set(seat.seatId, `Row ${seat.rowLabel}, Seat ${seat.seatNumber}`);
+        }
+      }
+      return labels;
+    },
+  });
+
   const [zoneId, setZoneId] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState('');
@@ -167,10 +184,13 @@ export function OrderPage() {
           <tbody>
             {order.items.map((i) => {
               const zone = event?.zones.find((z) => z.zoneId === i.zoneId);
+              const seatDisplay = zone?.zoneType === 'SEATED'
+                ? (seatLabelsQ.data?.get(i.seatId) ?? i.seatId)
+                : (i.seatId || 'General admission');
               return (
                 <tr key={`${i.zoneId}-${i.seatId}`}>
                   <td>{zone?.zoneName ?? i.zoneId}</td>
-                  <td>{i.seatId}</td>
+                  <td>{seatDisplay}</td>
                   <td>{formatMoney(i.unitPrice.amount, i.unitPrice.currency)}</td>
                   <td>
                     <button

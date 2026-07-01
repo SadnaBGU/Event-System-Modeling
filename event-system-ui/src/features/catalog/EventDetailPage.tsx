@@ -49,7 +49,6 @@ export function EventDetailPage() {
         sessionId: isMember ? null : getGuestSessionId(),
         memberId: isMember ? memberId : null,
       };
-
       const res = await fetch('/api/orders/active', {
         method: 'POST',
         headers: {
@@ -59,9 +58,37 @@ export function EventDetailPage() {
         body: JSON.stringify(payload),
       });
 
+      console.log('openOrder response', res);
+
       if (!res.ok) {
-        if (res.status === 409) throw new Error('QUEUE');
-        throw new Error('Failed to open cart');
+        let errorCode: string | undefined;
+        let errorType: string | undefined;
+        let message: string | undefined;
+        try {
+          const body = (await res.json()) as { errorCode?: string; errorType?: string; message?: string };
+          errorCode = body.errorCode;
+          errorType = body.errorType;
+          message = body.message;
+        } catch {
+          try {
+            message = await res.text();
+          } catch {
+            // no structured body returned
+          }
+        }
+
+        const lowerMessage = (message ?? '').toLowerCase();
+        const isQueueRequired =
+          errorCode === 'QUEUE_REQUIRED' ||
+          errorType === 'QueueAdmissionRequiredException' ||
+          lowerMessage.includes('queue') ||
+          lowerMessage.includes('high load') ||
+          lowerMessage.includes('admission required');
+
+        if (isQueueRequired) {
+          throw new Error('QUEUE_REQUIRED');
+        }
+        throw new Error(message?.trim() || 'Failed to open cart');
       }
       return res.json();
     },
@@ -69,11 +96,11 @@ export function EventDetailPage() {
       navigate(`/orders/${data.orderId}`);
     },
     onError: (err: Error) => {
-      if (err.message === 'QUEUE') {
+      if (err.message === 'QUEUE_REQUIRED') {
         toast.info('This event is currently busy. Redirecting you to the virtual queue.');
         navigate(`/events/${eventId}/queue`);
       } else {
-        toast.error('We could not open your cart. Please try again.');
+        toast.error(err.message || 'We could not open your cart. Please try again.');
       }
     },
   });
@@ -268,7 +295,6 @@ export function EventDetailPage() {
         >
           {openOrder.isPending ? 'Opening…' : 'Start order'}
         </button>
-        <Link to={`/events/${eventId}/queue`} className="btn ghost">Virtual queue</Link>
 
         {/* Participants can enter only when a lottery is open. */}
         {lotteryExists && lotteryOpen && (

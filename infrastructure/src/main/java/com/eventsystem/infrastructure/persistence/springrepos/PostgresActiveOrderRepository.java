@@ -51,6 +51,11 @@ public class PostgresActiveOrderRepository implements IActiveOrderRepository {
         return Optional.of(expiredOrders);
     }
 
+    @Override
+    public long countActiveNonExpiredByEvent(String eventId, Instant now) {
+        return jpaRepo.countByEventIdAndStatusAndReservationExpiryAfter(eventId, OrderStatus.ACTIVE, now);
+    }
+
     @SuppressWarnings("null")
     @Override
     public void delete(String orderId) {

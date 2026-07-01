@@ -167,7 +167,7 @@ class ApplicationAcceptanceFixture {
     final AdminMemberBanService adminMemberBanService = new AdminMemberBanService(platformRepo, members, companies);
 
     final FakeVirtualQueueRepository queues = new FakeVirtualQueueRepository();
-    final QueueService queueService = new QueueService(queues, notifications);
+    final QueueService queueService = new QueueService(queues, orders, notifications);
 
     final PolicyCommandAssembler policyCommandAssembler = new PolicyCommandAssembler();
 
@@ -446,6 +446,15 @@ class ApplicationAcceptanceFixture {
             return Optional.of(byId.values().stream()
                     .filter(ActiveOrder::isExpired)
                     .collect(Collectors.toList()));
+        }
+
+        @Override
+        public long countActiveNonExpiredByEvent(String eventId, Instant now) {
+            return byId.values().stream()
+                .filter(order -> Objects.equals(order.getEventId(), eventId))
+                .filter(order -> order.getStatus() == OrderStatus.ACTIVE)
+                .filter(order -> order.getReservationExpiry().isAfter(now))
+                .count();
         }
 
         @Override

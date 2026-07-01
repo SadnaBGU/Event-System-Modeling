@@ -315,6 +315,7 @@ export interface NotificationDto {
   type:
     | 'EVENT_CANCELLED'
     | 'QUEUE_ADMITTED'
+    | 'QUEUE_TURN_ARRIVED'
     | 'ORDER_CONFIRMED'
     | 'LOTTERY_WON'
     | 'LOTTERY_LOST'

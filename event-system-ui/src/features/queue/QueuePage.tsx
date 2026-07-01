@@ -18,14 +18,6 @@ export function QueuePage() {
     refetchInterval: false,
   });
 
-  const enter = useMutation({
-    mutationFn: () => queueApi.enter(eventId),
-    onSuccess: () => {
-      toast.success('You joined the virtual queue.');
-      qc.invalidateQueries({ queryKey: ['queue', eventId] });
-    },
-  });
-
   const leave = useMutation({
     mutationFn: () => queueApi.leave(eventId),
     onSuccess: () => {
@@ -55,18 +47,8 @@ export function QueuePage() {
             </div>
           ) : (
             <div className="card">
-              <h3>Not in the queue yet</h3>
-              <p className="meta">Join to be notified when it's your turn. We'll push the update over WebSocket.</p>
-              <div className="actions">
-                <button
-                  type="button"
-                  className="btn success"
-                  onClick={() => enter.mutate()}
-                  disabled={enter.isPending}
-                >
-                  {enter.isPending ? 'Joining…' : 'Join queue'}
-                </button>
-              </div>
+              <h3>Waiting room status</h3>
+              <p className="meta">Queue entry is automatic under high load. Start an order from the event page; if load is high, you'll be placed here automatically.</p>
             </div>
           )}
         </>

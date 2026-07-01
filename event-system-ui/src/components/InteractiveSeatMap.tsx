@@ -28,10 +28,16 @@ export function InteractiveSeatMap({ zoneId, zoneName, price, currency, onSeatTo
     });
 
     const toggleSeat = (seat: SeatDto) => {
-        if (isLoading || seat.status !== 'AVAILABLE') return;
+        if (isLoading) return;
 
         const next = new Set(selectedSeats);
-        const willSelect = !next.has(seat.seatId);
+        const wasSelected = next.has(seat.seatId);
+
+        // Allow deselecting your own currently-selected seat even if it is now RESERVED
+        // after the add-to-cart mutation completed.
+        if (!wasSelected && seat.status !== 'AVAILABLE') return;
+
+        const willSelect = !wasSelected;
         if (willSelect) next.add(seat.seatId);
         else next.delete(seat.seatId);
 

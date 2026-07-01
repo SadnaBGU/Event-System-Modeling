@@ -1,10 +1,13 @@
 package com.eventsystem.application.order;
 
 import com.eventsystem.application.member.INotificationPort;
+import com.eventsystem.application.appexceptions.QueueAdmissionRequiredException;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.queue.AdmissionToken;
 import com.eventsystem.domain.queue.IVirtualQueueRepository;
+import com.eventsystem.domain.queue.QueueStatus;
 import com.eventsystem.domain.queue.VirtualQueue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,9 @@ class QueueServiceTest {
     @Mock
     private INotificationPort notificationPort;
 
+    @Mock
+    private IActiveOrderRepository activeOrderRepository;
+
     @InjectMocks
     private QueueService queueService;
 
@@ -42,6 +48,46 @@ class QueueServiceTest {
         testBuyer = new BuyerReference(BuyerType.MEMBER, "sess-1", "user-123");
         mockQueue = mock(VirtualQueue.class);
         lenient().when(mockQueue.getQueueId()).thenReturn("Q-123");
+        lenient().when(mockQueue.getStatus()).thenReturn(QueueStatus.ACTIVE);
+        lenient().when(activeOrderRepository.countActiveNonExpiredByEvent(any(), any())).thenReturn(0L);
+    }
+
+    @Test
+    void requireAdmissionOrEnqueueOnHighLoad_underThreshold_doesNothing() {
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(99L);
+
+        queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer);
+
+        verify(queueRepository, never()).findByEvent(any());
+        verify(queueRepository, never()).save(any());
+    }
+
+    @Test
+    void requireAdmissionOrEnqueueOnHighLoad_overThreshold_notAdmitted_throwsQueueRequired() {
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
+        when(mockQueue.isAdmitted(testBuyer)).thenReturn(false);
+
+        assertThrows(QueueAdmissionRequiredException.class,
+                () -> queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer));
+
+        verify(mockQueue).joinQueue(testBuyer);
+        verify(queueRepository).save(mockQueue);
+    }
+
+    @Test
+    void requireAdmissionOrEnqueueOnHighLoad_overThreshold_inactiveQueue_reactivatesAndThrowsQueueRequired() {
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
+        when(mockQueue.getStatus()).thenReturn(QueueStatus.INACTIVE);
+        when(mockQueue.isAdmitted(testBuyer)).thenReturn(false);
+
+        assertThrows(QueueAdmissionRequiredException.class,
+                () -> queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer));
+
+        verify(mockQueue).activate();
+        verify(mockQueue).joinQueue(testBuyer);
+        verify(queueRepository).save(mockQueue);
     }
 
     @Test

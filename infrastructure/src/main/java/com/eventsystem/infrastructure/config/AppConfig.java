@@ -311,8 +311,10 @@
         }
 
         @Bean
-        public QueueService queueService(IVirtualQueueRepository virtualQueueRepo, INotificationPort notificationService) {
-            return new QueueService(virtualQueueRepo, notificationService);
+        public QueueService queueService(IVirtualQueueRepository virtualQueueRepo,
+                IActiveOrderRepository orderRepo,
+                INotificationPort notificationService) {
+            return new QueueService(virtualQueueRepo, orderRepo, notificationService);
         }
 
         @Bean
