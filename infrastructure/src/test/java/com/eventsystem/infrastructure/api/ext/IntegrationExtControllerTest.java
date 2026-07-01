@@ -1,5 +1,7 @@
 package com.eventsystem.infrastructure.api.ext;
 
+
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.event.EventService;
 import com.eventsystem.domain.company.CompanyId;
@@ -10,6 +12,7 @@ import com.eventsystem.domain.company.OwnerNode;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
@@ -71,6 +74,9 @@ class IntegrationExtControllerTest {
 
     @Mock
     private IPurchasePolicyRepository purchasePolicyRepository;
+
+    @Mock
+    private IMemberRepository memberRepository;
 
     @InjectMocks
     private IntegrationExtController controller;
