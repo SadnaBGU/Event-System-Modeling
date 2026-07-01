@@ -1,5 +1,6 @@
 package com.eventsystem.domain.policy;
 
+import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.policy.shared.PurchaseContext;
 import com.eventsystem.domain.policy.shared.ZonePurchaseContext;
 import com.eventsystem.domain.shared.Money;
@@ -27,6 +28,7 @@ class PurchaseContextTest {
                         zoneContext(VIP_ZONE, 2, "200.00"),
                         zoneContext(BALCONY_ZONE, 3, "150.00")
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
@@ -47,6 +49,7 @@ class PurchaseContextTest {
                         zoneContext(VIP_ZONE, 2, "200.00"),
                         zoneContext(BALCONY_ZONE, 3, "150.00")
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
@@ -66,6 +69,7 @@ class PurchaseContextTest {
                         zoneContext(BALCONY_ZONE, 3, "150.00"),
                         zoneContext(REGULAR_ZONE, 1, "80.00")
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
@@ -86,6 +90,7 @@ class PurchaseContextTest {
                         zoneContext(VIP_ZONE, 2, "200.00"),
                         zoneContext(BALCONY_ZONE, 3, "150.00")
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
@@ -111,6 +116,7 @@ class PurchaseContextTest {
                         zoneContext(BALCONY_ZONE, 3, "150.00"),
                         zoneContext(REGULAR_ZONE, 1, "80.00")
                 ),
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
@@ -139,6 +145,7 @@ class PurchaseContextTest {
                 EVENT_ID,
                 COMPANY_ID,
                 zones,
+                BuyerType.MEMBER,
                 LocalDate.now().minusYears(25),
                 PURCHASE_DATE,
                 null
