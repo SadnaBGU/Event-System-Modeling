@@ -37,8 +37,14 @@ public class QueueService {
     /**
      * Enforces queue admission on high concurrent load.
      * If queue flow is not required, returns immediately.
+     *
+     * <p>Note: we throw {@link QueueAdmissionRequiredException} to signal the caller that
+     * the visitor must wait, but the visitor has just been enqueued and that must be
+     * persisted. {@code noRollbackFor} keeps the enqueue committed instead of letting the
+     * thrown exception roll back the transaction (which would drop the visitor from the
+     * queue entirely, so they would never be admitted).</p>
      */
-    @Transactional
+    @Transactional(noRollbackFor = QueueAdmissionRequiredException.class)
     public void requireAdmissionOrEnqueueOnHighLoad(String eventId, BuyerReference buyer) {
         if (!isHighLoad(eventId)) {
             return;
@@ -52,15 +58,31 @@ public class QueueService {
             throw new QueueAdmissionRequiredException(eventId);
         }
 
-        // Buyer is entering checkout now, so this admission slot can be consumed and
-        // immediately reused by the next waiting buyer.
-        queue.consumeTokenFor(buyer);
-        List<AdmissionToken> newlyAdmitted = queue.admitNextGroup(TOKEN_VALIDITY_MINUTES);
-        queueRepository.save(queue);
+        // The buyer is admitted and now holds their admission slot for the entire
+        // purchase. The slot is NOT released here: it is only freed once the buyer
+        // finishes checkout or their token/order times out (see
+        // releaseAdmissionAndAdmitNext), and only then is the next waiting buyer let in.
+    }
 
-        for (AdmissionToken token : newlyAdmitted) {
-            notificationPort.sendQueueTurnArrived(token.getBuyerRef(), eventId);
-        }
+    /**
+     * Releases a buyer's admission slot after they finish a purchase (or their
+     * order/token times out), then admits the next waiting visitor into the freed
+     * slot. Safe no-op when the event has no queue or the buyer holds no token.
+     */
+    @Transactional
+    public void releaseAdmissionAndAdmitNext(String eventId, BuyerReference buyer) {
+        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+            // Take back the finished/expired buyer's token so the slot is free again.
+            queue.revokeAdmission(buyer);
+
+            // Now that a slot has opened, admit the next waiting buyer (if any).
+            List<AdmissionToken> newlyAdmitted = queue.admitNextGroup(TOKEN_VALIDITY_MINUTES);
+            queueRepository.save(queue);
+
+            for (AdmissionToken token : newlyAdmitted) {
+                notificationPort.sendQueueTurnArrived(token.getBuyerRef(), eventId);
+            }
+        });
     }
 
     public void enqueueVisitor(String eventId, BuyerReference buyer) {

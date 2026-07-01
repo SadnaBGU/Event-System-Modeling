@@ -12,6 +12,7 @@ import com.eventsystem.application.policy.IDiscountApplicationPort;
 import com.eventsystem.application.policy.IPurchasePolicyValidationPort;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.order.ActiveOrder;
+import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.IActiveOrderRepository;
 import com.eventsystem.domain.order.OrderItem;
 import com.eventsystem.domain.policy.discount.DiscountSummary;
@@ -262,7 +263,7 @@ public class CheckoutSaga {
         purchaseRecordRepository.append(receipt);
         order.checkout();
         orderRepository.save(order);
-        advanceQueueIfPossible(order.getEventId());
+        advanceQueueIfPossible(order.getEventId(), order.getBuyerRef());
 
         notificationPort.sendPurchaseSuccess(order.getBuyerRef(), receipt.getRecordId());
         logger.info(
@@ -281,7 +282,7 @@ public class CheckoutSaga {
         List<OrderItem> cancelledItems = order.cancel();
         releaseReservedInventory(cancelledItems);
         orderRepository.save(order);
-        advanceQueueIfPossible(order.getEventId());
+        advanceQueueIfPossible(order.getEventId(), order.getBuyerRef());
 
         safeNotifyPurchaseFailure(
                 order,
@@ -365,12 +366,14 @@ public class CheckoutSaga {
         }
     }
 
-    private void advanceQueueIfPossible(String eventId) {
+    private void advanceQueueIfPossible(String eventId, BuyerReference buyer) {
         if (queueService == null) {
             return;
         }
         try {
-            queueService.processNextBatch(eventId);
+            // The purchase is done, so take back this buyer's admission slot and let
+            // the next waiting buyer in.
+            queueService.releaseAdmissionAndAdmitNext(eventId, buyer);
         } catch (RuntimeException e) {
             logger.warn("Failed to advance queue immediately for event {}", eventId, e);
         }

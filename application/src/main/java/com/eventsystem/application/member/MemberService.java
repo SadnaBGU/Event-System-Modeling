@@ -165,7 +165,7 @@ public class MemberService implements IMemberInformationPort{
         }
 
         List<NotificationDto> pending = m.getUndeliveredNotifications().stream()
-                .map(n -> new NotificationDto(n.getNotificationId(), n.getType().name(), n.getContent(), n.getCreatedAt().toString(), n.isDelivered()))
+                .map(n -> new NotificationDto(n.getNotificationId(), n.getType().name(), n.getContent(), n.getCreatedAt().toString(), n.isDelivered(), n.getRelatedEntityId()))
                 .collect(Collectors.toList());
 
         if (markAsRead && !pending.isEmpty()) {

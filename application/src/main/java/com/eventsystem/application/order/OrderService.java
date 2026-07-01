@@ -256,7 +256,7 @@ public class OrderService {
                         });
                     });
                 }
-                advanceQueueIfPossible(order.getEventId());
+                advanceQueueIfPossible(order.getEventId(), order.getBuyerRef());
                 logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
                 count++;
             } catch (RuntimeException e) {
@@ -266,12 +266,14 @@ public class OrderService {
         logger.info("Completed background sweep. Total expired orders processed: {}", count);
     }
 
-    private void advanceQueueIfPossible(String eventId) {
+    private void advanceQueueIfPossible(String eventId, BuyerReference buyer) {
         if (queueService == null) {
             return;
         }
         try {
-            queueService.processNextBatch(eventId);
+            // The order timed out, so take back this buyer's admission slot and let
+            // the next waiting buyer in.
+            queueService.releaseAdmissionAndAdmitNext(eventId, buyer);
         } catch (RuntimeException e) {
             logger.warn("Failed to advance queue during expired-order sweep for event {}", eventId, e);
         }

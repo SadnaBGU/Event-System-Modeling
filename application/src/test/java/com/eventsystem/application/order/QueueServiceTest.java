@@ -54,7 +54,8 @@ class QueueServiceTest {
 
     @Test
     void requireAdmissionOrEnqueueOnHighLoad_underThreshold_doesNothing() {
-        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(99L);
+        // Threshold is 3 concurrent buyers, so 2 active orders is still under load.
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(2L);
 
         queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer);
 
@@ -64,7 +65,8 @@ class QueueServiceTest {
 
     @Test
     void requireAdmissionOrEnqueueOnHighLoad_overThreshold_notAdmitted_throwsQueueRequired() {
-        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+        // 3 active orders reaches the concurrency limit, so the 4th buyer must queue.
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(3L);
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
         when(mockQueue.isAdmitted(testBuyer)).thenReturn(false);
 
@@ -76,26 +78,52 @@ class QueueServiceTest {
     }
 
     @Test
-    void requireAdmissionOrEnqueueOnHighLoad_overThreshold_admitted_consumesAndAdmitsNext() {
-        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+    void requireAdmissionOrEnqueueOnHighLoad_overThreshold_admitted_proceedsHoldingSlot() {
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(3L);
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
         when(mockQueue.isAdmitted(testBuyer)).thenReturn(true);
+
+        assertDoesNotThrow(() -> queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer));
+
+        // An admitted buyer keeps their admission slot for the whole purchase: the
+        // token is NOT released and nobody new is admitted at purchase start.
+        verify(mockQueue, never()).consumeTokenFor(any());
+        verify(mockQueue, never()).admitNextGroup(anyInt());
+        verify(notificationPort, never()).sendQueueTurnArrived(any(), any());
+    }
+
+    @Test
+    void releaseAdmissionAndAdmitNext_finishedBuyer_freesSlotAndAdmitsNext() {
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
 
         BuyerReference nextBuyer = new BuyerReference(BuyerType.MEMBER, "sess-2", "user-456");
         AdmissionToken nextToken = mock(AdmissionToken.class);
         when(nextToken.getBuyerRef()).thenReturn(nextBuyer);
         when(mockQueue.admitNextGroup(anyInt())).thenReturn(List.of(nextToken));
 
-        assertDoesNotThrow(() -> queueService.requireAdmissionOrEnqueueOnHighLoad(EVENT_ID, testBuyer));
+        queueService.releaseAdmissionAndAdmitNext(EVENT_ID, testBuyer);
 
-        verify(mockQueue).consumeTokenFor(testBuyer);
+        // The finished buyer's token is taken back first, then the next waiting buyer
+        // is admitted into the freed slot and notified.
+        verify(mockQueue).revokeAdmission(testBuyer);
         verify(mockQueue).admitNextGroup(anyInt());
+        verify(queueRepository).save(mockQueue);
         verify(notificationPort).sendQueueTurnArrived(nextBuyer, EVENT_ID);
     }
 
     @Test
+    void releaseAdmissionAndAdmitNext_noQueueExists_doesNothing() {
+        when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.empty());
+
+        queueService.releaseAdmissionAndAdmitNext(EVENT_ID, testBuyer);
+
+        verify(queueRepository, never()).save(any());
+        verify(notificationPort, never()).sendQueueTurnArrived(any(), any());
+    }
+
+    @Test
     void requireAdmissionOrEnqueueOnHighLoad_overThreshold_inactiveQueue_reactivatesAndThrowsQueueRequired() {
-        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(100L);
+        when(activeOrderRepository.countActiveNonExpiredByEvent(eq(EVENT_ID), any())).thenReturn(3L);
         when(queueRepository.findByEvent(EVENT_ID)).thenReturn(Optional.of(mockQueue));
         when(mockQueue.getStatus()).thenReturn(QueueStatus.INACTIVE);
         when(mockQueue.isAdmitted(testBuyer)).thenReturn(false);

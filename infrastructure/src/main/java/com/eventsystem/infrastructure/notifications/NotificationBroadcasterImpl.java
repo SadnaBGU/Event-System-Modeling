@@ -23,7 +23,8 @@ public class NotificationBroadcasterImpl implements NotificationBroadcaster {
                 notification.getType().name(),
                 notification.getContent(),
                 notification.getCreatedAt().atOffset(ZoneOffset.UTC).toString(),
-                notification.isDelivered());
+                notification.isDelivered(),
+                notification.getRelatedEntityId());
         template.convertAndSendToUser(memberId, "/queue/notifications", dto);
     }
 }

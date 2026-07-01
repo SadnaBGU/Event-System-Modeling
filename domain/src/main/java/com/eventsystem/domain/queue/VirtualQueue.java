@@ -114,6 +114,10 @@ public class VirtualQueue implements Persistable<String> {
 
         expireTokens();
 
+        // Only tokens that are still active (not yet consumed) occupy a concurrency
+        // slot. A consumed token means that buyer already finished their purchase and
+        // released their slot, so it must not count against the concurrency limit here.
+        // This must stay consistent with getOpenSlots(), which uses the same rule.
         int currentAdmittedCount = (int) admittedSet.stream()
                 .filter(token -> !token.isConsumed())
                 .count();
