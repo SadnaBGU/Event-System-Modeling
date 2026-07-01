@@ -4,23 +4,51 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ordersApi } from '../../api/endpoints/orders';
 import { eventsApi } from '../../api/endpoints/events';
-import { friendlyError, apiErrorCode} from '../../lib/errors';
+import { friendlyError, apiErrorCode } from '../../lib/errors';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { InteractiveSeatMap } from '../../components/InteractiveSeatMap';
 import '../../components/common.css';
 
 const TICKET_ISSUANCE_FAILURE = 'TICKET_ISSUANCE_FAILURE';
+const PURCHASE_POLICY_VIOLATION = 'PURCHASE_POLICY_VIOLATION';
+
+function purchasePolicyReason(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { policyReason?: unknown; message?: unknown } } }).response?.data;
+
+    if (typeof data?.policyReason === 'string' && data.policyReason.trim()) {
+      return data.policyReason;
+    }
+
+    if (typeof data?.message === 'string' && data.message.trim()) {
+      return data.message;
+    }
+  }
+
+  return 'Your order violates the purchase policy.';
+}
 
 export function OrderPage() {
+  const [policyNotice, setPolicyNotice] = useState<string | null>(null);
 
   const [cancelledCheckoutPopup, setCancelledCheckoutPopup] = useState<{
-        message: string;
-        eventId?: string;
-      } | null>(null);
+    message: string;
+    eventId?: string;
+  } | null>(null);
 
   const { orderId = '' } = useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!policyNotice) return;
+
+    const timer = window.setTimeout(() => {
+      setPolicyNotice(null);
+    }, 7000);
+
+    return () => window.clearTimeout(timer);
+  }, [policyNotice]);
 
   const orderQ = useQuery({
     queryKey: ['order', orderId],
@@ -43,6 +71,7 @@ export function OrderPage() {
     total: number;
     currency: string;
   } | null>(null);
+
   // WSEP expects the payment token to be JSON with card_number, month, year, holder, cvv, id.
   const [cardNumber, setCardNumber] = useState('4111111111111111');
   const [month, setMonth] = useState('12');
@@ -60,6 +89,7 @@ export function OrderPage() {
       const n = item.quantity ?? 1;
       toast.success(n > 1 ? `${n} tickets were added to your cart.` : 'The ticket was added to your cart.');
       setPricingPreview(null);
+      setPolicyNotice(null);
       refetchOrder();
       refetchSeats();
     },
@@ -73,6 +103,7 @@ export function OrderPage() {
     mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.removeItem(orderId, item),
     onSuccess: () => {
       setPricingPreview(null);
+      setPolicyNotice(null);
       refetchOrder();
       refetchSeats();
     },
@@ -101,11 +132,12 @@ export function OrderPage() {
     onSuccess: () => {
       toast.success('Purchase submitted successfully. Check your receipts shortly.');
       qc.invalidateQueries({ queryKey: ['history'] });
-      // Backend processes checkout asynchronously; bounce to receipts so the user can poll.
       navigate('/history');
     },
     onError: (err) => {
-      if (apiErrorCode(err) === TICKET_ISSUANCE_FAILURE) {
+      const code = apiErrorCode(err);
+
+      if (code === TICKET_ISSUANCE_FAILURE) {
         const eventId = orderQ.data?.eventId;
 
         qc.invalidateQueries({ queryKey: ['order', orderId] });
@@ -117,17 +149,18 @@ export function OrderPage() {
 
         setCancelledCheckoutPopup({
           eventId,
-          message: friendlyError(
-            'Ticket Issuance Failed!',
-            'Ticket Issuance Failure has occurred!\n a refund was requested for purchase'
-          )
+          message: 'Ticket Issuance Failure has occurred!\nA refund was requested for this purchase'
         });
 
         return;
       }
-      else{
-        toast.error(friendlyError(err, "Checkout couldn't be completed."));
+
+      if (code === PURCHASE_POLICY_VIOLATION) {
+        setPolicyNotice(purchasePolicyReason(err));
+        return;
       }
+
+      toast.error(friendlyError(err, "Checkout couldn't be completed."));
     },
   });
 
@@ -164,6 +197,7 @@ export function OrderPage() {
 
   const selectedZone = event?.zones.find((z) => z.zoneId === zoneId);
   const isSeated = selectedZone?.zoneType === 'SEATED';
+
   const summary = {
     subtotal: pricingPreview?.subtotal ?? baseSubtotal.amount,
     discount: pricingPreview?.discount ?? 0,
@@ -203,13 +237,13 @@ export function OrderPage() {
               Checkout failed!
             </h2>
 
-           <p>
-            <strong>Ticket issuance error has occurred.</strong>
-          </p>
+            <p>
+              <strong>Ticket issuance error has occurred.</strong>
+            </p>
 
-          <p>
-            <strong>A refund was requested for this purchase.</strong>
-          </p>
+            <p>
+              <strong>A refund was requested for this purchase.</strong>
+            </p>
 
             <p className="meta">
               You will be returned to the event page, where you can start a new order.
@@ -231,15 +265,56 @@ export function OrderPage() {
           </div>
         </div>
       )}
+
+      {policyNotice && (
+        <button
+          type="button"
+          onClick={() => setPolicyNotice(null)}
+          title="Click to dismiss"
+          style={{
+          position: 'fixed',
+          left: '50%',
+          top: '22%',
+          transform: 'translateX(-50%)',
+          width: 'min(460px, calc(100vw - 2rem))',
+            zIndex: 1001,
+            textAlign: 'left',
+            cursor: 'pointer',
+            border: '1px solid rgba(245, 158, 11, 0.8)',
+            borderRadius: '12px',
+            padding: '0.85rem 1rem',
+            background: 'rgba(30, 25, 15, 0.86)',
+            color: 'var(--text)',
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)',
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>
+            Purchase policy violation
+          </div>
+
+          <div style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
+            {policyNotice}
+          </div>
+
+          <div className="meta" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+            Click to dismiss. You can modify your cart and try again.
+          </div>
+        </button>
+      )}
+
       <h1 className="page-title">Your cart</h1>
+
       {event && (
         <p className="meta">
           For <strong>{event.eventName}</strong>{firstDate ? ` · ${formatDateTime(firstDate)}` : ''}
         </p>
       )}
+
       <p className="meta">Cart expires {formatDateTime(order.reservationExpiry)}</p>
 
       <h2 style={{ fontSize: '1rem', marginTop: '1rem' }}>Items</h2>
+
       {order.items.length === 0 ? (
         <p className="empty">Your cart is empty. Add a seat below.</p>
       ) : (
@@ -281,41 +356,44 @@ export function OrderPage() {
         <span>Subtotal</span>
         <span>{formatMoney(summary.subtotal, summary.currency)}</span>
       </div>
+
       {summary.discount > 0 && (
         <div className="totals">
           <span>Discount</span>
           <span>-{formatMoney(summary.discount, summary.currency)}</span>
         </div>
       )}
+
       <div className="totals">
         <span>Total</span>
         <span>{formatMoney(summary.total, summary.currency)}</span>
       </div>
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Add seat</h2>
+
       <label>
         Select zone
-          <select
-            value={zoneId}
-            onChange={(e) => { 
-              setZoneId(e.target.value);
-              setQuantity(1);
-            }}
-            required
-            style={{ marginLeft: '10px', background: '#0d1117', color: '#e6edf3', padding: '0.45rem', borderRadius: '4px' }}
-          >
-            <option value="">Pick a zone…</option>
-            {event?.zones.map((z) => (
-              <option key={z.zoneId} value={z.zoneId}>
-                {z.zoneName} ({formatMoney(z.price, z.currency)})
-              </option>
-            ))}
-          </select>
+        <select
+          value={zoneId}
+          onChange={(e) => {
+            setZoneId(e.target.value);
+            setQuantity(1);
+          }}
+          required
+          style={{ marginLeft: '10px', background: '#0d1117', color: '#e6edf3', padding: '0.45rem', borderRadius: '4px' }}
+        >
+          <option value="">Pick a zone…</option>
+          {event?.zones.map((z) => (
+            <option key={z.zoneId} value={z.zoneId}>
+              {z.zoneName} ({formatMoney(z.price, z.currency)})
+            </option>
+          ))}
+        </select>
       </label>
 
       {zoneId && selectedZone && (
         isSeated ? (
-          <InteractiveSeatMap 
+          <InteractiveSeatMap
             zoneId={zoneId}
             zoneName={selectedZone.zoneName}
             price={selectedZone.price}
@@ -323,70 +401,76 @@ export function OrderPage() {
             capacity={selectedZone.totalCapacity}
             isLoading={addItem.isPending || removeItem.isPending}
             onSeatToggle={(seat, isSelected) => {
-                if (isSelected) {
-                    addItem.mutate({ zoneId, seatId: seat, quantity: 1 });
-                } else {
-                    removeItem.mutate({ zoneId, seatId: seat, quantity: 1 });
-                }
+              if (isSelected) {
+                addItem.mutate({ zoneId, seatId: seat, quantity: 1 });
+              } else {
+                removeItem.mutate({ zoneId, seatId: seat, quantity: 1 });
+              }
             }}
-         />
+          />
         ) : (
           <div className="form-stack" style={{ marginTop: '1.5rem', maxWidth: '320px' }}>
-             <p className="meta">
-               General admission — choose how many tickets to buy at once
-               (available: {selectedZone.availableCount}).
-             </p>
-             <label>
-               Tickets
-               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
-                 <button
-                   type="button"
-                   className="btn ghost"
-                   aria-label="Decrease quantity"
-                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                   disabled={quantity <= 1}
-                 >
-                   −
-                 </button>
-                 <input
-                   type="number"
-                   min={1}
-                   max={selectedZone.availableCount}
-                   value={quantity}
-                   onChange={(e) => {
-                     const n = Number(e.target.value);
-                     if (Number.isNaN(n)) return;
-                     setQuantity(Math.min(Math.max(1, n), selectedZone.availableCount));
-                   }}
-                   style={{ width: '5rem', textAlign: 'center' }}
-                 />
-                 <button
-                   type="button"
-                   className="btn ghost"
-                   aria-label="Increase quantity"
-                   onClick={() => setQuantity((q) => Math.min(selectedZone.availableCount, q + 1))}
-                   disabled={quantity >= selectedZone.availableCount}
-                 >
-                   +
-                 </button>
-               </div>
-             </label>
-             <p className="meta">
-               Subtotal for selection: {formatMoney(selectedZone.price * quantity, selectedZone.currency)}
-             </p>
-             <button
-               className="btn"
-               type="button"
-               onClick={() => addItem.mutate({ zoneId, quantity })}
-               disabled={addItem.isPending || selectedZone.availableCount < 1}
-             >
-               {addItem.isPending ? 'Adding…' : `Add ${quantity} ${quantity > 1 ? 'tickets' : 'ticket'} to cart`}
-             </button>
+            <p className="meta">
+              General admission — choose how many tickets to buy at once
+              (available: {selectedZone.availableCount}).
+            </p>
+
+            <label>
+              Tickets
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                >
+                  −
+                </button>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={selectedZone.availableCount}
+                  value={quantity}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isNaN(n)) return;
+                    setQuantity(Math.min(Math.max(1, n), selectedZone.availableCount));
+                  }}
+                  style={{ width: '5rem', textAlign: 'center' }}
+                />
+
+                <button
+                  type="button"
+                  className="btn ghost"
+                  aria-label="Increase quantity"
+                  onClick={() => setQuantity((q) => Math.min(selectedZone.availableCount, q + 1))}
+                  disabled={quantity >= selectedZone.availableCount}
+                >
+                  +
+                </button>
+              </div>
+            </label>
+
+            <p className="meta">
+              Subtotal for selection: {formatMoney(selectedZone.price * quantity, selectedZone.currency)}
+            </p>
+
+            <button
+              className="btn"
+              type="button"
+              onClick={() => addItem.mutate({ zoneId, quantity })}
+              disabled={addItem.isPending || selectedZone.availableCount < 1}
+            >
+              {addItem.isPending ? 'Adding…' : `Add ${quantity} ${quantity > 1 ? 'tickets' : 'ticket'} to cart`}
+            </button>
           </div>
         )
       )}
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Checkout</h2>
+
       <form
         className="form-stack"
         onSubmit={(e) => {
@@ -460,7 +544,6 @@ export function OrderPage() {
           </label>
         </div>
 
-        
         <label>
           Discount code (optional)
           <input
@@ -472,6 +555,7 @@ export function OrderPage() {
             placeholder="PROMO10"
           />
         </label>
+
         <button
           className="btn ghost"
           type="button"
@@ -480,6 +564,7 @@ export function OrderPage() {
         >
           {applyDiscount.isPending ? 'Applying…' : 'Apply Discount'}
         </button>
+
         <button
           className="btn success"
           type="submit"

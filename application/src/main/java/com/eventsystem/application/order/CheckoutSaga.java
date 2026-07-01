@@ -134,7 +134,7 @@ public class CheckoutSaga {
         if (!policyValidationResult.isSuccess()) {
             logger.warn("Checkout failed: Order violates purchase policy for event {}", order.getEventId());
             logger.warn("Reason: {}", policyValidationResult.reason());
-            throw new OrderViolatesPolicyException("Order" + orderId + " violates purchase policy for event "
+            throw new OrderViolatesPolicyException(policyValidationResult,"Order" + orderId + " violates purchase policy for event "
                     + order.getEventId() + "Reason:" + policyValidationResult.reason());
         }
 
