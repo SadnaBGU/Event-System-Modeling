@@ -61,6 +61,9 @@ export function CompanyDetailPage() {
         {canManageRoles && (
           <Link to={`/companies/${companyId}/roles`} className="btn">Manage roles</Link>
         )}
+        {canManageRoles && (
+          <Link to={`/companies/${companyId}/appointments/tree`} className="btn">View appointment tree</Link>
+        )}
         {canEditPolicies && (
           <Link to={`/companies/${companyId}/policies`} className="btn">Company policies</Link>
         )}

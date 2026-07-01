@@ -12,6 +12,7 @@ import { ReceiptDetailPage } from '../features/history/ReceiptDetailPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { CompaniesListPage } from '../features/companies/CompaniesListPage';
 import { CompanyDetailPage } from '../features/companies/CompanyDetailPage';
+import { CompanyAppointmentTreePage } from '../features/companies/CompanyAppointmentTreePage';
 import { RolesPage } from '../features/companies/RolesPage';
 import { CreateEventPage } from '../features/events-mgmt/CreateEventPage';
 import { EditEventPage } from '../features/events-mgmt/EditEventPage';
@@ -74,6 +75,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <RolesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/companies/:companyId/appointments/tree',
+        element: (
+          <RequireAuth>
+            <CompanyAppointmentTreePage />
           </RequireAuth>
         ),
       },

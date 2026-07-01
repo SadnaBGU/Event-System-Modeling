@@ -11,6 +11,7 @@ import com.eventsystem.domain.company.Permission;
 import com.eventsystem.domain.company.ProductionCompany;
 import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;
+import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
@@ -60,6 +61,7 @@ public class IntegrationExtController {
     private final IEventRepository eventRepository;
     private final IZoneRepository zoneRepository;
     private final IPurchasePolicyRepository purchasePolicyRepository;
+    private final IMemberRepository memberRepository;
 
     public IntegrationExtController(
             IProductionCompanyRepository companyRepository,
@@ -67,13 +69,15 @@ public class IntegrationExtController {
             EventService eventService,
             IEventRepository eventRepository,
             IZoneRepository zoneRepository,
-            IPurchasePolicyRepository purchasePolicyRepository) {
+            IPurchasePolicyRepository purchasePolicyRepository, 
+            IMemberRepository memberRepository) {
         this.companyRepository = companyRepository;
         this.companyService = companyService;
         this.eventService = eventService;
         this.eventRepository = eventRepository;
         this.zoneRepository = zoneRepository;
         this.purchasePolicyRepository = purchasePolicyRepository;
+        this.memberRepository = memberRepository;
     }
 
     // ── Events ────────────────────────────────────────────────────────────────
@@ -247,6 +251,21 @@ public class IntegrationExtController {
         return ResponseEntity.ok(collectRoles(company));
     }
 
+    @GetMapping("/companies/{companyId}/appointments/tree")
+    public ResponseEntity<Map<String, Object>> getAppointmentTree(@PathVariable String companyId) {
+    ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
+        .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
+
+    OwnerNode root = findOwnerNode(company)
+        .orElseThrow(() -> new IllegalStateException("appointment tree root not found"));
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("companyId", company.companyId().value());
+    payload.put("companyName", company.companyDetails().name());
+    payload.put("root", ownerNodeToMap(root, memberRepository));
+    return ResponseEntity.ok(payload);
+    }
+
     // ── Policies read endpoints ──────────────────────────────────────────────
 
     @GetMapping("/companies/{companyId}/policies")
@@ -355,6 +374,66 @@ public class IntegrationExtController {
         payload.put("roleType", roleType);
         payload.put("permissions", permissions);
 
+        return payload;
+    }
+
+    private static Map<String, Object> ownerNodeToMap(OwnerNode node, IMemberRepository memberRepository) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("memberId", node.memberId().value());
+        payload.put(
+            "memberUsername",
+            memberRepository.findById(node.memberId())
+                .map(m -> m.getUsername())
+                .orElse("unknown")
+        );
+        payload.put(
+            "appointerUsername",
+            node.appointerId() == null
+                ? null
+                : memberRepository.findById(node.appointerId())
+                    .map(m -> m.getUsername())
+                    .orElse("unknown")
+        );  
+        payload.put("roleType", "OWNER");
+        payload.put("appointerId", node.appointerId() == null ? null : node.appointerId().value());
+
+        List<Map<String, Object>> ownerChildren = node.appointedOwners().stream()
+                .map(n -> ownerNodeToMap(n, memberRepository))
+                .toList();
+        List<Map<String, Object>> managerChildren = node.appointedManagers().stream()
+                .map(n -> managerNodeToMap(n, memberRepository))
+                .toList();
+
+        payload.put("owners", ownerChildren);
+        payload.put("managers", managerChildren);
+        return payload;
+    }
+
+    private static Map<String, Object> managerNodeToMap(ManagerNode node, IMemberRepository memberRepository) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("memberId", node.memberId().value());
+        payload.put(
+            "memberUsername",
+            memberRepository.findById(node.memberId())
+                .map(m -> m.getUsername())
+                .orElse("unknown")
+        );
+        payload.put(
+            "appointerUsername",
+            node.appointerId() == null
+                ? null
+                : memberRepository.findById(node.appointerId())
+                    .map(m -> m.getUsername())
+                    .orElse("unknown")
+        );  
+        payload.put("roleType", "MANAGER");
+        payload.put("appointerId", node.appointerId().value());
+        payload.put("permissions", node.permissions().stream().map(Permission::name).toList());
+
+        List<Map<String, Object>> children = node.appointedManagers().stream()
+                .map(n -> managerNodeToMap(n, memberRepository))
+                .toList();
+        payload.put("managers", children);
         return payload;
     }
 
