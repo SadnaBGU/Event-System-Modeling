@@ -76,6 +76,7 @@
   align-items: center;
   font-size: 0.8rem;
   margin-top: 0.25rem;
+  flex-wrap: wrap;
 }
 
 .tree-empty {
@@ -104,4 +105,155 @@
   letter-spacing: 0.5px;
   color: var(--text-faint);
   margin-bottom: 0.25rem;
+}
+
+/* ── Saved policy read model cards ───────────────────────────────────────── */
+
+.saved-policy-section {
+  margin: 1rem 0;
+}
+
+.saved-policy-section h3,
+.draft-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.draft-title {
+  margin-top: 1rem;
+  color: var(--text);
+}
+
+.saved-policy-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.saved-policy-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.85rem 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.saved-policy-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.saved-policy-card__head strong {
+  color: var(--text);
+}
+
+.saved-policy-card .kind-pill {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-radius: 999px;
+  padding: 0.08rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.saved-policy-card .kind-pill.discount {
+  background: rgba(168, 85, 247, 0.12);
+  color: rgb(126, 34, 206);
+}
+
+.saved-policy-card .kind-pill.purchase {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.status-pill {
+  border-radius: 999px;
+  padding: 0.08rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.status-pill.active {
+  background: rgba(22, 163, 74, 0.12);
+  color: rgb(22, 101, 52);
+}
+
+.status-pill.inactive {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-muted);
+}
+
+.saved-policy-card dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.saved-policy-card dl div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.75rem;
+}
+
+.saved-policy-card dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.saved-policy-card dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.discount-summary-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--text);
+}
+
+.discount-summary-list li + li {
+  margin-top: 0.25rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* ── Draft discount editor ───────────────────────────────────────────────── */
+
+.discount-draft-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.discount-actions,
+.policy-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.policy-actions {
+  margin-top: 1rem;
+}
+
+.stackable-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.stackable-toggle input {
+  margin: 0;
 }
