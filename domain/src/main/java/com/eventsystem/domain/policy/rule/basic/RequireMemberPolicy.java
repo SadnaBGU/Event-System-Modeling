@@ -29,11 +29,13 @@ public final class RequireMemberPolicy implements IBasicPolicy {
 
     @Override
     public boolean validate(PurchaseContext context) {
-        return false;
+        return context.buyerType() != BuyerType.GUEST ;
     }
 
     @Override
     public void require(PurchaseContext context) {
-        throw new PolicyException("Purchase policy restricts current purchase");
+        if (context.buyerType() == BuyerType.GUEST ) {
+            throw new PolicyException("Purchase restricted to signed members only");
+        }
     }
 }

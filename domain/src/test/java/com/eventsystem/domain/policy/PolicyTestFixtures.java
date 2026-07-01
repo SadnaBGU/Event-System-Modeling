@@ -33,20 +33,15 @@ public final class PolicyTestFixtures {
     private PolicyTestFixtures() {
     }
 
-        public static PurchaseContext contextForGuest(
-            CompanyId companyId,
-            EventId eventId,
-            LocalDate buyerBirthDate,
-            String discountCode,
-            List<ZoneId> zones) {
+        public static PurchaseContext contextForGuest(PurchaseContext c) {
         return new PurchaseContext(
-                eventId,
-                companyId,
-                zoneContextsFromTicketZones(zones),
+                c.eventId(),
+                c.companyId(),
+                c.zones(),
                 BuyerType.GUEST,
-                buyerBirthDate,
-                PURCHASE_DATE,
-                discountCode);
+                c.buyerBirthDate(),
+                c.purchaseDate(),
+                c.discountCode());
     }
     
 

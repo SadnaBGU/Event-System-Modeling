@@ -33,7 +33,10 @@ public final class MinAgePolicy implements IBasicPolicy {
 
     @Override
     public PolicyValidationResult evaluate(PurchaseContext context) {
-        RequireMemberPolicy.INSTANCE.evaluate(context);
+        PolicyValidationResult memRes = RequireMemberPolicy.INSTANCE.evaluate(context);
+        if (!memRes.isSuccess()) {
+            return memRes;
+        }
         int age = Period.between(context.buyerBirthDate(), context.purchaseDate()).getYears();
 
         if (age >= minAge) {
