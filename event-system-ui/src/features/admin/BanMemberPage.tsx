@@ -12,16 +12,22 @@ import '../../components/common.css';
  * practice. This is the admin "ban/remove" action (UC22).
  */
 export function BanMemberPage() {
-  const [memberId, setMemberId] = useState('');
+  const [targetType, setTargetType] = useState<'memberId' | 'username'>('username');
+  const [targetValue, setTargetValue] = useState('');
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
 
   const ban = useMutation({
     mutationFn: () =>
-      adminApi.suspend(memberId.trim(), { durationDays: null, reason: reason || 'Banned by admin' }),
+      adminApi.suspend(
+        targetType === 'memberId'
+          ? { memberId: targetValue.trim() }
+          : { username: targetValue.trim() },
+        { durationDays: null, reason: reason || 'Banned by admin' },
+      ),
     onSuccess: () => {
       toast.success('The member was permanently suspended.');
-      setMemberId('');
+      setTargetValue('');
       setReason('');
       setConfirmed(false);
     },
@@ -43,16 +49,23 @@ export function BanMemberPage() {
         style={{ maxWidth: '420px' }}
         onSubmit={(e) => {
           e.preventDefault();
-          if (!memberId.trim() || !confirmed) return;
+          if (!targetValue.trim() || !confirmed) return;
           ban.mutate();
         }}
       >
         <label>
-          Member ID
+          Find member by
+          <select value={targetType} onChange={(e) => setTargetType(e.target.value as 'memberId' | 'username')}>
+            <option value="username">Username</option>
+            <option value="memberId">Member ID</option>
+          </select>
+        </label>
+        <label>
+          {targetType === 'memberId' ? 'Member ID' : 'Username'}
           <input
-            value={memberId}
-            onChange={(e) => setMemberId(e.target.value)}
-            placeholder="MEM-XXXXX"
+            value={targetValue}
+            onChange={(e) => setTargetValue(e.target.value)}
+            placeholder={targetType === 'memberId' ? 'MEM-XXXXX' : 'e.g. john_doe'}
             required
           />
         </label>

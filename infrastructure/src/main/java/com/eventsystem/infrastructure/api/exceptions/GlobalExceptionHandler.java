@@ -1,6 +1,7 @@
 package com.eventsystem.infrastructure.api.exceptions;
 
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
+import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.AuthenticationException;
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
@@ -100,6 +101,7 @@ public class GlobalExceptionHandler {
 
     private String errorCodeFor(Exception ex) {
         // Map exceptions to stable machine-readable error codes used by the UI.
+        if (ex instanceof AccountSuspendedException) return "ACCOUNT_SUSPENDED";
         if (ex instanceof AuthenticationException) return "AUTH_INVALID";
         if (ex instanceof NotAuthorizedException || ex instanceof SecurityException) return "FORBIDDEN";
         if (ex instanceof AlreadyExistsOrderException) return "CONFLICT";

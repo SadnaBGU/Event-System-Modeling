@@ -1,6 +1,7 @@
 package com.eventsystem.application.member;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
+import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.UsernameAlreadyTakenException;
 import com.eventsystem.application.auth.LoginRequest;
 import com.eventsystem.application.auth.LoginResponse;
@@ -12,6 +13,7 @@ import com.eventsystem.domain.member.HashedCredentials;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.Member;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.member.MemberStatus;
 import com.eventsystem.domain.member.PersonalDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -151,6 +153,21 @@ class MemberServiceLoginRegisterTest {
         assertThatThrownBy(() -> service.login(new LoginRequest("jon", "pw")))
                 .isInstanceOf(AuthenticationException.class);
         verify(hasher, never()).matches(any(), any());
+    }
+
+    @Test
+    void loginRejectsSuspendedMember() {
+        Member m = new Member(MemberId.generate(), "jon", CREDS, DETAILS);
+        m.suspend(Instant.now(), null, "Banned by admin");
+        when(members.findByUsername("jon")).thenReturn(Optional.of(m));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("jon", "pw")))
+                .isInstanceOf(AccountSuspendedException.class)
+                .hasMessageContaining("suspended");
+
+        assertThat(m.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
+        verify(hasher, never()).matches(any(), any());
+        verify(tokens, never()).issueToken(any(), any());
     }
 
     @Test

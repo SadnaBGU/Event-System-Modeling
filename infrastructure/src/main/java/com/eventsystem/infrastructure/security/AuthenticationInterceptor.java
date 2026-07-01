@@ -1,6 +1,7 @@
 package com.eventsystem.infrastructure.security;
 
 import com.eventsystem.application.appexceptions.AuthenticationException;
+import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.IMemberRepository;
@@ -66,14 +67,12 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             ITokenService.TokenClaims claims = tokenService.verifyToken(token);
             MemberId memberId = claims.subject();
 
-            // 4. Enforce suspended account check
-            if(!"GET".equalsIgnoreCase(method)) {
-                Member member = memberRepository.findById(memberId)
-                        .orElseThrow(() -> new MemberNotFoundException(memberId));
-                //added verifySuspensionAndSave(member)- check if suspension status should change, if true, save the change
-                if (verifySuspensionAndSave(member)) {
-                    throw new SecurityException("Account is suspended. Access denied.");
-                }
+            // 4. Enforce suspended account check for every authenticated request.
+            Member member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new MemberNotFoundException(memberId));
+            // Refresh status to allow expired temporary suspensions to become ACTIVE.
+            if (verifySuspensionAndSave(member)) {
+                throw new AccountSuspendedException();
             }
 
             // 5. Inject the MemberId into the request!
