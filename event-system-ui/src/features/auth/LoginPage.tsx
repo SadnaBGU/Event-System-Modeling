@@ -32,7 +32,7 @@ export function LoginPage() {
       return res;
     },
     onSuccess: () => {
-      toast.success('Signed in');
+      toast.success('Signed in successfully.');
       navigate(from, { replace: true });
     },
     onError: (err) => {

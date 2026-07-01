@@ -70,17 +70,17 @@ export function EventDetailPage() {
     },
     onError: (err: Error) => {
       if (err.message === 'QUEUE') {
-        toast.info('This event is busy — sending you to the virtual queue.');
+        toast.info('This event is currently busy. Redirecting you to the virtual queue.');
         navigate(`/events/${eventId}/queue`);
       } else {
-        toast.error("Couldn't open your cart. Please try again.");
+        toast.error('We could not open your cart. Please try again.');
       }
     },
   });
 
   const enterLottery = useMutation({
     mutationFn: () => lotteryApi.register(eventId),
-    onSuccess: () => toast.success("You're entered in the lottery."),
+    onSuccess: () => toast.success('You have been entered into the lottery.'),
     onError: (err) => toast.error(friendlyError(err, "Couldn't register for the lottery.")),
   });
 
@@ -92,7 +92,7 @@ export function EventDetailPage() {
         registrationDeadline: new Date(lotteryDeadline).toISOString(),
       }),
     onSuccess: () => {
-      toast.success('Lottery created.');
+      toast.success('The lottery was created successfully.');
       qc.invalidateQueries({ queryKey: ['lottery', eventId] });
     },
     onError: (err) => toast.error(friendlyError(err, "Couldn't create the lottery.")),
@@ -103,7 +103,7 @@ export function EventDetailPage() {
   const drawLottery = useMutation({
     mutationFn: () => lotteryApi.draw(eventId, Number(winnerCount)),
     onSuccess: (res) => {
-      toast.success(`Lottery drawn — ${res.winners} winner${res.winners === 1 ? '' : 's'} selected.`);
+      toast.success(`The lottery was drawn. ${res.winners} winner${res.winners === 1 ? '' : 's'} selected.`);
       qc.invalidateQueries({ queryKey: ['lottery', eventId] });
     },
     onError: (err) => toast.error(friendlyError(err, "Couldn't draw the lottery.")),
@@ -112,7 +112,7 @@ export function EventDetailPage() {
   const publish = useMutation({
     mutationFn: () => eventsApi.publish(eventId),
     onSuccess: () => {
-      toast.success('Event published.');
+      toast.success('The event is now published and visible in the catalog.');
       qc.invalidateQueries({ queryKey: ['event', eventId] });
       qc.invalidateQueries({ queryKey: ['events'] });
     },
@@ -138,7 +138,7 @@ export function EventDetailPage() {
         seatsPerRow: zoneType === 'SEATED' ? Number(seatsPerRow) : undefined,
       }),
     onSuccess: () => {
-      toast.success('Zone added.');
+      toast.success('The zone was added successfully.');
       setZoneName('');
       setZonePrice('');
       setZoneCapacity('100');
@@ -277,7 +277,7 @@ export function EventDetailPage() {
             className="btn ghost"
             onClick={() => {
               if (!session) {
-                toast.info('Please sign in to enter the lottery.');
+                toast.info('Sign in to enter this lottery.');
                 navigate('/login', { state: { from: `/events/${eventId}` } });
                 return;
               }
@@ -309,7 +309,7 @@ export function EventDetailPage() {
               ev2.preventDefault();
 
               if (!canCreateLottery) {
-                toast.info('Choose a future lottery deadline.');
+                toast.info('Pick a deadline in the future to create the lottery.');
                 return;
               }
 

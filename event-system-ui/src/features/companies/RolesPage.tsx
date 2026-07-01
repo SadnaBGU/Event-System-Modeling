@@ -31,7 +31,7 @@ export function RolesPage() {
         permissionsList: permissions,
       }),
     onSuccess: () => {
-      toast.success('Role appointed');
+      toast.success('The role appointment was saved successfully.');
       setTarget('');
       qc.invalidateQueries({ queryKey: ['roles', companyId] });
     },
@@ -40,7 +40,7 @@ export function RolesPage() {
   const remove = useMutation({
     mutationFn: (memberId: string) => rolesApi.remove(companyId, memberId),
     onSuccess: () => {
-      toast.success('Role removed');
+      toast.success('The role was removed successfully.');
       qc.invalidateQueries({ queryKey: ['roles', companyId] });
     },
   });

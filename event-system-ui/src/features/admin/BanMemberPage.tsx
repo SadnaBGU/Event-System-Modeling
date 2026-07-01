@@ -20,7 +20,7 @@ export function BanMemberPage() {
     mutationFn: () =>
       adminApi.suspend(memberId.trim(), { durationDays: null, reason: reason || 'Banned by admin' }),
     onSuccess: () => {
-      toast.success('Member banned (permanent suspension)');
+      toast.success('The member was permanently suspended.');
       setMemberId('');
       setReason('');
       setConfirmed(false);

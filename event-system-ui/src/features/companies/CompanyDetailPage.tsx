@@ -40,7 +40,7 @@ export function CompanyDetailPage() {
     mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
       companiesApi.updateStatus(companyId, { status }),
     onSuccess: () => {
-      toast.success('Status updated');
+      toast.success('Company status was updated successfully.');
       qc.invalidateQueries({ queryKey: ['company', companyId] });
       qc.invalidateQueries({ queryKey: ['companies'] });
     },
