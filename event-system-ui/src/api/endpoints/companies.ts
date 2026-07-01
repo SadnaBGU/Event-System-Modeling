@@ -1,5 +1,6 @@
 import { api } from '../client';
 import type {
+  CompanyAppointmentTreeDto,
   CompanyDto,
   CompanyStatusUpdate,
   CreateCompanyRequest,
@@ -33,6 +34,9 @@ export const companiesApi = {
 
   events: (companyId: string) =>
     api.get<CompanyEventListItem[]>(`/companies/${companyId}/events`).then((r) => r.data),
+
+  appointmentTree: (companyId: string) =>
+    api.get<CompanyAppointmentTreeDto>(`/companies/${companyId}/appointments/tree`).then((r) => r.data),
 
   updateStatus: (companyId: string, body: CompanyStatusUpdate) =>
     api.patch<void>(`/companies/${companyId}/status`, body).then(() => undefined),

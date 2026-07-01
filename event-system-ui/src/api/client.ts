@@ -56,22 +56,40 @@ api.interceptors.response.use(
   },
   (error: AxiosError<ApiErrorBody>) => {
     const status = error.response?.status;
-    const body = error.response?.data;
-    const fallback = error.message || 'Request failed';
-    const message = body?.message ?? fallback;
+    const errorCode = error.response?.data?.errorCode;
+    const requestPath = error.config?.url ?? '';
+    const isPublicRequest = PUBLIC_PATHS.some((p) => requestPath.startsWith(p));
 
     if (status === 401) {
-      useAuthStore.getState().clear();
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
-      toast.error('Your session expired. Please sign in again.');
+      if (!isPublicRequest) {
+        useAuthStore.getState().clear();
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+      }
+      if (errorCode === 'ACCOUNT_SUSPENDED') {
+        toast.error('Your account is suspended. Contact support or an administrator.');
+      } else if (errorCode === 'AUTH_INVALID') {
+        toast.error('Sign in failed. Check your username and password.');
+      } else {
+        toast.error('Your session expired. Please sign in again.');
+      }
     } else if (status === 403) {
-      toast.error(message || 'You do not have permission to perform this action.');
+      if (errorCode === 'ACCOUNT_SUSPENDED') {
+        toast.error('Your account is suspended. You can view only.');
+      } else {
+        toast.error('You are not allowed to perform this action.');
+      }
+    } else if (status === 404 && errorCode === 'NOT_FOUND') {
+      toast.error('The requested item could not be found.');
+    } else if (status === 409 && errorCode === 'CONFLICT') {
+      toast.error('This action conflicts with the current state. Refresh and try again.');
+    } else if (status === 400 && errorCode === 'DOMAIN_ERROR') {
+      toast.error('Some details are invalid. Please check your input and try again.');
     } else if (status && status >= 400 && status < 500) {
-      toast.error(message);
+      toast.error('We could not complete your request. Please review your details and try again.');
     } else if (status && status >= 500) {
-      toast.error('The server is having trouble. Please try again shortly.');
+      toast.error('Our server ran into a problem. Please try again in a moment.');
     } else if (!error.response) {
-      toast.error('Network error. Check your connection and try again.');
+      toast.error('Network problem detected. Check your connection and try again.');
     }
 
     return Promise.reject(error);

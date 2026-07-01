@@ -35,7 +35,7 @@ export function ProfilePage() {
     mutationFn: () =>
       authApi.updateMemberDetails(memberId, { firstName, lastName, email, dateOfBirth }),
     onSuccess: () => {
-      toast.success('Profile updated');
+      toast.success('Your profile was updated successfully.');
       qc.invalidateQueries({ queryKey: ['member', memberId] });
     },
     onError: (err) => toast.error(friendlyError(err, "Couldn't update your profile.")),
@@ -51,6 +51,9 @@ export function ProfilePage() {
       <p className="meta">
         Username <strong>{me.data.username}</strong> (cannot be changed) ·
         Status <code>{me.data.status}</code>
+      </p>
+      <p className="meta">
+        Member ID <code>{me.data.memberId}</code> ·
       </p>
 
       <form

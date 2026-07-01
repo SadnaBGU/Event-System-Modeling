@@ -32,7 +32,7 @@ export function CreateEventPage() {
       return eventsMgmtApi.create(companyId, body);
     },
     onSuccess: (locationHeader) => {
-      toast.success('Event created');
+      toast.success('Event created successfully.');
       const newEventId = locationHeader.split('/').pop();
       navigate(newEventId ? `/events/${newEventId}` : `/companies/${companyId}`);
     },

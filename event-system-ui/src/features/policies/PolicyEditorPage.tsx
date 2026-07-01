@@ -65,7 +65,7 @@ export function PolicyEditorPage({ scope }: Props) {
       scope === 'company'
         ? policiesApi.putCompany(id, bundle)
         : policiesApi.putEvent(id, bundle),
-    onSuccess: () => toast.success('Purchase policy saved'),
+    onSuccess: () => toast.success('The purchase policy was saved successfully.'),
     onError: (err) => toast.error(friendlyError(err, "Couldn't save the purchase policy.")),
   });
 
@@ -90,7 +90,7 @@ export function PolicyEditorPage({ scope }: Props) {
         ? policiesApi.putCompanyDiscount(id, payload)
         : policiesApi.putEventDiscount(id, payload);
     },
-    onSuccess: () => toast.success('Discount policy saved'),
+    onSuccess: () => toast.success('The discount policy was saved successfully.'),
     onError: (err) => toast.error(friendlyError(err, "Couldn't save the discount policy.")),
   });
 

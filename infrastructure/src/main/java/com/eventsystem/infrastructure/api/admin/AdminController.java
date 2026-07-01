@@ -50,6 +50,26 @@ public class AdminController {
     }
 
     /**
+     * POST /api/admin/members/by-username/{username}/suspensions
+     * Body (optional): { "durationDays": 7 }  — omit or 0 for permanent
+     */
+    @PostMapping("/members/by-username/{username}/suspensions")
+    public ResponseEntity<Void> suspendMemberByUsername(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String username,
+            @RequestBody(required = false) SuspendRequest body) {
+
+        Duration duration = (body != null && body.durationDays() != null && body.durationDays() > 0)
+                ? Duration.ofDays(body.durationDays())
+                : null;
+
+        String reason = (body != null) ? body.reason() : null;
+
+        adminService.suspendMemberByUsername(actor, username, duration, reason);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * DELETE /api/admin/members/{memberId}/suspensions
      */
     @DeleteMapping("/members/{memberId}/suspensions")

@@ -135,6 +135,17 @@ export interface RemoveItemRequest {
   quantity?: number;
 }
 
+export interface ApplyDiscountRequest {
+  discountCode: string;
+}
+
+export interface OrderPricingPreviewDto {
+  subtotal: number;
+  discount: number;
+  total: number;
+  currency: string;
+}
+
 
 // CheckoutSagaController expects orderId in the body.
 export interface CheckoutRequest {
@@ -222,6 +233,32 @@ export interface AppointRoleRequest {
   permissionsList: Permission[];
 }
 
+export interface AppointmentManagerNodeDto {
+  memberId: string;
+  memberUsername: string;
+  roleType: 'MANAGER';
+  appointerId: string;
+  appointerUsername: string;
+  permissions: Permission[];
+  managers: AppointmentManagerNodeDto[];
+}
+
+export interface AppointmentOwnerNodeDto {
+  memberId: string;
+  memberUsername: string;
+  roleType: 'OWNER';
+  appointerId: string | null;
+  appointerUsername: string | null;
+  owners: AppointmentOwnerNodeDto[];
+  managers: AppointmentManagerNodeDto[];
+}
+
+export interface CompanyAppointmentTreeDto {
+  companyId: string;
+  companyName: string;
+  root: AppointmentOwnerNodeDto;
+}
+
 // ---------- Event creation (company side) ----------
 // Matches backend CompanyController.CreateEventRequest.
 export interface CreateEventRequest {
@@ -293,6 +330,7 @@ export interface ApiErrorBody {
   timestamp: string;
   status: number;
   errorType: string;
+  errorCode?: string;
   message: string;
   path: string;
 }

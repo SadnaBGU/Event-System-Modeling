@@ -40,7 +40,7 @@ export function CompanyDetailPage() {
     mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
       companiesApi.updateStatus(companyId, { status }),
     onSuccess: () => {
-      toast.success('Status updated');
+      toast.success('Company status was updated successfully.');
       qc.invalidateQueries({ queryKey: ['company', companyId] });
       qc.invalidateQueries({ queryKey: ['companies'] });
     },
@@ -60,6 +60,9 @@ export function CompanyDetailPage() {
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         {canManageRoles && (
           <Link to={`/companies/${companyId}/roles`} className="btn">Manage roles</Link>
+        )}
+        {canManageRoles && (
+          <Link to={`/companies/${companyId}/appointments/tree`} className="btn">View appointment tree</Link>
         )}
         {canEditPolicies && (
           <Link to={`/companies/${companyId}/policies`} className="btn">Company policies</Link>

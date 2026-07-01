@@ -31,7 +31,7 @@ export function RegisterPage() {
   const mutation = useMutation({
     mutationFn: () => authApi.register(form),
     onSuccess: () => {
-      toast.success('Account created. Please sign in.');
+      toast.success('Account created successfully. Please sign in.');
       navigate('/login', { replace: true });
     },
   });

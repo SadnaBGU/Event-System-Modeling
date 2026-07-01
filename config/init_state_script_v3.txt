@@ -18,7 +18,7 @@ login(u2, password123)
 accept-appointment(u2, p1)
 
 # u3 gets permission to edit venue layout, but not MODIFY_POLICIES.
-appoint-manager(u2, p1, u3, VENUE_CONFIGURATION)
+appoint-manager(u2, p1, u3, EVENT_INVENTORY_MANAGEMENT|VENUE_CONFIGURATION)
 
 login(u3, password123)
 accept-appointment(u3, p1)
