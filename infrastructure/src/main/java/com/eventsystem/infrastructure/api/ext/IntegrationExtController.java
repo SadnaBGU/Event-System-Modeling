@@ -248,7 +248,7 @@ public class IntegrationExtController {
         ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
                 .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
 
-        return ResponseEntity.ok(collectRoles(company));
+        return ResponseEntity.ok(collectRoles(company, memberRepository));
     }
 
     @GetMapping("/companies/{companyId}/appointments/tree")
@@ -308,7 +308,7 @@ public class IntegrationExtController {
         };
     }
 
-    private static List<Map<String, Object>> collectRoles(ProductionCompany company) {
+    private static List<Map<String, Object>> collectRoles(ProductionCompany company, IMemberRepository memberRepository) {
         List<Map<String, Object>> result = new ArrayList<>();
         Deque<OwnerNode> ownerQueue = new ArrayDeque<>();
 
@@ -322,10 +322,10 @@ public class IntegrationExtController {
         while (!ownerQueue.isEmpty()) {
             OwnerNode current = ownerQueue.removeFirst();
 
-            result.add(roleEntry(current.memberId().value(), "OWNER", List.of()));
+            result.add(roleEntry(current.memberId().value(), "OWNER", List.of(), memberRepository));
 
             for (ManagerNode manager : current.appointedManagers()) {
-                walkManager(manager, result);
+                walkManager(manager, result, memberRepository);
             }
 
             ownerQueue.addAll(current.appointedOwners());
@@ -351,26 +351,30 @@ public class IntegrationExtController {
         }
     }
 
-    private static void walkManager(ManagerNode node, List<Map<String, Object>> out) {
+    private static void walkManager(ManagerNode node, List<Map<String, Object>> out, IMemberRepository memberRepository) {
         List<String> permissions = node.permissions()
                 .stream()
                 .map(Permission::name)
                 .toList();
 
-        out.add(roleEntry(node.memberId().value(), "MANAGER", permissions));
+        out.add(roleEntry(node.memberId().value(), "MANAGER", permissions, memberRepository));
 
         for (ManagerNode child : node.appointedManagers()) {
-            walkManager(child, out);
+            walkManager(child, out, memberRepository);
         }
     }
 
     private static Map<String, Object> roleEntry(
             String memberId,
             String roleType,
-            List<String> permissions) {
+            List<String> permissions,
+            IMemberRepository memberRepository) {
         Map<String, Object> payload = new LinkedHashMap<>();
 
         payload.put("memberId", memberId);
+        payload.put("username", memberRepository.findById(new MemberId(memberId))
+                .map(m -> m.getUsername())
+                .orElse("unknown"));
         payload.put("roleType", roleType);
         payload.put("permissions", permissions);
 
