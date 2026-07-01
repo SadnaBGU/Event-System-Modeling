@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -29,6 +29,12 @@ export function OrderPage() {
   const [zoneId, setZoneId] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState('');
+  const [pricingPreview, setPricingPreview] = useState<{
+    subtotal: number;
+    discount: number;
+    total: number;
+    currency: string;
+  } | null>(null);
   // WSEP expects the payment token to be JSON with card_number, month, year, holder, cvv, id.
   const [cardNumber, setCardNumber] = useState('4111111111111111');
   const [month, setMonth] = useState('12');
@@ -45,6 +51,7 @@ export function OrderPage() {
     onSuccess: (_data, item) => {
       const n = item.quantity ?? 1;
       toast.success(n > 1 ? `${n} tickets added to cart` : 'Added to cart');
+      setPricingPreview(null);
       refetchOrder();
       refetchSeats();
     },
@@ -57,6 +64,7 @@ export function OrderPage() {
   const removeItem = useMutation({
     mutationFn: (item: { zoneId: string; seatId?: string; quantity?: number }) => ordersApi.removeItem(orderId, item),
     onSuccess: () => {
+      setPricingPreview(null);
       refetchOrder();
       refetchSeats();
     },
@@ -93,13 +101,29 @@ export function OrderPage() {
     },
   });
 
-  const subtotal = useMemo(() => {
+  const applyDiscount = useMutation({
+    mutationFn: () => ordersApi.applyDiscount(orderId, { discountCode: discount.trim() }),
+    onSuccess: (data) => {
+      setPricingPreview(data);
+      toast.success('Discount applied. Totals were updated.');
+    },
+    onError: (err) => {
+      setPricingPreview(null);
+      toast.error(friendlyError(err, 'Discount code is invalid or not applicable.'));
+    },
+  });
+
+  const baseSubtotal = useMemo(() => {
     if (!orderQ.data) return { amount: 0, currency: 'USD' };
     const items = orderQ.data.items;
     const total = items.reduce((sum, i) => sum + i.unitPrice.amount * (i.quantity || 1), 0);
     const currency = items[0]?.unitPrice.currency ?? 'USD';
     return { amount: total, currency };
   }, [orderQ.data]);
+
+  useEffect(() => {
+    setPricingPreview(null);
+  }, [orderQ.data?.version]);
 
   if (orderQ.isLoading) return <p>Loading…</p>;
   if (orderQ.isError || !orderQ.data) return <p className="empty">Order not found.</p>;
@@ -110,6 +134,12 @@ export function OrderPage() {
 
   const selectedZone = event?.zones.find((z) => z.zoneId === zoneId);
   const isSeated = selectedZone?.zoneType === 'SEATED';
+  const summary = {
+    subtotal: pricingPreview?.subtotal ?? baseSubtotal.amount,
+    discount: pricingPreview?.discount ?? 0,
+    total: pricingPreview?.total ?? baseSubtotal.amount,
+    currency: pricingPreview?.currency ?? baseSubtotal.currency,
+  };
 
   return (
     <section>
@@ -161,7 +191,17 @@ export function OrderPage() {
 
       <div className="totals">
         <span>Subtotal</span>
-        <span>{formatMoney(subtotal.amount, subtotal.currency)}</span>
+        <span>{formatMoney(summary.subtotal, summary.currency)}</span>
+      </div>
+      {summary.discount > 0 && (
+        <div className="totals">
+          <span>Discount</span>
+          <span>-{formatMoney(summary.discount, summary.currency)}</span>
+        </div>
+      )}
+      <div className="totals">
+        <span>Total</span>
+        <span>{formatMoney(summary.total, summary.currency)}</span>
       </div>
 
       <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Add seat</h2>
@@ -331,20 +371,33 @@ export function OrderPage() {
             />
           </label>
         </div>
+
+        
         <label>
           Discount code (optional)
           <input
             value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
+            onChange={(e) => {
+              setDiscount(e.target.value);
+              setPricingPreview(null);
+            }}
             placeholder="PROMO10"
           />
         </label>
+        <button
+          className="btn ghost"
+          type="button"
+          onClick={() => applyDiscount.mutate()}
+          disabled={applyDiscount.isPending || order.items.length === 0 || !discount.trim()}
+        >
+          {applyDiscount.isPending ? 'Applying…' : 'Apply Discount'}
+        </button>
         <button
           className="btn success"
           type="submit"
           disabled={checkout.isPending || order.items.length === 0}
         >
-          {checkout.isPending ? 'Processing…' : `Pay ${formatMoney(subtotal.amount, subtotal.currency)}`}
+          {checkout.isPending ? 'Processing…' : `Pay ${formatMoney(summary.total, summary.currency)}`}
         </button>
       </form>
 

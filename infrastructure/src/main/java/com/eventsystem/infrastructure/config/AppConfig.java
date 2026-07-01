@@ -319,8 +319,9 @@
         public OrderService orderService(IActiveOrderRepository orderRepo,
                 IZoneRepository zoneRepo,
                 OrderFactory orderFactory,
-                ILotteryRepository lotteryRepo) {
-            return new OrderService(orderRepo, zoneRepo, orderFactory, lotteryRepo);
+                ILotteryRepository lotteryRepo,
+                IDiscountApplicationPort discountApplicationPort) {
+            return new OrderService(orderRepo, zoneRepo, orderFactory, lotteryRepo, discountApplicationPort);
         }
 
         @Bean

@@ -135,6 +135,17 @@ export interface RemoveItemRequest {
   quantity?: number;
 }
 
+export interface ApplyDiscountRequest {
+  discountCode: string;
+}
+
+export interface OrderPricingPreviewDto {
+  subtotal: number;
+  discount: number;
+  total: number;
+  currency: string;
+}
+
 
 // CheckoutSagaController expects orderId in the body.
 export interface CheckoutRequest {

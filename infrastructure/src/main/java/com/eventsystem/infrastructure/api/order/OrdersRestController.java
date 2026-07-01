@@ -1,6 +1,7 @@
 package com.eventsystem.infrastructure.api.order;
 
 import com.eventsystem.application.order.ActiveOrderDTO;
+import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
@@ -70,6 +71,18 @@ public class OrdersRestController {
     public ResponseEntity<ActiveOrderDTO> getOrder(@PathVariable String orderId) {
         if (orderId == null || orderId.isBlank()) throw new IllegalArgumentException("orderId is required");
         ActiveOrderDTO dto = orderService.getOrderById(orderId);
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{orderId}/discount")
+    public ResponseEntity<OrderPricingPreviewDTO> previewDiscount(@PathVariable String orderId,
+                                                                  @RequestBody ApplyDiscountRequest req) {
+        if (orderId == null || orderId.isBlank()) throw new IllegalArgumentException("orderId is required");
+        if (req == null || req.discountCode == null || req.discountCode.isBlank()) {
+            throw new IllegalArgumentException("discountCode is required");
+        }
+
+        OrderPricingPreviewDTO dto = orderService.previewDiscount(orderId, req.discountCode);
         return ResponseEntity.ok(dto);
     }
 
