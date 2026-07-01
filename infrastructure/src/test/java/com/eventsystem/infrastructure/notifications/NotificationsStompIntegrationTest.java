@@ -1,10 +1,10 @@
 package com.eventsystem.infrastructure.notifications;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import java.lang.reflect.Type;
 import java.time.Instant;
@@ -12,11 +12,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.eventsystem.application.member.NotificationBroadcaster;
+import com.eventsystem.application.member.NotificationDto;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.member.Notification;
 import com.eventsystem.domain.member.NotificationType;
-import com.eventsystem.application.member.NotificationDto;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -29,14 +29,32 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.main.web-application-type=servlet")
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "spring.main.web-application-type=servlet",
+                "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+                "spring.datasource.driver-class-name=org.h2.Driver",
+                "spring.datasource.username=sa",
+                "spring.datasource.password=",
+                "spring.jpa.hibernate.ddl-auto=create-drop",
+                "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+                "eventsystem.bootstrap.enabled=false",
+                "eventsystem.startup.validate-external-systems=false",
+                "eventsystem.recovery.enabled=false",
+                "wsep.base-url=http://localhost:9999/",
+                "wsep.connect-timeout=1s",
+                "wsep.read-timeout=1s"
+        }
+)
+@ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class NotificationsStompIntegrationTest {
 
@@ -49,43 +67,54 @@ public class NotificationsStompIntegrationTest {
     @Autowired
     NotificationBroadcaster broadcaster;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private org.springframework.context.ApplicationContext ctx;
+    @Autowired
+    private WebServerApplicationContext webServerApplicationContext;
 
     @SuppressWarnings({ "deprecation", "null" })
     @Test
     public void connect_and_receive_broadcast() throws Exception {
-        // start client
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
+
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
         taskScheduler.initialize();
+
         stompClient.setTaskScheduler(taskScheduler);
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
         CompletableFuture<StompSession> sessionFuture = new CompletableFuture<>();
 
-        int port = ((WebServerApplicationContext) ctx).getWebServer().getPort();
+        int port = webServerApplicationContext.getWebServer().getPort();
         String url = "ws://localhost:" + port + "/api/notifications/stream/websocket";
+
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer test-token");
 
-        // token service mock: verifyToken called with token part after "Bearer "
         Mockito.when(tokenService.verifyToken("test-token"))
-            .thenReturn(new ITokenService.TokenClaims(new MemberId("member-xyz"), Instant.now(), Instant.now().plusSeconds(3600)));
+                .thenReturn(new ITokenService.TokenClaims(
+                        new MemberId("member-xyz"),
+                        Instant.now(),
+                        Instant.now().plusSeconds(3600)
+                ));
 
         WebSocketHttpHeaders wsHeaders = new WebSocketHttpHeaders();
 
         stompClient.connect(url, wsHeaders, connectHeaders, new StompSessionHandlerAdapter() {
             @Override
-            public void afterConnected(@SuppressWarnings("null") StompSession stompSession, @SuppressWarnings("null") StompHeaders connectedHeaders) {
+            public void afterConnected(
+                    @SuppressWarnings("null") StompSession stompSession,
+                    @SuppressWarnings("null") StompHeaders connectedHeaders) {
                 sessionFuture.complete(stompSession);
             }
         }).get(5, TimeUnit.SECONDS);
 
         StompSession stomp = sessionFuture.get(5, TimeUnit.SECONDS);
         assertThat(stomp).isNotNull();
-        verify(notificationService, timeout(5_000)).clientConnected(eq("member-xyz"), anyString());
+
+        verify(notificationService, timeout(5_000))
+                .clientConnected(eq("member-xyz"), anyString());
+
         CompletableFuture<NotificationDto> received = new CompletableFuture<>();
+
         StompHeaders subscriptionHeaders = new StompHeaders();
         subscriptionHeaders.setDestination("/user/queue/notifications");
 
@@ -97,21 +126,28 @@ public class NotificationsStompIntegrationTest {
             }
 
             @Override
-            public void handleFrame(@SuppressWarnings("null") StompHeaders headers, @SuppressWarnings("null") Object payload) {
+            public void handleFrame(
+                    @SuppressWarnings("null") StompHeaders headers,
+                    @SuppressWarnings("null") Object payload) {
                 received.complete((NotificationDto) payload);
             }
         });
 
         TimeUnit.MILLISECONDS.sleep(250);
 
-        // broadcast a notification to the connected member id
-        broadcaster.broadcastToUser("member-xyz", Notification.create(NotificationType.PURCHASE_COMPLETED, "hello"));
+        broadcaster.broadcastToUser(
+                "member-xyz",
+                Notification.create(NotificationType.PURCHASE_COMPLETED, "hello")
+        );
 
         NotificationDto dto = received.get(2, TimeUnit.SECONDS);
         assertThat(dto).isNotNull();
         assertThat(dto.type()).isEqualTo("PURCHASE_COMPLETED");
 
-        verify(notificationService).clientConnected(org.mockito.ArgumentMatchers.eq("member-xyz"), org.mockito.ArgumentMatchers.anyString());
+        verify(notificationService)
+                .clientConnected(eq("member-xyz"), anyString());
+
         stomp.disconnect();
+        taskScheduler.shutdown();
     }
 }

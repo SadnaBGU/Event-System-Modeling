@@ -13,6 +13,8 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.policy.discount.DiscountPolicy;
+import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.shared.PolicyScope;
@@ -61,6 +63,7 @@ public class IntegrationExtController {
     private final IEventRepository eventRepository;
     private final IZoneRepository zoneRepository;
     private final IPurchasePolicyRepository purchasePolicyRepository;
+    private final IDiscountPolicyRepository discountPolicyRepository;
     private final IMemberRepository memberRepository;
 
     public IntegrationExtController(
@@ -70,6 +73,7 @@ public class IntegrationExtController {
             IEventRepository eventRepository,
             IZoneRepository zoneRepository,
             IPurchasePolicyRepository purchasePolicyRepository, 
+            IDiscountPolicyRepository discountPolicyRepository,
             IMemberRepository memberRepository) {
         this.companyRepository = companyRepository;
         this.companyService = companyService;
@@ -77,6 +81,7 @@ public class IntegrationExtController {
         this.eventRepository = eventRepository;
         this.zoneRepository = zoneRepository;
         this.purchasePolicyRepository = purchasePolicyRepository;
+        this.discountPolicyRepository = discountPolicyRepository;
         this.memberRepository = memberRepository;
     }
 
@@ -272,9 +277,13 @@ public class IntegrationExtController {
     public ResponseEntity<Map<String, Object>> getCompanyPolicies(@PathVariable String companyId) {
         CompanyId cId = new CompanyId(companyId);
 
-        List<PurchasePolicy> policies = purchasePolicyRepository.findCompanyOwnedPolicies(cId);
+        List<PurchasePolicy> purchasePolicies =
+                purchasePolicyRepository.findCompanyOwnedPolicies(cId);
 
-        return ResponseEntity.ok(policiesPayload(policies));
+        List<DiscountPolicy> discountPolicies =
+                discountPolicyRepository.findCompanyOwnedPolicies(cId);
+
+        return ResponseEntity.ok(policiesPayload(purchasePolicies, discountPolicies));
     }
 
     @GetMapping("/events/{eventId}/policies")
@@ -282,9 +291,13 @@ public class IntegrationExtController {
         EventId eId = new EventId(eventId);
         CompanyId companyId = eventService.companyOfEvent(eId);
 
-        List<PurchasePolicy> policies = purchasePolicyRepository.findApplicableToPurchase(companyId, eId);
+        List<PurchasePolicy> purchasePolicies =
+                purchasePolicyRepository.findApplicableToPurchase(companyId, eId);
 
-        return ResponseEntity.ok(policiesPayload(policies));
+        List<DiscountPolicy> discountPolicies =
+                discountPolicyRepository.findApplicableToPurchase(companyId, eId);
+
+        return ResponseEntity.ok(policiesPayload(purchasePolicies, discountPolicies));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -441,28 +454,59 @@ public class IntegrationExtController {
         return payload;
     }
 
-    private static Map<String, Object> policiesPayload(List<PurchasePolicy> policies) {
+    private static Map<String, Object> policiesPayload(
+            List<PurchasePolicy> purchasePolicies,
+            List<DiscountPolicy> discountPolicies) {
+
         Map<String, Object> payload = new LinkedHashMap<>();
 
-        List<Map<String, Object>> items = policies.stream()
-                .map(IntegrationExtController::policyToMap)
-                .toList();
+        List<Map<String, Object>> items = new ArrayList<>();
+                //TODO - remove this part after policies fixed
+        purchasePolicies.stream()
+                .map(IntegrationExtController::purchasePolicyToMap)
+                .forEach(items::add);
+
+        discountPolicies.stream()
+                .map(IntegrationExtController::discountPolicyToMap)
+                .forEach(items::add);
 
         payload.put("items", items);
+        // remove up to here
+        payload.put("purchasePolicies", purchasePolicies.stream()
+                .map(IntegrationExtController::purchasePolicyToMap)
+                .toList());
+        payload.put("discountPolicies", discountPolicies.stream()
+                .map(IntegrationExtController::discountPolicyToMap)
+                .toList());
+
         return payload;
     }
 
-    private static Map<String, Object> policyToMap(PurchasePolicy policy) {
+    private static Map<String, Object> purchasePolicyToMap(PurchasePolicy policy) {
         Map<String, Object> payload = new LinkedHashMap<>();
-
         payload.put("policyId", policy.id().value());
         payload.put("policyName", policy.policyName());
+        payload.put("policyType", "PURCHASE");
         payload.put("companyId", policy.companyId().value());
         payload.put("active", policy.isActive());
         payload.put("ownerType", policy.isEventPolicy() ? "EVENT" : "COMPANY");
         payload.put("scope", scopeToMap(policy.scope()));
         payload.put("summary", policy.policy() == null ? null : policy.policy().toString());
+        return payload;
+    }
 
+    private static Map<String, Object> discountPolicyToMap(DiscountPolicy policy) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("policyId", policy.id().value());
+        payload.put("policyName", "Discount Policy");
+        payload.put("policyType", "DISCOUNT");
+        payload.put("companyId", policy.companyId().value());
+        payload.put("active", policy.isActive());
+        payload.put("ownerType", policy.isEventPolicy() ? "EVENT" : "COMPANY");
+        payload.put("scope", scopeToMap(policy.scope()));
+        payload.put("stackable", policy.isStackable());
+        payload.put("discounts", policy.getDiscountInfos());
+        payload.put("summary", policy.discounts().size() + " discount(s)");
         return payload;
     }
 

@@ -1,7 +1,5 @@
 package com.eventsystem.infrastructure.api.ext;
 
-
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import com.eventsystem.application.company.ProductionCompanyService;
 import com.eventsystem.application.event.EventService;
 import com.eventsystem.domain.company.CompanyId;
@@ -14,6 +12,9 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.policy.discount.DiscountPolicy;
+import com.eventsystem.domain.policy.discount.DiscountPolicyId;
+import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
 import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
@@ -74,6 +75,9 @@ class IntegrationExtControllerTest {
 
     @Mock
     private IPurchasePolicyRepository purchasePolicyRepository;
+
+    @Mock
+    private IDiscountPolicyRepository discountPolicyRepository;
 
     @Mock
     private IMemberRepository memberRepository;
@@ -201,7 +205,7 @@ class IntegrationExtControllerTest {
         when(companyRepository.findAll()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/companies")
-                .requestAttr("authenticatedMemberId", new MemberId("actor-1")))
+                        .requestAttr("authenticatedMemberId", new MemberId("actor-1")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isEmpty());
@@ -210,19 +214,20 @@ class IntegrationExtControllerTest {
     @Test
     void listCompanies_onlyReturnsCompaniesTheMemberCanActOn() throws Exception {
         MemberId actor = new MemberId("actor-1");
-        // Visible: the member owns c1 and manages c2.
+
         ProductionCompany c1 = mockCompany("c1", CompanyStatus.ACTIVE);
         lenient().when(c1.isOwner(actor)).thenReturn(true);
+
         ProductionCompany c2 = mockCompany("c2", CompanyStatus.SUSPENDED);
         lenient().when(c2.isManager(actor)).thenReturn(true);
-        // Hidden: the member has no role on c3 or c4.
+
         ProductionCompany c3 = mockCompany("c3", CompanyStatus.TERMINATED);
         ProductionCompany c4 = mockCompany("c4", CompanyStatus.ADMIN_CLOSED);
 
         when(companyRepository.findAll()).thenReturn(List.of(c1, c2, c3, c4));
 
         mockMvc.perform(get("/api/companies")
-                .requestAttr("authenticatedMemberId", actor))
+                        .requestAttr("authenticatedMemberId", actor))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].companyId").value("c1"))
@@ -343,54 +348,110 @@ class IntegrationExtControllerTest {
     // =========================================================
 
     @Test
-    void getCompanyPolicies_returnsCompanyOwnedPoliciesWithOwnershipAndScope() throws Exception {
+    void getCompanyPolicies_returnsCompanyOwnedPurchasePoliciesInPurchasePoliciesArray() throws Exception {
+        CompanyId companyId = new CompanyId("comp-1");
+
         PurchasePolicy p1 = mockCompanyOwnedPurchasePolicy(
                 "p1",
                 "Company wide policy",
-                new CompanyId("comp-1"),
+                companyId,
                 PolicyScope.companyWideScope(),
                 true);
 
         PurchasePolicy p2 = mockCompanyOwnedPurchasePolicy(
                 "p2",
                 "Company event-scoped policy",
-                new CompanyId("comp-1"),
+                companyId,
                 PolicyScope.forSingleEvent(new EventId("event-1")),
                 true);
 
-        when(purchasePolicyRepository.findCompanyOwnedPolicies(new CompanyId("comp-1")))
+        when(purchasePolicyRepository.findCompanyOwnedPolicies(companyId))
                 .thenReturn(List.of(p1, p2));
 
-        mockMvc.perform(get("/api/companies/comp-1/policies"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].policyId").value("p1"))
-                .andExpect(jsonPath("$.items[0].policyName").value("Company wide policy"))
-                .andExpect(jsonPath("$.items[0].companyId").value("comp-1"))
-                .andExpect(jsonPath("$.items[0].active").value(true))
-                .andExpect(jsonPath("$.items[0].ownerType").value("COMPANY"))
-                .andExpect(jsonPath("$.items[0].scope.companyWide").value(true))
-                .andExpect(jsonPath("$.items[0].scope.eventIds").isEmpty())
-                .andExpect(jsonPath("$.items[1].policyId").value("p2"))
-                .andExpect(jsonPath("$.items[1].ownerType").value("COMPANY"))
-                .andExpect(jsonPath("$.items[1].scope.companyWide").value(false))
-                .andExpect(jsonPath("$.items[1].scope.eventIds[0]").value("event-1"));
-
-        verify(purchasePolicyRepository).findCompanyOwnedPolicies(new CompanyId("comp-1"));
-        verify(purchasePolicyRepository, never()).findActiveByCompanyId(any());
-    }
-
-    @Test
-    void getCompanyPolicies_whenNoPolicies_returnsEmptyItems() throws Exception {
-        when(purchasePolicyRepository.findCompanyOwnedPolicies(new CompanyId("comp-1")))
+        when(discountPolicyRepository.findCompanyOwnedPolicies(companyId))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/companies/comp-1/policies"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items").isEmpty());
+                .andExpect(jsonPath("$.purchasePolicies.length()").value(2))
+                .andExpect(jsonPath("$.purchasePolicies[0].policyId").value("p1"))
+                .andExpect(jsonPath("$.purchasePolicies[0].policyName").value("Company wide policy"))
+                .andExpect(jsonPath("$.purchasePolicies[0].policyType").value("PURCHASE"))
+                .andExpect(jsonPath("$.purchasePolicies[0].companyId").value("comp-1"))
+                .andExpect(jsonPath("$.purchasePolicies[0].active").value(true))
+                .andExpect(jsonPath("$.purchasePolicies[0].ownerType").value("COMPANY"))
+                .andExpect(jsonPath("$.purchasePolicies[0].scope.companyWide").value(true))
+                .andExpect(jsonPath("$.purchasePolicies[0].scope.eventIds").isEmpty())
+                .andExpect(jsonPath("$.purchasePolicies[1].policyId").value("p2"))
+                .andExpect(jsonPath("$.purchasePolicies[1].policyType").value("PURCHASE"))
+                .andExpect(jsonPath("$.purchasePolicies[1].ownerType").value("COMPANY"))
+                .andExpect(jsonPath("$.purchasePolicies[1].scope.companyWide").value(false))
+                .andExpect(jsonPath("$.purchasePolicies[1].scope.eventIds[0]").value("event-1"))
+                .andExpect(jsonPath("$.discountPolicies").isEmpty());
+
+        verify(purchasePolicyRepository).findCompanyOwnedPolicies(companyId);
+        verify(discountPolicyRepository).findCompanyOwnedPolicies(companyId);
+        verify(purchasePolicyRepository, never()).findActiveByCompanyId(any());
     }
 
     @Test
-    void getEventPolicies_returnsApplicablePoliciesForEvent() throws Exception {
+    void getCompanyPolicies_returnsCompanyOwnedDiscountPoliciesInDiscountPoliciesArray() throws Exception {
+        CompanyId companyId = new CompanyId("comp-1");
+
+        DiscountPolicy discountPolicy = mockCompanyOwnedDiscountPolicy(
+                "d1",
+                companyId,
+                PolicyScope.companyWideScope(),
+                true);
+
+        when(purchasePolicyRepository.findCompanyOwnedPolicies(companyId))
+                .thenReturn(List.of());
+
+        when(discountPolicyRepository.findCompanyOwnedPolicies(companyId))
+                .thenReturn(List.of(discountPolicy));
+
+        mockMvc.perform(get("/api/companies/comp-1/policies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.purchasePolicies").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies.length()").value(1))
+                .andExpect(jsonPath("$.discountPolicies[0].policyId").value("d1"))
+                .andExpect(jsonPath("$.discountPolicies[0].policyName").value("Discount Policy"))
+                .andExpect(jsonPath("$.discountPolicies[0].policyType").value("DISCOUNT"))
+                .andExpect(jsonPath("$.discountPolicies[0].companyId").value("comp-1"))
+                .andExpect(jsonPath("$.discountPolicies[0].active").value(true))
+                .andExpect(jsonPath("$.discountPolicies[0].ownerType").value("COMPANY"))
+                .andExpect(jsonPath("$.discountPolicies[0].scope.companyWide").value(true))
+                .andExpect(jsonPath("$.discountPolicies[0].scope.eventIds").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies[0].stackable").value(false))
+                .andExpect(jsonPath("$.discountPolicies[0].discounts").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies[0].summary").value("0 discount(s)"));
+
+        verify(purchasePolicyRepository).findCompanyOwnedPolicies(companyId);
+        verify(discountPolicyRepository).findCompanyOwnedPolicies(companyId);
+    }
+
+    @Test
+    void getCompanyPolicies_whenNoPolicies_returnsEmptySplitArrays() throws Exception {
+        CompanyId companyId = new CompanyId("comp-1");
+
+        when(purchasePolicyRepository.findCompanyOwnedPolicies(companyId))
+                .thenReturn(List.of());
+
+        when(discountPolicyRepository.findCompanyOwnedPolicies(companyId))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/companies/comp-1/policies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.purchasePolicies").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies").isEmpty());
+
+        verify(purchasePolicyRepository).findCompanyOwnedPolicies(companyId);
+        verify(discountPolicyRepository).findCompanyOwnedPolicies(companyId);
+    }
+
+    @Test
+    void getEventPolicies_returnsApplicablePurchasePoliciesInPurchasePoliciesArray() throws Exception {
+        EventId eventId = new EventId("evt-1");
         CompanyId companyId = new CompanyId("company-of-event");
 
         PurchasePolicy companyPolicy = mockCompanyOwnedPurchasePolicy(
@@ -404,38 +465,93 @@ class IntegrationExtControllerTest {
                 "event-policy",
                 "Event policy",
                 companyId,
-                PolicyScope.forSingleEvent(new EventId("evt-1")),
+                PolicyScope.forSingleEvent(eventId),
                 true);
 
-        when(eventService.companyOfEvent(new EventId("evt-1"))).thenReturn(companyId);
-        when(purchasePolicyRepository.findApplicableToPurchase(companyId, new EventId("evt-1")))
+        when(eventService.companyOfEvent(eventId)).thenReturn(companyId);
+
+        when(purchasePolicyRepository.findApplicableToPurchase(companyId, eventId))
                 .thenReturn(List.of(companyPolicy, eventPolicy));
 
-        mockMvc.perform(get("/api/events/evt-1/policies"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].policyId").value("company-policy"))
-                .andExpect(jsonPath("$.items[0].ownerType").value("COMPANY"))
-                .andExpect(jsonPath("$.items[0].scope.companyWide").value(true))
-                .andExpect(jsonPath("$.items[1].policyId").value("event-policy"))
-                .andExpect(jsonPath("$.items[1].ownerType").value("EVENT"))
-                .andExpect(jsonPath("$.items[1].scope.companyWide").value(false))
-                .andExpect(jsonPath("$.items[1].scope.eventIds[0]").value("evt-1"));
-
-        verify(eventService).companyOfEvent(new EventId("evt-1"));
-        verify(purchasePolicyRepository).findApplicableToPurchase(companyId, new EventId("evt-1"));
-    }
-
-    @Test
-    void getEventPolicies_whenNoApplicablePolicies_returnsEmptyItems() throws Exception {
-        CompanyId companyId = new CompanyId("company-of-event");
-
-        when(eventService.companyOfEvent(new EventId("evt-1"))).thenReturn(companyId);
-        when(purchasePolicyRepository.findApplicableToPurchase(companyId, new EventId("evt-1")))
+        when(discountPolicyRepository.findApplicableToPurchase(companyId, eventId))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/events/evt-1/policies"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items").isEmpty());
+                .andExpect(jsonPath("$.purchasePolicies.length()").value(2))
+                .andExpect(jsonPath("$.purchasePolicies[0].policyId").value("company-policy"))
+                .andExpect(jsonPath("$.purchasePolicies[0].policyType").value("PURCHASE"))
+                .andExpect(jsonPath("$.purchasePolicies[0].ownerType").value("COMPANY"))
+                .andExpect(jsonPath("$.purchasePolicies[0].scope.companyWide").value(true))
+                .andExpect(jsonPath("$.purchasePolicies[1].policyId").value("event-policy"))
+                .andExpect(jsonPath("$.purchasePolicies[1].policyType").value("PURCHASE"))
+                .andExpect(jsonPath("$.purchasePolicies[1].ownerType").value("EVENT"))
+                .andExpect(jsonPath("$.purchasePolicies[1].scope.companyWide").value(false))
+                .andExpect(jsonPath("$.purchasePolicies[1].scope.eventIds[0]").value("evt-1"))
+                .andExpect(jsonPath("$.discountPolicies").isEmpty());
+
+        verify(eventService).companyOfEvent(eventId);
+        verify(purchasePolicyRepository).findApplicableToPurchase(companyId, eventId);
+        verify(discountPolicyRepository).findApplicableToPurchase(companyId, eventId);
+    }
+
+    @Test
+    void getEventPolicies_returnsApplicableDiscountPoliciesInDiscountPoliciesArray() throws Exception {
+        EventId eventId = new EventId("evt-1");
+        CompanyId companyId = new CompanyId("company-of-event");
+
+        DiscountPolicy discountPolicy = mockEventOwnedDiscountPolicy(
+                "event-discount",
+                companyId,
+                PolicyScope.forSingleEvent(eventId),
+                true);
+
+        when(eventService.companyOfEvent(eventId)).thenReturn(companyId);
+
+        when(purchasePolicyRepository.findApplicableToPurchase(companyId, eventId))
+                .thenReturn(List.of());
+
+        when(discountPolicyRepository.findApplicableToPurchase(companyId, eventId))
+                .thenReturn(List.of(discountPolicy));
+
+        mockMvc.perform(get("/api/events/evt-1/policies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.purchasePolicies").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies.length()").value(1))
+                .andExpect(jsonPath("$.discountPolicies[0].policyId").value("event-discount"))
+                .andExpect(jsonPath("$.discountPolicies[0].policyType").value("DISCOUNT"))
+                .andExpect(jsonPath("$.discountPolicies[0].companyId").value("company-of-event"))
+                .andExpect(jsonPath("$.discountPolicies[0].active").value(true))
+                .andExpect(jsonPath("$.discountPolicies[0].ownerType").value("EVENT"))
+                .andExpect(jsonPath("$.discountPolicies[0].scope.companyWide").value(false))
+                .andExpect(jsonPath("$.discountPolicies[0].scope.eventIds[0]").value("evt-1"));
+
+        verify(eventService).companyOfEvent(eventId);
+        verify(purchasePolicyRepository).findApplicableToPurchase(companyId, eventId);
+        verify(discountPolicyRepository).findApplicableToPurchase(companyId, eventId);
+    }
+
+    @Test
+    void getEventPolicies_whenNoApplicablePolicies_returnsEmptySplitArrays() throws Exception {
+        EventId eventId = new EventId("evt-1");
+        CompanyId companyId = new CompanyId("company-of-event");
+
+        when(eventService.companyOfEvent(eventId)).thenReturn(companyId);
+
+        when(purchasePolicyRepository.findApplicableToPurchase(companyId, eventId))
+                .thenReturn(List.of());
+
+        when(discountPolicyRepository.findApplicableToPurchase(companyId, eventId))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/events/evt-1/policies"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.purchasePolicies").isEmpty())
+                .andExpect(jsonPath("$.discountPolicies").isEmpty());
+
+        verify(eventService).companyOfEvent(eventId);
+        verify(purchasePolicyRepository).findApplicableToPurchase(companyId, eventId);
+        verify(discountPolicyRepository).findApplicableToPurchase(companyId, eventId);
     }
 
     // =========================================================
@@ -487,6 +603,44 @@ class IntegrationExtControllerTest {
         when(policy.isActive()).thenReturn(active);
         when(policy.isEventPolicy()).thenReturn(true);
         when(policy.policy()).thenReturn(mock(IPolicy.class));
+
+        return policy;
+    }
+
+    private DiscountPolicy mockCompanyOwnedDiscountPolicy(
+            String id,
+            CompanyId companyId,
+            PolicyScope scope,
+            boolean active) {
+        DiscountPolicy policy = mock(DiscountPolicy.class);
+
+        when(policy.id()).thenReturn(new DiscountPolicyId(id));
+        when(policy.companyId()).thenReturn(companyId);
+        when(policy.scope()).thenReturn(scope);
+        when(policy.isActive()).thenReturn(active);
+        when(policy.isEventPolicy()).thenReturn(false);
+        when(policy.isStackable()).thenReturn(false);
+        when(policy.getDiscountInfos()).thenReturn(List.of());
+        when(policy.discounts()).thenReturn(List.of());
+
+        return policy;
+    }
+
+    private DiscountPolicy mockEventOwnedDiscountPolicy(
+            String id,
+            CompanyId companyId,
+            PolicyScope scope,
+            boolean active) {
+        DiscountPolicy policy = mock(DiscountPolicy.class);
+
+        when(policy.id()).thenReturn(new DiscountPolicyId(id));
+        when(policy.companyId()).thenReturn(companyId);
+        when(policy.scope()).thenReturn(scope);
+        when(policy.isActive()).thenReturn(active);
+        when(policy.isEventPolicy()).thenReturn(true);
+        when(policy.isStackable()).thenReturn(false);
+        when(policy.getDiscountInfos()).thenReturn(List.of());
+        when(policy.discounts()).thenReturn(List.of());
 
         return policy;
     }
