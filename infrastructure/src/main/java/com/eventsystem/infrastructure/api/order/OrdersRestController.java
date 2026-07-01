@@ -3,6 +3,7 @@ package com.eventsystem.infrastructure.api.order;
 import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
+import com.eventsystem.application.order.QueueService;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 
@@ -23,10 +24,12 @@ import java.util.Optional;
 public class OrdersRestController {
 
     private final OrderService orderService;
+    private final QueueService queueService;
 
     @Autowired
-    public OrdersRestController(OrderService orderService) {
+    public OrdersRestController(OrderService orderService, QueueService queueService) {
         this.orderService = orderService;
+        this.queueService = queueService;
     }
 
     @PostMapping("/active")
@@ -35,6 +38,7 @@ public class OrdersRestController {
         if (req == null || req.eventId == null || req.eventId.isBlank()) throw new IllegalArgumentException("eventId is required");
         BuyerType type = "GUEST".equalsIgnoreCase(req.buyerType) ? BuyerType.GUEST : BuyerType.MEMBER;
         BuyerReference buyer = new BuyerReference(type, req.sessionId, req.memberId);
+        queueService.requireAdmissionOrEnqueueOnHighLoad(req.eventId, buyer);
         Optional<String> lottery = Optional.ofNullable(req.lotteryCode);
         ActiveOrderDTO dto = orderService.createOrGetActiveOrder(buyer, req.eventId, lottery);
         return ResponseEntity.ok(dto);
@@ -45,6 +49,7 @@ public class OrdersRestController {
         if (req == null || req.eventId == null || req.eventId.isBlank()) throw new IllegalArgumentException("eventId is required");
         BuyerType type = "GUEST".equalsIgnoreCase(req.buyerType) ? BuyerType.GUEST : BuyerType.MEMBER;
         BuyerReference buyer = new BuyerReference(type, req.sessionId, req.memberId);
+        queueService.requireAdmissionOrEnqueueOnHighLoad(req.eventId, buyer);
         ActiveOrderDTO dto = orderService.createNewOrderStrict(buyer, req.eventId);
         return ResponseEntity.ok(dto);
     }

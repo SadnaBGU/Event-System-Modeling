@@ -1,11 +1,13 @@
 package com.eventsystem.infrastructure.api.orders;
 
 import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
+import com.eventsystem.application.appexceptions.QueueAdmissionRequiredException;
 import com.eventsystem.application.appexceptions.OrderNotFoundException;
 import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.BuyerRefernceDTO;
 import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
+import com.eventsystem.application.order.QueueService;
 import com.eventsystem.application.security.ITokenService;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
@@ -56,6 +58,9 @@ class OrdersRestControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private QueueService queueService;
 
         @MockBean
         private ITokenService tokenService;
@@ -139,6 +144,26 @@ class OrdersRestControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("eventId is required"));
     }
+
+            @SuppressWarnings("null")
+            @Test
+            @DisplayName("POST /api/orders/active returns 409 when queue admission is required")
+            void createOrGetActiveOrder_QueueRequired_ReturnsConflict() throws Exception {
+            CreateOrderRequest request = new CreateOrderRequest();
+            request.buyerType = "MEMBER";
+            request.sessionId = "session-1";
+            request.memberId = "member-1";
+            request.eventId = "EVENT-1";
+
+            doThrow(new QueueAdmissionRequiredException("EVENT-1"))
+                .when(queueService).requireAdmissionOrEnqueueOnHighLoad(any(), any());
+
+            mockMvc.perform(post("/api/orders/active")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("QUEUE_REQUIRED"));
+            }
 
     @SuppressWarnings("null")
     @Test

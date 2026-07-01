@@ -59,18 +59,20 @@ api.interceptors.response.use(
     const errorCode = error.response?.data?.errorCode;
     const requestPath = error.config?.url ?? '';
     const isPublicRequest = PUBLIC_PATHS.some((p) => requestPath.startsWith(p));
+    const isLoginRequest = requestPath.startsWith('/auth/login');
+    const hasActiveToken = !!useAuthStore.getState().session?.token;
 
     if (status === 401) {
-      if (!isPublicRequest) {
+      if (!isPublicRequest && hasActiveToken) {
         useAuthStore.getState().clear();
         window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
       }
       if (errorCode === 'ACCOUNT_SUSPENDED') {
         toast.error('Your account is suspended. Contact support or an administrator.');
-      } else if (errorCode === 'AUTH_INVALID') {
+      } else if (errorCode === 'AUTH_INVALID' && isLoginRequest) {
         toast.error('Sign in failed. Check your username and password.');
       } else {
-        toast.error('Your session expired. Please sign in again.');
+        toast.error('You are not authorized for this action. Please sign in and try again.');
       }
     } else if (status === 403) {
       if (errorCode === 'ACCOUNT_SUSPENDED') {
@@ -80,6 +82,8 @@ api.interceptors.response.use(
       }
     } else if (status === 404 && errorCode === 'NOT_FOUND') {
       toast.error('The requested item could not be found.');
+    } else if (status === 409 && errorCode === 'QUEUE_REQUIRED') {
+      toast.error('This event is under high load. Please join the virtual queue.');
     } else if (status === 409 && errorCode === 'CONFLICT') {
       toast.error('This action conflicts with the current state. Refresh and try again.');
     } else if (status === 400 && errorCode === 'DOMAIN_ERROR') {

@@ -5,9 +5,10 @@ public record NotificationDto(
         String type,
         String content,
         String createdAt,
-        boolean delivered
+        boolean delivered,
+        String relatedEntityId
 ) {
         public NotificationDto convertAll(NotificationDto n) {
-            return new NotificationDto(n.notificationId(), n.type(), n.content(), n.createdAt(), n.delivered());
+            return new NotificationDto(n.notificationId(), n.type(), n.content(), n.createdAt(), n.delivered(), n.relatedEntityId());
         }
 }

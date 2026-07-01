@@ -88,13 +88,18 @@ public class NotificationPortImpl implements INotificationPort {
 
     @SuppressWarnings("null")
     private void dispatchMessage(BuyerReference buyer, NotificationType type, String message) {
+        dispatchMessage(buyer, type, message, null);
+    }
+
+    @SuppressWarnings("null")
+    private void dispatchMessage(BuyerReference buyer, NotificationType type, String message, String relatedEntityId) {
         String memberIdStr = buyer.memberId();
         if (memberIdStr == null || memberIdStr.isBlank()) {
             // Guests have no member account, so there is nobody to store/deliver an
             // in-app notification to. Skip silently instead of failing the caller.
             return;
         }
-        Notification notification = Notification.create(type, message);
+        Notification notification = Notification.create(type, message, relatedEntityId);
 
         memberRepository.findById(new MemberId(memberIdStr)).ifPresentOrElse(member -> {
             member.addNotification(notification);
@@ -127,7 +132,7 @@ public class NotificationPortImpl implements INotificationPort {
 
     @Override
     public void sendQueueTurnArrived(BuyerReference buyer, String eventId) {
-        dispatchMessage(buyer, NotificationType.QUEUE_TURN_ARRIVED, "Your turn has arrived for event " + eventId);
+        dispatchMessage(buyer, NotificationType.QUEUE_TURN_ARRIVED, "Your turn has arrived for event " + eventId, eventId);
     }
 
     @Override

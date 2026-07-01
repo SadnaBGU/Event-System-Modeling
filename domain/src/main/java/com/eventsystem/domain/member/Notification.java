@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.EnumType;
 
 /**
@@ -30,6 +31,14 @@ public class Notification {
     private Instant createdAt;
     private boolean delivered;
 
+    /**
+     * Optional id of the entity this notification refers to (e.g. the event id for a
+     * queue-turn notification). Transient: it is only carried on the real-time push so
+     * the client can act on it (e.g. redirect to that event); it is not persisted.
+     */
+    @Transient
+    private String relatedEntityId;
+
     protected Notification() {}
 
     public Notification(String notificationId,
@@ -45,6 +54,12 @@ public class Notification {
 
     public static Notification create(NotificationType type, String content) {
         return new Notification(UUID.randomUUID().toString(), type, content, Instant.now());
+    }
+
+    public static Notification create(NotificationType type, String content, String relatedEntityId) {
+        Notification n = new Notification(UUID.randomUUID().toString(), type, content, Instant.now());
+        n.relatedEntityId = relatedEntityId;
+        return n;
     }
 
     void markDelivered() {
@@ -69,6 +84,10 @@ public class Notification {
 
     public boolean isDelivered() {
         return delivered;
+    }
+
+    public String getRelatedEntityId() {
+        return relatedEntityId;
     }
 
     @Override

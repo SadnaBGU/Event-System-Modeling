@@ -23,7 +23,12 @@ function normalizeNotification(raw: unknown): NotificationDto {
         type: (r.type as NotificationDto['type']) ?? 'GENERIC',
         message: String(r.message ?? r.content ?? ''),
         createdAt: String(r.createdAt ?? new Date().toISOString()),
-        meta: r.meta as Record<string, unknown> | undefined,
+        meta: {
+            ...(r.meta as Record<string, unknown> | undefined),
+            // Backend sends the related event id for queue-turn notifications so the
+            // client can redirect the admitted user straight to that event.
+            ...(r.relatedEntityId ? { eventId: String(r.relatedEntityId) } : {}),
+        },
     };
 }
 

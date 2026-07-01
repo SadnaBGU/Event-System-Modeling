@@ -4,6 +4,7 @@ import com.eventsystem.application.order.ActiveOrderDTO;
 import com.eventsystem.application.order.BuyerRefernceDTO;
 import com.eventsystem.application.order.OrderPricingPreviewDTO;
 import com.eventsystem.application.order.OrderService;
+import com.eventsystem.application.order.QueueService;
 import com.eventsystem.domain.order.BuyerReference;
 import com.eventsystem.domain.order.BuyerType;
 import com.eventsystem.domain.order.OrderStatus;
@@ -37,6 +38,9 @@ class OrdersRestControllerUnitTest {
 
     @Mock
     private OrderService orderService;
+
+    @Mock
+    private QueueService queueService;
 
     @InjectMocks
     private OrdersRestController controller;
