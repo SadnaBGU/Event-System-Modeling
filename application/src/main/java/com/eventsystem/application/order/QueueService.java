@@ -1,11 +1,14 @@
 package com.eventsystem.application.order;
 
+import com.eventsystem.application.appexceptions.QueueAdmissionRequiredException;
 import com.eventsystem.domain.queue.IVirtualQueueRepository;
 import com.eventsystem.domain.queue.VirtualQueue;
 import com.eventsystem.domain.queue.AdmissionToken;
 import com.eventsystem.application.member.INotificationPort;
 import com.eventsystem.domain.order.BuyerReference;
+import com.eventsystem.domain.order.IActiveOrderRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,24 +20,75 @@ public class QueueService {
     private final Logger logger = LoggerFactory.getLogger(QueueService.class);
     
     private final IVirtualQueueRepository queueRepository;
+    private final IActiveOrderRepository activeOrderRepository;
     private final INotificationPort notificationPort;
-    private static final int QUEUE_LOAD_THRESHOLD = 100;
-    private static final int MAX_CONCURRENT_ADMISSIONS = 100;
+    private static final int QUEUE_LOAD_THRESHOLD = 3;
+    private static final int MAX_CONCURRENT_ADMISSIONS = 1;
     private static final int TOKEN_VALIDITY_MINUTES = 10;
 
-    public QueueService(IVirtualQueueRepository queueRepository, INotificationPort notificationPort) {
+    public QueueService(IVirtualQueueRepository queueRepository,
+                        IActiveOrderRepository activeOrderRepository,
+                        INotificationPort notificationPort) {
         this.queueRepository = queueRepository;
+        this.activeOrderRepository = activeOrderRepository;
         this.notificationPort = notificationPort;
+    }
+
+    /**
+     * Enforces queue admission on high concurrent load.
+     * If queue flow is not required, returns immediately.
+     *
+     * <p>Note: we throw {@link QueueAdmissionRequiredException} to signal the caller that
+     * the visitor must wait, but the visitor has just been enqueued and that must be
+     * persisted. {@code noRollbackFor} keeps the enqueue committed instead of letting the
+     * thrown exception roll back the transaction (which would drop the visitor from the
+     * queue entirely, so they would never be admitted).</p>
+     */
+    @Transactional(noRollbackFor = QueueAdmissionRequiredException.class)
+    public void requireAdmissionOrEnqueueOnHighLoad(String eventId, BuyerReference buyer) {
+        if (!isHighLoad(eventId)) {
+            return;
+        }
+
+        VirtualQueue queue = getOrCreateActiveQueue(eventId);
+        queue.joinQueue(buyer);
+        queueRepository.save(queue);
+
+        if (!queue.isAdmitted(buyer)) {
+            throw new QueueAdmissionRequiredException(eventId);
+        }
+
+        // The buyer is admitted and now holds their admission slot for the entire
+        // purchase. The slot is NOT released here: it is only freed once the buyer
+        // finishes checkout or their token/order times out (see
+        // releaseAdmissionAndAdmitNext), and only then is the next waiting buyer let in.
+    }
+
+    /**
+     * Releases a buyer's admission slot after they finish a purchase (or their
+     * order/token times out), then admits the next waiting visitor into the freed
+     * slot. Safe no-op when the event has no queue or the buyer holds no token.
+     */
+    @Transactional
+    public void releaseAdmissionAndAdmitNext(String eventId, BuyerReference buyer) {
+        queueRepository.findByEvent(eventId).ifPresent(queue -> {
+            // Take back the finished/expired buyer's token so the slot is free again.
+            queue.revokeAdmission(buyer);
+
+            // Now that a slot has opened, admit the next waiting buyer (if any).
+            List<AdmissionToken> newlyAdmitted = queue.admitNextGroup(TOKEN_VALIDITY_MINUTES);
+            queueRepository.save(queue);
+
+            for (AdmissionToken token : newlyAdmitted) {
+                notificationPort.sendQueueTurnArrived(token.getBuyerRef(), eventId);
+            }
+        });
     }
 
     public void enqueueVisitor(String eventId, BuyerReference buyer) {
         logger.info("Attempting to enqueue visitor for event {}", eventId);
 
-        VirtualQueue queue = queueRepository.findByEvent(eventId)
-                .orElseGet(() -> {
-                    logger.info("No existing queue found for event {}. Creating a new one.", eventId);
-                    return createNewQueue(eventId);
-                });
+        VirtualQueue queue = getOrCreateActiveQueue(eventId);
 
         queue.joinQueue(buyer);
         queueRepository.save(queue);
@@ -84,6 +138,11 @@ public class QueueService {
         return status;
     }
 
+    public void processNextBatchForAllEvents() {
+        queueRepository.findAll().forEach(queue -> processNextBatch(queue.getEventId()));
+    }
+
+    @Transactional(readOnly = true)
     public AdmissionStatus getAdmissionStatus(String eventId, BuyerReference buyer) {
         return queueRepository.findByEvent(eventId)
                 .map(queue -> new AdmissionStatus(queue.isAdmitted(buyer), queue.positionOf(buyer)))
@@ -114,6 +173,21 @@ public class QueueService {
         return newQueue;
     }
 
+    private VirtualQueue getOrCreateActiveQueue(String eventId) {
+        return queueRepository.findByEvent(eventId)
+                .map(queue -> {
+                    if (!queue.getStatus().equals(com.eventsystem.domain.queue.QueueStatus.ACTIVE)) {
+                        queue.activate();
+                        logger.info("Re-activated existing VirtualQueue {} for event {}", queue.getQueueId(), eventId);
+                    }
+                    return queue;
+                })
+                .orElseGet(() -> {
+                    logger.info("No existing queue found for event {}. Creating a new one.", eventId);
+                    return createNewQueue(eventId);
+                });
+    }
+
     public void handleEventSoldOut(String eventId) {
         queueRepository.findByEvent(eventId).ifPresent(queue -> {
             List<BuyerReference> disappointedBuyers = queue.clearQueue();
@@ -130,5 +204,10 @@ public class QueueService {
         logger.info("Resetting all queues in the system due to startup or recovery.");
         queueRepository.deleteAll();
         logger.info("All queues have been reset.");
+    }
+
+    private boolean isHighLoad(String eventId) {
+        long activeCount = activeOrderRepository.countActiveNonExpiredByEvent(eventId, Instant.now());
+        return activeCount >= QUEUE_LOAD_THRESHOLD;
     }
 }

@@ -45,11 +45,12 @@ public class OrderService {
     private final OrderFactory orderFactory;
     private final ILotteryRepository lotteryRepository;
     private final IDiscountApplicationPort discountApplicationPort;
+    private final QueueService queueService;
     
     private static final int TIMEOUT_MINUTES = 10; 
 
     public OrderService(IActiveOrderRepository orderRepository, IZoneRepository zoneRepository, OrderFactory orderFactory, ILotteryRepository lotteryRepository) {
-        this(orderRepository, zoneRepository, orderFactory, lotteryRepository, null);
+        this(orderRepository, zoneRepository, orderFactory, lotteryRepository, null, null);
     }
 
     public OrderService(IActiveOrderRepository orderRepository,
@@ -57,11 +58,21 @@ public class OrderService {
                         OrderFactory orderFactory,
                         ILotteryRepository lotteryRepository,
                         IDiscountApplicationPort discountApplicationPort) {
+        this(orderRepository, zoneRepository, orderFactory, lotteryRepository, discountApplicationPort, null);
+    }
+
+    public OrderService(IActiveOrderRepository orderRepository,
+                        IZoneRepository zoneRepository,
+                        OrderFactory orderFactory,
+                        ILotteryRepository lotteryRepository,
+                        IDiscountApplicationPort discountApplicationPort,
+                        QueueService queueService) {
         this.orderRepository = orderRepository;
         this.zoneRepository = zoneRepository;
         this.orderFactory = orderFactory;
         this.lotteryRepository = lotteryRepository;
         this.discountApplicationPort = discountApplicationPort;
+        this.queueService = queueService;
     }
 
     /**
@@ -245,6 +256,7 @@ public class OrderService {
                         });
                     });
                 }
+                advanceQueueIfPossible(order.getEventId(), order.getBuyerRef());
                 logger.info("Order {} expired. Unlocked {} associated seats.", order.getOrderId(), expiredItems.size());
                 count++;
             } catch (RuntimeException e) {
@@ -252,6 +264,19 @@ public class OrderService {
             }
         }
         logger.info("Completed background sweep. Total expired orders processed: {}", count);
+    }
+
+    private void advanceQueueIfPossible(String eventId, BuyerReference buyer) {
+        if (queueService == null) {
+            return;
+        }
+        try {
+            // The order timed out, so take back this buyer's admission slot and let
+            // the next waiting buyer in.
+            queueService.releaseAdmissionAndAdmitNext(eventId, buyer);
+        } catch (RuntimeException e) {
+            logger.warn("Failed to advance queue during expired-order sweep for event {}", eventId, e);
+        }
     }
 
     /**

@@ -21,6 +21,8 @@ public interface SpringDataActiveOrderRepository extends JpaRepository<ActiveOrd
     // Useful for a background job/cron to find and clean up expired reservations
     List<ActiveOrder> findByStatusAndReservationExpiryBefore(OrderStatus status, Instant now);
 
+    long countByEventIdAndStatusAndReservationExpiryAfter(String eventId, OrderStatus status, Instant now);
+
     @Query("""
             select o
             from ActiveOrder o

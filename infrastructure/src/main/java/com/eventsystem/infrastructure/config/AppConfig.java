@@ -311,8 +311,10 @@
         }
 
         @Bean
-        public QueueService queueService(IVirtualQueueRepository virtualQueueRepo, INotificationPort notificationService) {
-            return new QueueService(virtualQueueRepo, notificationService);
+        public QueueService queueService(IVirtualQueueRepository virtualQueueRepo,
+                IActiveOrderRepository orderRepo,
+                INotificationPort notificationService) {
+            return new QueueService(virtualQueueRepo, orderRepo, notificationService);
         }
 
         @Bean
@@ -320,8 +322,9 @@
                 IZoneRepository zoneRepo,
                 OrderFactory orderFactory,
                 ILotteryRepository lotteryRepo,
-                IDiscountApplicationPort discountApplicationPort) {
-            return new OrderService(orderRepo, zoneRepo, orderFactory, lotteryRepo, discountApplicationPort);
+                IDiscountApplicationPort discountApplicationPort,
+                QueueService queueService) {
+            return new OrderService(orderRepo, zoneRepo, orderFactory, lotteryRepo, discountApplicationPort, queueService);
         }
 
         @Bean
@@ -422,7 +425,8 @@
                 IZoneRepository zoneRepo,
                 IPurchasePolicyValidationPort purchasePolicyPort,
                 IDiscountApplicationPort discountPort,
-                IEventQueryPort eventQueryPort) {
+                IEventQueryPort eventQueryPort,
+                QueueService queueService) {
             return new CheckoutSaga(
                     orderRepo,
                     purchaseRecordRepo,
@@ -432,7 +436,8 @@
                     zoneRepo,
                     purchasePolicyPort,
                     discountPort,
-                    eventQueryPort);
+                    eventQueryPort,
+                    queueService);
         }
 
         // ==========================================

@@ -4,6 +4,7 @@ import com.eventsystem.application.appexceptions.AlreadyExistsOrderException;
 import com.eventsystem.application.appexceptions.AccountSuspendedException;
 import com.eventsystem.application.appexceptions.AccountSuspendedReadOnlyException;
 import com.eventsystem.application.appexceptions.AuthenticationException;
+import com.eventsystem.application.appexceptions.QueueAdmissionRequiredException;
 import com.eventsystem.application.appexceptions.IssuanceFailedException;
 import com.eventsystem.application.appexceptions.NotAuthorizedException;
 import com.eventsystem.application.appexceptions.MemberNotFoundException;
@@ -55,6 +56,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlreadyExistsOrderException.class)
     public ResponseEntity<Map<String, Object>> handleAlreadyExistsOrder(AlreadyExistsOrderException ex,
             HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler(QueueAdmissionRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleQueueAdmissionRequired(QueueAdmissionRequiredException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
     }
 
@@ -140,6 +146,7 @@ public class GlobalExceptionHandler {
         // Map exceptions to stable machine-readable error codes used by the UI.
         if (ex instanceof AccountSuspendedException) return "ACCOUNT_SUSPENDED";
         if (ex instanceof AccountSuspendedReadOnlyException) return "ACCOUNT_SUSPENDED";
+        if (ex instanceof QueueAdmissionRequiredException) return "QUEUE_REQUIRED";
         if (ex instanceof AuthenticationException) return "AUTH_INVALID";
         if (ex instanceof NotAuthorizedException || ex instanceof SecurityException) return "FORBIDDEN";
         if (ex instanceof AlreadyExistsOrderException) return "CONFLICT";

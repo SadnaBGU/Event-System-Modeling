@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -54,24 +55,24 @@ class EventQueueControllerTest {
 
     @SuppressWarnings("null")
     @Test
-    @DisplayName("POST /entries - Authenticated Member Branch")
-    void enqueueVisitor_AsMember_ReturnsCreated() throws Exception {
+    @DisplayName("POST /entries - Manual member entry is disabled (automatic under high load)")
+    void enqueueVisitor_AsMember_isDisabled() throws Exception {
         mockMvc.perform(post("/api/events/{eventId}/queue/entries", EVENT_ID)
                         .requestAttr("authenticatedMemberId", MEMBER_ID)
                         .param("sessionId", SESSION_ID))
-                .andExpect(status().isCreated());
+                .andExpect(status().isBadRequest());
 
-        verify(queueService).enqueueVisitor(eq(EVENT_ID), any(BuyerReference.class));
+        verify(queueService, never()).enqueueVisitor(any(), any());
     }
 
     @Test
-    @DisplayName("POST /entries - Guest with SessionId Branch")
-    void enqueueVisitor_AsGuest_ReturnsCreated() throws Exception {
+    @DisplayName("POST /entries - Manual guest entry is disabled (automatic under high load)")
+    void enqueueVisitor_AsGuest_isDisabled() throws Exception {
         mockMvc.perform(post("/api/events/{eventId}/queue/entries", EVENT_ID)
                         .param("sessionId", SESSION_ID))
-                .andExpect(status().isCreated());
+                .andExpect(status().isBadRequest());
 
-        verify(queueService).enqueueVisitor(eq(EVENT_ID), any(BuyerReference.class));
+        verify(queueService, never()).enqueueVisitor(any(), any());
     }
 
     @Test

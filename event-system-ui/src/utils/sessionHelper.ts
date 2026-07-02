@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-export const getGuestSessionId = (): String => {
+export const getGuestSessionId = (): string => {
     let sessionId = sessionStorage.getItem('guest_session_id');
     if (!sessionId) {
         sessionId = uuidv4();

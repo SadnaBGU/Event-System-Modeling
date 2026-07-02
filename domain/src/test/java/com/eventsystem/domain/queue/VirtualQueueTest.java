@@ -325,6 +325,58 @@ class VirtualQueueTest {
     }
 
     @Test
+    void admitNextGroup_consumedAdmission_isReplacedImmediately() {
+        queue = new VirtualQueue(queueId, eventId, 50, 1);
+        queue.activate();
+
+        BuyerReference first = new BuyerReference(BuyerType.MEMBER, "s1", "m1");
+        BuyerReference second = new BuyerReference(BuyerType.MEMBER, "s2", "m2");
+
+        queue.joinQueue(first);
+        queue.joinQueue(second);
+
+        List<AdmissionToken> firstBatch = queue.admitNextGroup(10);
+        assertThat(firstBatch).hasSize(1);
+        assertThat(firstBatch.get(0).getBuyerRef()).isEqualTo(first);
+
+        queue.consumeTokenFor(first);
+
+        List<AdmissionToken> secondBatch = queue.admitNextGroup(10);
+        assertThat(secondBatch).hasSize(1);
+        assertThat(secondBatch.get(0).getBuyerRef()).isEqualTo(second);
+    }
+
+    @Test
+    void admitNextGroup_respectsFifoOrder() {
+        queue = new VirtualQueue(queueId, eventId, 50, 1);
+        queue.activate();
+
+        BuyerReference first = new BuyerReference(BuyerType.MEMBER, "s1", "m1");
+        BuyerReference second = new BuyerReference(BuyerType.MEMBER, "s2", "m2");
+        BuyerReference third = new BuyerReference(BuyerType.MEMBER, "s3", "m3");
+
+        queue.joinQueue(first);
+        queue.joinQueue(second);
+        queue.joinQueue(third);
+
+        List<AdmissionToken> batch1 = queue.admitNextGroup(10);
+        assertThat(batch1).hasSize(1);
+        assertThat(batch1.get(0).getBuyerRef()).isEqualTo(first);
+
+        queue.revokeAdmission(first);
+
+        List<AdmissionToken> batch2 = queue.admitNextGroup(10);
+        assertThat(batch2).hasSize(1);
+        assertThat(batch2.get(0).getBuyerRef()).isEqualTo(second);
+
+        queue.revokeAdmission(second);
+
+        List<AdmissionToken> batch3 = queue.admitNextGroup(10);
+        assertThat(batch3).hasSize(1);
+        assertThat(batch3.get(0).getBuyerRef()).isEqualTo(third);
+    }
+
+    @Test
     void expireTokens_RemovesExpiredTokensAndFreesSlots() {
         queue = new VirtualQueue(queueId, eventId, 50, 5);
         queue.activate();
