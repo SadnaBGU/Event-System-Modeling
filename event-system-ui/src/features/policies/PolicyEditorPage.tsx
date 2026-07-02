@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { PolicyBundle, PurchaseNode } from '../../types/policies';
+
+import type {
+  DiscountPolicySummary,
+  PolicyBundle,
+  PurchaseNode,
+  PurchasePolicySummary,
+} from '../../types/policies';
 import { policiesApi, type DiscountItemRequest } from '../../api/endpoints/policies';
 import { eventsApi } from '../../api/endpoints/events';
 import { useCompanyPermissions } from '../../auth/useCompanyPermissions';
 import { PurchaseNodeEditor, purchaseTemplates } from './PurchaseTreeEditor';
 import { previewPurchase } from './preview';
 import { friendlyError } from '../../lib/errors';
+
 import '../../components/common.css';
 import './policies.css';
 
@@ -17,6 +24,7 @@ interface Props {
 }
 
 type DiscountKind = 'visible' | 'conditional' | 'coupon';
+
 interface DiscountDraft {
   name: string;
   percent: number;
@@ -26,8 +34,22 @@ interface DiscountDraft {
   endDate: string;
 }
 
+const EMPTY_BUNDLE: PolicyBundle = {
+  discount: null,
+  purchase: null,
+  purchasePolicies: [],
+  discountPolicies: [],
+};
+
 function newDiscount(): DiscountDraft {
-  return { name: '', percent: 10, kind: 'visible', code: '', minTickets: 2, endDate: '' };
+  return {
+    name: '',
+    percent: 10,
+    kind: 'visible',
+    code: '',
+    minTickets: 2,
+    endDate: '',
+  };
 }
 
 export function PolicyEditorPage({ scope }: Props) {
@@ -41,23 +63,31 @@ export function PolicyEditorPage({ scope }: Props) {
     enabled: !!id,
   });
 
-  // V3: event policies may only be edited while the event is a draft (before publish).
+  // V3: event policies may only be edited while the event is a draft before publish.
   const eventQ = useQuery({
     queryKey: ['event', id],
     queryFn: () => eventsApi.get(id),
     enabled: scope === 'event' && !!id,
   });
+
   const eventLocked = scope === 'event' && !!eventQ.data && eventQ.data.status !== 'DRAFT';
 
-  // Authorization is derived from the backend (per-company roles), not client state:
-  // company scope uses the company id directly; event scope resolves it from the event.
+  // Authorization is derived from the backend roles.
+  // Company scope uses the company id directly; event scope resolves it from the event.
   const companyId = scope === 'company' ? id : eventQ.data?.companyId;
   const perms = useCompanyPermissions(companyId);
 
-  const [bundle, setBundle] = useState<PolicyBundle>({ discount: null, purchase: null });
+  const [bundle, setBundle] = useState<PolicyBundle>(EMPTY_BUNDLE);
 
   useEffect(() => {
-    if (query.data) setBundle(query.data);
+    if (query.data) {
+      setBundle({
+        ...EMPTY_BUNDLE,
+        ...query.data,
+        purchasePolicies: query.data.purchasePolicies ?? [],
+        discountPolicies: query.data.discountPolicies ?? [],
+      });
+    }
   }, [query.data]);
 
   const save = useMutation({
@@ -65,11 +95,15 @@ export function PolicyEditorPage({ scope }: Props) {
       scope === 'company'
         ? policiesApi.putCompany(id, bundle)
         : policiesApi.putEvent(id, bundle),
-    onSuccess: () => toast.success('The purchase policy was saved successfully.'),
+    onSuccess: async () => {
+      toast.success('The purchase policy was saved successfully.');
+      await query.refetch();
+    },
     onError: (err) => toast.error(friendlyError(err, "Couldn't save the purchase policy.")),
   });
 
-  // ── Discount policy state ──────────────────────────────────────────────────
+  // ── Discount policy draft state ────────────────────────────────────────────
+
   const [discounts, setDiscounts] = useState<DiscountDraft[]>([]);
   const [stackable, setStackable] = useState(false);
 
@@ -86,18 +120,53 @@ export function PolicyEditorPage({ scope }: Props) {
           endDate: d.endDate || undefined,
         })),
       };
+
       return scope === 'company'
         ? policiesApi.putCompanyDiscount(id, payload)
         : policiesApi.putEventDiscount(id, payload);
     },
-    onSuccess: () => toast.success('The discount policy was saved successfully.'),
+    onSuccess: async () => {
+      toast.success('The discount policy was saved successfully.');
+      setDiscounts([]);
+      await query.refetch();
+    },
     onError: (err) => toast.error(friendlyError(err, "Couldn't save the discount policy.")),
   });
+    
+  const deletePurchase = useMutation({
+    mutationFn: (policyId: string) =>
+      scope === 'company'
+        ? policiesApi.deleteCompanyPurchase(id, policyId)
+        : policiesApi.deleteEventPurchase(id, policyId),
+    onSuccess: async () => {
+      toast.success('Purchase policy deleted.');
+      await query.refetch();
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't delete the purchase policy.")),
+  });
 
-  const discountsValid = discounts.length > 0 && discounts.every(
-    (d) => d.name.trim() && d.percent > 0 && d.percent <= 100 &&
-      (d.kind !== 'coupon' || d.code.trim()),
-  );
+  const deleteDiscount = useMutation({
+    mutationFn: (policyId: string) =>
+      scope === 'company'
+        ? policiesApi.deleteCompanyDiscount(id, policyId)
+        : policiesApi.deleteEventDiscount(id, policyId),
+    onSuccess: async () => {
+      toast.success('Discount policy deleted.');
+      await query.refetch();
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't delete the discount policy.")),
+  });
+
+  const discountsValid =
+    discounts.length > 0 &&
+    discounts.every(
+      (d) =>
+        d.name.trim() &&
+        d.percent > 0 &&
+        d.percent <= 100 &&
+        (d.kind !== 'coupon' || d.code.trim()) &&
+        (d.kind !== 'conditional' || d.minTickets > 0),
+    );
 
   if (query.isLoading || (scope === 'event' && eventQ.isLoading) || perms.loading) {
     return <p>Loading…</p>;
@@ -113,7 +182,11 @@ export function PolicyEditorPage({ scope }: Props) {
         >
           ← Back
         </Link>
-        <h1 className="page-title">{scope === 'company' ? 'Company policies' : 'Event policies'}</h1>
+
+        <h1 className="page-title">
+          {scope === 'company' ? 'Company policies' : 'Event policies'}
+        </h1>
+
         <p className="empty">You don't have permission to edit these policies.</p>
       </section>
     );
@@ -125,7 +198,9 @@ export function PolicyEditorPage({ scope }: Props) {
         <Link to={`/events/${id}`} className="btn ghost" style={{ marginBottom: '1rem' }}>
           ← Back
         </Link>
+
         <h1 className="page-title">Event policies</h1>
+
         <p className="empty">
           This event is published. Policies can only be edited while it is a draft.
         </p>
@@ -142,12 +217,25 @@ export function PolicyEditorPage({ scope }: Props) {
       >
         ← Back
       </Link>
+
       <h1 className="page-title">
         {scope === 'company' ? 'Company policies' : 'Event policies'}
       </h1>
 
+      {/* ── Purchase policy ── */}
       <h2 style={{ fontSize: '1.05rem', marginTop: '1rem' }}>Purchase policy</h2>
-      <p className="meta">Who may buy, and how many (e.g. max tickets per buyer, minimum age).</p>
+      <p className="meta">
+        Who may buy, and how many, for example max tickets per buyer or minimum age.
+      </p>
+
+    <ExistingPurchasePolicies
+      policies={bundle.purchasePolicies}
+      deleting={deletePurchase.isPending}
+      onDelete={(policyId) => deletePurchase.mutate(policyId)}
+    />
+
+      <h3 className="draft-title">New purchase policy draft</h3>
+
       {bundle.purchase ? (
         <PurchaseNodeEditor
           node={bundle.purchase}
@@ -156,17 +244,18 @@ export function PolicyEditorPage({ scope }: Props) {
         />
       ) : (
         <EmptyTree
-          label="No purchase policy yet (anyone can buy)."
+          label="No purchase policy draft selected."
           templates={purchaseTemplates.map((t) => ({ label: t.label, make: t.make }))}
           onPick={(node) => setBundle((b) => ({ ...b, purchase: node as PurchaseNode }))}
         />
       )}
+
       <div className="preview-box">
         <div className="label">Preview</div>
         {previewPurchase(bundle.purchase)}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+      <div className="policy-actions">
         <button
           type="button"
           className="btn success"
@@ -180,15 +269,21 @@ export function PolicyEditorPage({ scope }: Props) {
       {/* ── Discount policy ── */}
       <h2 style={{ fontSize: '1.05rem', marginTop: '2rem' }}>Discount policy</h2>
       <p className="meta">
-        Visible discounts (e.g. Early Bird), conditional offers (buy N+), or hidden coupon codes.
+        Visible discounts, conditional offers, or hidden coupon codes.
       </p>
 
-      {discounts.length === 0 && (
-        <p className="empty">No discounts yet.</p>
-      )}
+      <ExistingDiscountPolicies
+        policies={bundle.discountPolicies}
+        deleting={deleteDiscount.isPending}
+        onDelete={(policyId) => deleteDiscount.mutate(policyId)}
+      />
+
+      <h3 className="draft-title">New discount policy draft</h3>
+
+      {discounts.length === 0 && <p className="empty">No discount draft yet.</p>}
 
       {discounts.map((d, i) => (
-        <div key={i} className="zone-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+        <div key={i} className="zone-row discount-draft-row">
           <div className="form-stack">
             <label>
               Name
@@ -198,6 +293,7 @@ export function PolicyEditorPage({ scope }: Props) {
                 placeholder="Early Bird"
               />
             </label>
+
             <label>
               Percent off (1–100)
               <input
@@ -205,20 +301,26 @@ export function PolicyEditorPage({ scope }: Props) {
                 min={1}
                 max={100}
                 value={d.percent}
-                onChange={(e) => updateDiscount(setDiscounts, i, { percent: Number(e.target.value) })}
+                onChange={(e) =>
+                  updateDiscount(setDiscounts, i, { percent: Number(e.target.value) })
+                }
               />
             </label>
+
             <label>
               Type
               <select
                 value={d.kind}
-                onChange={(e) => updateDiscount(setDiscounts, i, { kind: e.target.value as DiscountKind })}
+                onChange={(e) =>
+                  updateDiscount(setDiscounts, i, { kind: e.target.value as DiscountKind })
+                }
               >
-                <option value="visible">Visible (applies to everyone)</option>
-                <option value="conditional">Conditional (min tickets)</option>
-                <option value="coupon">Coupon code (hidden)</option>
+                <option value="visible">Visible, applies to everyone</option>
+                <option value="conditional">Conditional, min tickets</option>
+                <option value="coupon">Coupon code, hidden</option>
               </select>
             </label>
+
             {d.kind === 'conditional' && (
               <label>
                 Minimum tickets
@@ -226,10 +328,13 @@ export function PolicyEditorPage({ scope }: Props) {
                   type="number"
                   min={1}
                   value={d.minTickets}
-                  onChange={(e) => updateDiscount(setDiscounts, i, { minTickets: Number(e.target.value) })}
+                  onChange={(e) =>
+                    updateDiscount(setDiscounts, i, { minTickets: Number(e.target.value) })
+                  }
                 />
               </label>
             )}
+
             {d.kind === 'coupon' && (
               <label>
                 Coupon code
@@ -240,6 +345,7 @@ export function PolicyEditorPage({ scope }: Props) {
                 />
               </label>
             )}
+
             <label>
               Ends on (optional)
               <input
@@ -249,6 +355,7 @@ export function PolicyEditorPage({ scope }: Props) {
               />
             </label>
           </div>
+
           <button
             type="button"
             className="btn ghost"
@@ -260,7 +367,7 @@ export function PolicyEditorPage({ scope }: Props) {
         </div>
       ))}
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="discount-actions">
         <button
           type="button"
           className="btn ghost"
@@ -268,10 +375,16 @@ export function PolicyEditorPage({ scope }: Props) {
         >
           + Add discount
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} />
+
+        <label className="stackable-toggle">
+          <input
+            type="checkbox"
+            checked={stackable}
+            onChange={(e) => setStackable(e.target.checked)}
+          />
           Allow stacking multiple discounts
         </label>
+
         <button
           type="button"
           className="btn success"
@@ -285,8 +398,195 @@ export function PolicyEditorPage({ scope }: Props) {
   );
 }
 
+function ExistingPurchasePolicies({
+  policies,
+  deleting,
+  onDelete,
+}: {
+  policies: PurchasePolicySummary[];
+  deleting: boolean;
+  onDelete: (policyId: string) => void;
+}) {
+  return (
+    <section className="saved-policy-section">
+      <h3>Saved purchase policies</h3>
+
+      {policies.length === 0 ? (
+        <p className="muted">No saved purchase policies returned by the backend.</p>
+      ) : (
+        <div className="saved-policy-list">
+          {policies.map((policy) => (
+            <article className="saved-policy-card" key={policy.policyId}>
+              <div className="saved-policy-card__head">
+                <strong>{policy.policyName || 'Purchase policy'}</strong>
+                <span className="kind-pill purchase">PURCHASE</span>
+                <span className={policy.active ? 'status-pill active' : 'status-pill inactive'}>
+                  {policy.active ? 'Active' : 'Inactive'}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn danger small saved-policy-delete"
+                  disabled={deleting}
+                  onClick={() => {
+                    if (window.confirm('Delete this purchase policy?')) {
+                      onDelete(policy.policyId);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Owner</dt>
+                  <dd>{policy.ownerType}</dd>
+                </div>
+
+                <div>
+                  <dt>Scope</dt>
+                  <dd>{formatScope(policy.scope)}</dd>
+                </div>
+
+                <div>
+                  <dt>Summary</dt>
+                  <dd>{policy.summary || 'No summary available.'}</dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ExistingDiscountPolicies({
+  policies,
+  deleting,
+  onDelete,
+}: {
+  policies: DiscountPolicySummary[];
+  deleting: boolean;
+  onDelete: (policyId: string) => void;
+}) {
+  return (
+    <section className="saved-policy-section">
+      <h3>Saved discount policies</h3>
+
+      {policies.length === 0 ? (
+        <p className="muted">No saved discount policies returned by the backend.</p>
+      ) : (
+        <div className="saved-policy-list">
+          {policies.map((policy) => (
+            <article className="saved-policy-card" key={policy.policyId}>
+              <div className="saved-policy-card__head">
+                <strong>{policy.policyName || 'Discount policy'}</strong>
+                <span className="kind-pill discount">DISCOUNT</span>
+                <span className={policy.active ? 'status-pill active' : 'status-pill inactive'}>
+                  {policy.active ? 'Active' : 'Inactive'}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn danger small saved-policy-delete"
+                  disabled={deleting}
+                  onClick={() => {
+                    if (window.confirm('Delete this discount policy?')) {
+                      onDelete(policy.policyId);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Owner</dt>
+                  <dd>{policy.ownerType}</dd>
+                </div>
+
+                <div>
+                  <dt>Scope</dt>
+                  <dd>{formatScope(policy.scope)}</dd>
+                </div>
+
+                <div>
+                  <dt>Stacking</dt>
+                  <dd>{policy.stackable ? 'Allowed' : 'Best discount only'}</dd>
+                </div>
+
+                <div>
+                  <dt>Summary</dt>
+                  <dd>{policy.summary || `${policy.discounts?.length ?? 0} discount(s)`}</dd>
+                </div>
+              </dl>
+
+              {policy.discounts?.length > 0 && (
+                <ul className="discount-summary-list">
+                  {policy.discounts.map((discount, index) => (
+                    <li key={`${policy.policyId}-${index}`}>
+                      <strong>{discount.discountName}</strong>
+                      {' · '}
+                      {discount.discountType || inferDiscountType(discount)}
+                      {' · '}
+                      {formatPercent(discount.discountPercent)} off
+                      {discount.discountCode ? ` · code: ${discount.discountCode}` : ''}
+                      {discount.conditionSummary ? ` · ${discount.conditionSummary}` : ''}
+                      {discount.endDate ? ` · until ${discount.endDate}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatScope(scope: PurchasePolicySummary['scope']): string {
+  if (!scope) return 'Unknown scope';
+
+  const parts: string[] = [];
+
+  if (scope.companyWide) {
+    parts.push('Company-wide');
+  }
+
+  if (scope.eventIds.length > 0) {
+    parts.push(`Events: ${scope.eventIds.join(', ')}`);
+  }
+
+  return parts.length > 0 ? parts.join(' + ') : 'No active scope';
+}
+
+function formatPercent(value: number | string): string {
+  if (typeof value === 'number') {
+    return `${value}%`;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.endsWith('%') ? trimmed : `${trimmed}%`;
+}
+
+function inferDiscountType(discount: { visible?: boolean; discountCode?: string | null }): string {
+  if (discount.discountCode) {
+    return 'Coupon';
+  }
+
+  if (discount.visible === false) {
+    return 'Coupon';
+  }
+
+  return 'Discount';
+}
+
 function updateDiscount(
-  setDiscounts: React.Dispatch<React.SetStateAction<DiscountDraft[]>>,
+  setDiscounts: Dispatch<SetStateAction<DiscountDraft[]>>,
   index: number,
   patch: Partial<DiscountDraft>,
 ) {
@@ -305,8 +605,10 @@ function EmptyTree<T>({
   return (
     <div className="tree-empty">
       <p style={{ marginTop: 0 }}>{label}</p>
+
       <div className="tree-add" style={{ justifyContent: 'center' }}>
         <span>+ Start with</span>
+
         {templates.map((t) => (
           <button
             key={t.label}

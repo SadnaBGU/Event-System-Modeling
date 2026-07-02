@@ -1,21 +1,57 @@
 import { api } from '../client';
-import type { PolicyBundle } from '../../types/policies';
+import type {
+  DiscountPolicySummary,
+  PolicyBundle,
+  PurchasePolicySummary,
+} from '../../types/policies';
 import type { PurchasePolicyTree } from './policyMappers';
 import { purchaseNodeToTree } from './policyMappers';
 
-// Backend exposes GET (read summary of active policies) and PUT (single rule tree).
-// Discount policies are still write-only via that PUT, and the rule tree is the only thing
-// the UI cares about, so the GET response is mainly used to know whether one exists.
-interface PolicySummary { policyId: string; policyName: string; scope: string | null; summary: string | null }
-interface PoliciesPayload { items: PolicySummary[] }
+// Backend GET now returns split arrays:
+// {
+//   purchasePolicies: [...],
+//   discountPolicies: [...],
+//   items: [...] // legacy field, intentionally ignored by the UI
+// }
+//
+// The editable rule trees are still UI drafts only. Backend GET returns summaries,
+// not the original editable tree structure.
+interface PoliciesPayload {
+  purchasePolicies?: PurchasePolicySummary[];
+  discountPolicies?: DiscountPolicySummary[];
+
+  // Legacy combined field. Do not use it, so backend can remove it later.
+  items?: unknown[];
+}
+
+function emptyBundle(): PolicyBundle {
+  return {
+    discount: null,
+    purchase: null,
+    purchasePolicies: [],
+    discountPolicies: [],
+  };
+}
 
 async function getBundle(path: string): Promise<PolicyBundle> {
   try {
-    await api.get<PoliciesPayload>(path);
+    const response = await api.get<PoliciesPayload>(path);
+    const data = response.data ?? {};
+
+    return {
+      discount: null,
+      purchase: null,
+      purchasePolicies: Array.isArray(data.purchasePolicies)
+        ? data.purchasePolicies
+        : [],
+      discountPolicies: Array.isArray(data.discountPolicies)
+        ? data.discountPolicies
+        : [],
+    };
   } catch {
-    // ignore read failure — fall back to empty bundle
+    // Ignore read failure — fall back to empty bundle so the editor can still open.
+    return emptyBundle();
   }
-  return { discount: null, purchase: null };
 }
 
 export interface DiscountItemRequest {
@@ -40,20 +76,48 @@ export const policiesApi = {
   getEvent: (eventId: string) => getBundle(`/events/${eventId}/policies`),
 
   putCompany: (companyId: string, body: PolicyBundle) => {
-    const tree: PurchasePolicyTree | null = body.purchase ? purchaseNodeToTree(body.purchase) : null;
+    const tree: PurchasePolicyTree | null = body.purchase
+      ? purchaseNodeToTree(body.purchase)
+      : null;
+
     if (!tree) return Promise.resolve(undefined);
-    return api.put<void>(`/companies/${companyId}/policies`, tree).then(() => undefined);
+
+    return api.put<void>(`/companies/${companyId}/policies`, tree)
+      .then(() => undefined);
   },
 
   putEvent: (eventId: string, body: PolicyBundle) => {
-    const tree: PurchasePolicyTree | null = body.purchase ? purchaseNodeToTree(body.purchase) : null;
+    const tree: PurchasePolicyTree | null = body.purchase
+      ? purchaseNodeToTree(body.purchase)
+      : null;
+
     if (!tree) return Promise.resolve(undefined);
-    return api.put<void>(`/events/${eventId}/policies`, tree).then(() => undefined);
+
+    return api.put<void>(`/events/${eventId}/policies`, tree)
+      .then(() => undefined);
   },
 
   putCompanyDiscount: (companyId: string, body: DiscountPolicyRequest) =>
-    api.put<void>(`/companies/${companyId}/discount-policies`, body).then(() => undefined),
+    api.put<void>(`/companies/${companyId}/discount-policies`, body)
+      .then(() => undefined),
 
   putEventDiscount: (eventId: string, body: DiscountPolicyRequest) =>
-    api.put<void>(`/events/${eventId}/discount-policies`, body).then(() => undefined),
+    api.put<void>(`/events/${eventId}/discount-policies`, body)
+      .then(() => undefined),
+
+  deleteCompanyPurchase: (companyId: string, policyId: string) =>
+  api.delete<void>(`/companies/${companyId}/policies/${policyId}`)
+    .then(() => undefined),
+
+  deleteEventPurchase: (eventId: string, policyId: string) =>
+    api.delete<void>(`/events/${eventId}/policies/${policyId}`)
+      .then(() => undefined),
+
+  deleteCompanyDiscount: (companyId: string, policyId: string) =>
+    api.delete<void>(`/companies/${companyId}/discount-policies/${policyId}`)
+      .then(() => undefined),
+
+  deleteEventDiscount: (eventId: string, policyId: string) =>
+    api.delete<void>(`/events/${eventId}/discount-policies/${policyId}`)
+      .then(() => undefined),
 };
