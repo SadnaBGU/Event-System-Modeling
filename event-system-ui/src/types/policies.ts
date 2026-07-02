@@ -41,6 +41,12 @@ export interface DiscountInfoSummary {
   discountName: string;
   discountPercent: number | string;
   endDate?: string | null;
+
+  // New fields from backend summary mapper
+  discountType?: string | null;        // "Coupon" | "Visible" | "Conditional"
+  conditionSummary?: string | null;    // e.g. "Coupon code: sale123"
+  discountCode?: string | null;        // raw coupon code, visible to managers
+  visible?: boolean;
 }
 
 export interface DiscountPolicySummary {

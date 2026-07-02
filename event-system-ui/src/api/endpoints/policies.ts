@@ -104,4 +104,20 @@ export const policiesApi = {
   putEventDiscount: (eventId: string, body: DiscountPolicyRequest) =>
     api.put<void>(`/events/${eventId}/discount-policies`, body)
       .then(() => undefined),
+
+  deleteCompanyPurchase: (companyId: string, policyId: string) =>
+  api.delete<void>(`/companies/${companyId}/policies/${policyId}`)
+    .then(() => undefined),
+
+  deleteEventPurchase: (eventId: string, policyId: string) =>
+    api.delete<void>(`/events/${eventId}/policies/${policyId}`)
+      .then(() => undefined),
+
+  deleteCompanyDiscount: (companyId: string, policyId: string) =>
+    api.delete<void>(`/companies/${companyId}/discount-policies/${policyId}`)
+      .then(() => undefined),
+
+  deleteEventDiscount: (eventId: string, policyId: string) =>
+    api.delete<void>(`/events/${eventId}/discount-policies/${policyId}`)
+      .then(() => undefined),
 };

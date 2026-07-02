@@ -13,10 +13,22 @@ import com.eventsystem.domain.event.EventId;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.IMemberRepository;
 import com.eventsystem.domain.member.MemberId;
+import com.eventsystem.domain.policy.discount.Discount;
 import com.eventsystem.domain.policy.discount.DiscountPolicy;
 import com.eventsystem.domain.policy.discount.IDiscountPolicyRepository;
 import com.eventsystem.domain.policy.purchase.IPurchasePolicyRepository;
 import com.eventsystem.domain.policy.purchase.PurchasePolicy;
+import com.eventsystem.domain.policy.rule.IPolicy;
+import com.eventsystem.domain.policy.rule.PolicyType;
+import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
+import com.eventsystem.domain.policy.rule.basic.AlwaysTruePolicy;
+import com.eventsystem.domain.policy.rule.basic.CodePolicy;
+import com.eventsystem.domain.policy.rule.basic.MaxTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.MinAgePolicy;
+import com.eventsystem.domain.policy.rule.basic.MinTicketPolicy;
+import com.eventsystem.domain.policy.rule.basic.RequireMemberPolicy;
+import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
+import com.eventsystem.domain.policy.rule.composite.ICompositePolicy;
 import com.eventsystem.domain.policy.shared.PolicyScope;
 import com.eventsystem.domain.shared.Money;
 import com.eventsystem.domain.zone.IZoneRepository;
@@ -34,6 +46,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -56,11 +69,15 @@ import java.util.Optional;
 public class IntegrationExtController {
 
     private final IProductionCompanyRepository companyRepository;
+
     @SuppressWarnings("unused")
     private final ProductionCompanyService companyService;
+
     private final EventService eventService;
+
     @SuppressWarnings("unused")
     private final IEventRepository eventRepository;
+
     private final IZoneRepository zoneRepository;
     private final IPurchasePolicyRepository purchasePolicyRepository;
     private final IDiscountPolicyRepository discountPolicyRepository;
@@ -72,7 +89,7 @@ public class IntegrationExtController {
             EventService eventService,
             IEventRepository eventRepository,
             IZoneRepository zoneRepository,
-            IPurchasePolicyRepository purchasePolicyRepository, 
+            IPurchasePolicyRepository purchasePolicyRepository,
             IDiscountPolicyRepository discountPolicyRepository,
             IMemberRepository memberRepository) {
         this.companyRepository = companyRepository;
@@ -126,20 +143,29 @@ public class IntegrationExtController {
 
         boolean seated = "SEATED".equalsIgnoreCase(request.zoneType());
         Zone zone;
+
         if (seated) {
             int rows = request.rows() == null || request.rows() < 1 ? 1 : request.rows();
             int perRow = request.seatsPerRow() == null || request.seatsPerRow() < 1
-                    ? request.capacity() : request.seatsPerRow();
+                    ? request.capacity()
+                    : request.seatsPerRow();
+
             List<com.eventsystem.domain.zone.Row> rowList = new ArrayList<>();
+
             for (int r = 0; r < rows; r++) {
                 String rowLabel = String.valueOf((char) ('A' + (r % 26)));
                 List<com.eventsystem.domain.zone.Seat> seats = new ArrayList<>();
+
                 for (int s = 1; s <= perRow; s++) {
                     seats.add(new com.eventsystem.domain.zone.Seat(
-                            com.eventsystem.domain.zone.SeatId.random(), rowLabel, s));
+                            com.eventsystem.domain.zone.SeatId.random(),
+                            rowLabel,
+                            s));
                 }
+
                 rowList.add(new com.eventsystem.domain.zone.Row(rowLabel, seats));
             }
+
             zone = Zone.createSeated(zoneId, eId, request.zoneName().trim(), price, rowList);
         } else {
             zone = Zone.createStanding(zoneId, eId, request.zoneName().trim(), price, request.capacity());
@@ -165,25 +191,31 @@ public class IntegrationExtController {
      * Permission is enforced by {@link EventService#updateDetails} (owner/manager of the company).
      */
     @PutMapping("/events/{eventId}/details")
-    public ResponseEntity<Void> updateEventDetails(@RequestAttribute("authenticatedMemberId") MemberId actor,
-                                                   @PathVariable String eventId,
-                                                   @RequestBody UpdateEventRequest request) {
+    public ResponseEntity<Void> updateEventDetails(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String eventId,
+            @RequestBody UpdateEventRequest request) {
         if (request == null || request.eventName() == null || request.eventName().isBlank()) {
             throw new IllegalArgumentException("eventName is required");
         }
         if (request.dates() == null || request.dates().isEmpty()) {
             throw new IllegalArgumentException("at least one date is required");
         }
+
         List<java.time.LocalDateTime> dates = request.dates().stream()
                 .map(java.time.LocalDateTime::parse)
                 .toList();
-        com.eventsystem.domain.event.EventDetails details = new com.eventsystem.domain.event.EventDetails(
-                request.eventName().trim(),
-                dates,
-                blankToDash(request.category()),
-                blankToDash(request.location()),
-                blankToDash(request.description()));
+
+        com.eventsystem.domain.event.EventDetails details =
+                new com.eventsystem.domain.event.EventDetails(
+                        request.eventName().trim(),
+                        dates,
+                        blankToDash(request.category()),
+                        blankToDash(request.location()),
+                        blankToDash(request.description()));
+
         eventService.updateDetails(actor, new EventId(eventId), details);
+
         return ResponseEntity.noContent().build();
     }
 
@@ -197,6 +229,7 @@ public class IntegrationExtController {
                 .orElseThrow(() -> new IllegalArgumentException("zone not found: " + zoneId));
 
         List<Map<String, Object>> seats = new ArrayList<>();
+
         if (zone.zoneType() == com.eventsystem.domain.zone.ZoneType.SEATED) {
             for (com.eventsystem.domain.zone.Row row : zone.rows()) {
                 for (com.eventsystem.domain.zone.Seat seat : row.seats()) {
@@ -217,6 +250,7 @@ public class IntegrationExtController {
         payload.put("totalCapacity", zone.totalCapacity());
         payload.put("availableCount", zone.getAvailableCount());
         payload.put("seats", seats);
+
         return ResponseEntity.ok(payload);
     }
 
@@ -258,17 +292,18 @@ public class IntegrationExtController {
 
     @GetMapping("/companies/{companyId}/appointments/tree")
     public ResponseEntity<Map<String, Object>> getAppointmentTree(@PathVariable String companyId) {
-    ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
-        .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
+        ProductionCompany company = companyRepository.findById(new CompanyId(companyId))
+                .orElseThrow(() -> new IllegalArgumentException("company not found: " + companyId));
 
-    OwnerNode root = findOwnerNode(company)
-        .orElseThrow(() -> new IllegalStateException("appointment tree root not found"));
+        OwnerNode root = findOwnerNode(company)
+                .orElseThrow(() -> new IllegalStateException("appointment tree root not found"));
 
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("companyId", company.companyId().value());
-    payload.put("companyName", company.companyDetails().name());
-    payload.put("root", ownerNodeToMap(root, memberRepository));
-    return ResponseEntity.ok(payload);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("companyId", company.companyId().value());
+        payload.put("companyName", company.companyDetails().name());
+        payload.put("root", ownerNodeToMap(root, memberRepository));
+
+        return ResponseEntity.ok(payload);
     }
 
     // ── Policies read endpoints ──────────────────────────────────────────────
@@ -321,11 +356,14 @@ public class IntegrationExtController {
         };
     }
 
-    private static List<Map<String, Object>> collectRoles(ProductionCompany company, IMemberRepository memberRepository) {
+    private static List<Map<String, Object>> collectRoles(
+            ProductionCompany company,
+            IMemberRepository memberRepository) {
         List<Map<String, Object>> result = new ArrayList<>();
         Deque<OwnerNode> ownerQueue = new ArrayDeque<>();
 
         OwnerNode founderNode = findOwnerNode(company).orElse(null);
+
         if (founderNode == null) {
             return result;
         }
@@ -353,6 +391,7 @@ public class IntegrationExtController {
             field.setAccessible(true);
 
             Object tree = field.get(company);
+
             if (tree == null) {
                 return Optional.empty();
             }
@@ -364,7 +403,10 @@ public class IntegrationExtController {
         }
     }
 
-    private static void walkManager(ManagerNode node, List<Map<String, Object>> out, IMemberRepository memberRepository) {
+    private static void walkManager(
+            ManagerNode node,
+            List<Map<String, Object>> out,
+            IMemberRepository memberRepository) {
         List<String> permissions = node.permissions()
                 .stream()
                 .map(Permission::name)
@@ -394,55 +436,59 @@ public class IntegrationExtController {
         return payload;
     }
 
-    private static Map<String, Object> ownerNodeToMap(OwnerNode node, IMemberRepository memberRepository) {
+    private static Map<String, Object> ownerNodeToMap(
+            OwnerNode node,
+            IMemberRepository memberRepository) {
         Map<String, Object> payload = new LinkedHashMap<>();
+
         payload.put("memberId", node.memberId().value());
         payload.put(
-            "memberUsername",
-            memberRepository.findById(node.memberId())
-                .map(m -> m.getUsername())
-                .orElse("unknown")
-        );
+                "memberUsername",
+                memberRepository.findById(node.memberId())
+                        .map(m -> m.getUsername())
+                        .orElse("unknown"));
         payload.put(
-            "appointerUsername",
-            node.appointerId() == null
-                ? null
-                : memberRepository.findById(node.appointerId())
-                    .map(m -> m.getUsername())
-                    .orElse("unknown")
-        );  
+                "appointerUsername",
+                node.appointerId() == null
+                        ? null
+                        : memberRepository.findById(node.appointerId())
+                                .map(m -> m.getUsername())
+                                .orElse("unknown"));
         payload.put("roleType", "OWNER");
         payload.put("appointerId", node.appointerId() == null ? null : node.appointerId().value());
 
         List<Map<String, Object>> ownerChildren = node.appointedOwners().stream()
                 .map(n -> ownerNodeToMap(n, memberRepository))
                 .toList();
+
         List<Map<String, Object>> managerChildren = node.appointedManagers().stream()
                 .map(n -> managerNodeToMap(n, memberRepository))
                 .toList();
 
         payload.put("owners", ownerChildren);
         payload.put("managers", managerChildren);
+
         return payload;
     }
 
-    private static Map<String, Object> managerNodeToMap(ManagerNode node, IMemberRepository memberRepository) {
+    private static Map<String, Object> managerNodeToMap(
+            ManagerNode node,
+            IMemberRepository memberRepository) {
         Map<String, Object> payload = new LinkedHashMap<>();
+
         payload.put("memberId", node.memberId().value());
         payload.put(
-            "memberUsername",
-            memberRepository.findById(node.memberId())
-                .map(m -> m.getUsername())
-                .orElse("unknown")
-        );
+                "memberUsername",
+                memberRepository.findById(node.memberId())
+                        .map(m -> m.getUsername())
+                        .orElse("unknown"));
         payload.put(
-            "appointerUsername",
-            node.appointerId() == null
-                ? null
-                : memberRepository.findById(node.appointerId())
-                    .map(m -> m.getUsername())
-                    .orElse("unknown")
-        );  
+                "appointerUsername",
+                node.appointerId() == null
+                        ? null
+                        : memberRepository.findById(node.appointerId())
+                                .map(m -> m.getUsername())
+                                .orElse("unknown"));
         payload.put("roleType", "MANAGER");
         payload.put("appointerId", node.appointerId().value());
         payload.put("permissions", node.permissions().stream().map(Permission::name).toList());
@@ -450,18 +496,20 @@ public class IntegrationExtController {
         List<Map<String, Object>> children = node.appointedManagers().stream()
                 .map(n -> managerNodeToMap(n, memberRepository))
                 .toList();
+
         payload.put("managers", children);
+
         return payload;
     }
 
     private static Map<String, Object> policiesPayload(
             List<PurchasePolicy> purchasePolicies,
             List<DiscountPolicy> discountPolicies) {
-
         Map<String, Object> payload = new LinkedHashMap<>();
 
+        // TODO: remove this legacy combined field after the UI fully stops using it.
         List<Map<String, Object>> items = new ArrayList<>();
-                //TODO - remove this part after policies fixed
+
         purchasePolicies.stream()
                 .map(IntegrationExtController::purchasePolicyToMap)
                 .forEach(items::add);
@@ -471,10 +519,11 @@ public class IntegrationExtController {
                 .forEach(items::add);
 
         payload.put("items", items);
-        // remove up to here
+
         payload.put("purchasePolicies", purchasePolicies.stream()
                 .map(IntegrationExtController::purchasePolicyToMap)
                 .toList());
+
         payload.put("discountPolicies", discountPolicies.stream()
                 .map(IntegrationExtController::discountPolicyToMap)
                 .toList());
@@ -484,6 +533,7 @@ public class IntegrationExtController {
 
     private static Map<String, Object> purchasePolicyToMap(PurchasePolicy policy) {
         Map<String, Object> payload = new LinkedHashMap<>();
+
         payload.put("policyId", policy.id().value());
         payload.put("policyName", policy.policyName());
         payload.put("policyType", "PURCHASE");
@@ -491,12 +541,14 @@ public class IntegrationExtController {
         payload.put("active", policy.isActive());
         payload.put("ownerType", policy.isEventPolicy() ? "EVENT" : "COMPANY");
         payload.put("scope", scopeToMap(policy.scope()));
-        payload.put("summary", policy.policy() == null ? null : policy.policy().toString());
+        payload.put("summary", purchaseRuleSummary(policy.policy()));
+
         return payload;
     }
 
     private static Map<String, Object> discountPolicyToMap(DiscountPolicy policy) {
         Map<String, Object> payload = new LinkedHashMap<>();
+
         payload.put("policyId", policy.id().value());
         payload.put("policyName", "Discount Policy");
         payload.put("policyType", "DISCOUNT");
@@ -505,9 +557,245 @@ public class IntegrationExtController {
         payload.put("ownerType", policy.isEventPolicy() ? "EVENT" : "COMPANY");
         payload.put("scope", scopeToMap(policy.scope()));
         payload.put("stackable", policy.isStackable());
-        payload.put("discounts", policy.getDiscountInfos());
-        payload.put("summary", policy.discounts().size() + " discount(s)");
+        payload.put("discounts", discountInfosToMaps(policy));
+        payload.put("summary", discountPolicySummary(policy));
+
         return payload;
+    }
+
+    private static String discountPolicySummary(DiscountPolicy policy) {
+        int count = policy.discounts().size();
+
+        if (count == 0) {
+            return "No discounts";
+        }
+
+        String stacking = policy.isStackable()
+                ? "discounts can stack"
+                : "best matching discount only";
+
+        return count + " discount(s), " + stacking;
+    }
+
+    private static List<Map<String, Object>> discountInfosToMaps(DiscountPolicy policy) {
+        return policy.discounts().stream()
+                .map(discount -> {
+                    IPolicy condition = discount.policy();
+                    String code = extractCouponCode(condition);
+
+                    Map<String, Object> payload = new LinkedHashMap<>();
+                    payload.put("discountName", discount.getDiscountName());
+                    payload.put("discountPercent", discount.getDiscountPercent());
+                    payload.put("visible", discount.isVisible());
+                    payload.put("endDate", discount.getEndDate());
+                    payload.put("discountType", discountType(discount, condition));
+                    payload.put("conditionSummary", discountConditionSummary(discount, condition));
+
+                    // Managers are allowed to see the code in the editing screen.
+                    // Null for non-coupon discounts.
+                    payload.put("discountCode", code);
+
+                    return payload;
+                })
+                .toList();
+    }
+
+    private static String discountType(Discount discount, IPolicy condition) {
+        if (!discount.isVisible()) {
+            return "Coupon";
+        }
+
+        if (isUnconditionalDiscount(condition, discount.getEndDate())) {
+            return "Visible";
+        }
+
+        return "Conditional";
+    }
+
+    private static String discountConditionSummary(Discount discount, IPolicy condition) {
+        if (condition == null) {
+            return "No condition";
+        }
+
+        String code = extractCouponCode(condition);
+        String summary = purchaseRuleSummaryIgnoringOnlyEndDate(condition, discount.getEndDate());
+
+        if (!discount.isVisible()) {
+            if (code != null && discount.getEndDate() != null) {
+                return "Coupon code: " + code + ", valid until " + discount.getEndDate();
+            }
+
+            if (code != null) {
+                return "Coupon code: " + code;
+            }
+
+            if (discount.getEndDate() != null) {
+                return "Coupon code required, valid until " + discount.getEndDate();
+            }
+
+            return "Coupon code required";
+        }
+
+        if (summary == null || summary.isBlank()) {
+            if (discount.getEndDate() != null) {
+                return "Available until " + discount.getEndDate();
+            }
+
+            return "Applies to everyone";
+        }
+
+        if (discount.getEndDate() != null && !summary.contains(discount.getEndDate().toString())) {
+            return summary + ", available until " + discount.getEndDate();
+        }
+
+        return summary;
+    }
+
+    private static String purchaseRuleSummary(IPolicy policy) {
+        if (policy == null) {
+            return "No purchase rule";
+        }
+
+        if (policy instanceof MinTicketPolicy minTicketPolicy) {
+            return "Minimum " + minTicketPolicy.minTickets() + " ticket(s)";
+        }
+
+        if (policy instanceof MaxTicketPolicy maxTicketPolicy) {
+            return "Maximum " + maxTicketPolicy.maxTickets() + " ticket(s)";
+        }
+
+        if (policy instanceof MinAgePolicy minAgePolicy) {
+            return "Buyer must be at least " + minAgePolicy.minAge();
+        }
+
+        if (policy instanceof CodePolicy codePolicy) {
+            return "Coupon code: " + codePolicy.requiredCode();
+        }
+
+        if (policy instanceof UntilDatePolicy untilDatePolicy) {
+            return "Available until " + untilDatePolicy.deadlineDate();
+        }
+
+        if (policy instanceof AfterDatePolicy afterDatePolicy) {
+            return "Available after " + afterDatePolicy.deadlineDate();
+        }
+
+        if (policy instanceof AlwaysTruePolicy) {
+            return "No restriction";
+        }
+
+        if (policy instanceof RequireMemberPolicy) {
+            return "Buyer must be a registered member";
+        }
+
+        if (policy instanceof ICompositePolicy compositePolicy) {
+            List<String> childSummaries = compositeChildren(compositePolicy).stream()
+                    .map(IntegrationExtController::purchaseRuleSummary)
+                    .filter(summary -> summary != null && !summary.isBlank())
+                    .toList();
+
+            if (childSummaries.isEmpty()) {
+                return "Composite policy";
+            }
+
+            String separator = compositePolicy.type() == PolicyType.OR
+                    ? " OR "
+                    : " AND ";
+
+            return String.join(separator, childSummaries);
+        }
+
+        return policy.getClass()
+                .getSimpleName()
+                .replaceAll("([a-z])([A-Z])", "$1 $2");
+    }
+
+    private static String purchaseRuleSummaryIgnoringOnlyEndDate(IPolicy policy, LocalDate endDate) {
+        if (policy == null) {
+            return "";
+        }
+
+        if (isOnlyEndDatePolicy(policy, endDate)) {
+            return "";
+        }
+
+        if (policy instanceof ICompositePolicy compositePolicy) {
+            List<String> childSummaries = compositeChildren(compositePolicy).stream()
+                    .filter(child -> !isOnlyEndDatePolicy(child, endDate))
+                    .map(child -> purchaseRuleSummaryIgnoringOnlyEndDate(child, endDate))
+                    .filter(summary -> summary != null && !summary.isBlank())
+                    .toList();
+
+            if (childSummaries.isEmpty()) {
+                return "";
+            }
+
+            String separator = compositePolicy.type() == PolicyType.OR
+                    ? " OR "
+                    : " AND ";
+
+            return String.join(separator, childSummaries);
+        }
+
+        return purchaseRuleSummary(policy);
+    }
+
+    private static boolean isUnconditionalDiscount(IPolicy condition, LocalDate endDate) {
+        if (condition == null) {
+            return true;
+        }
+
+        if (condition instanceof AlwaysTruePolicy) {
+            return true;
+        }
+
+        if (isOnlyEndDatePolicy(condition, endDate)) {
+            return true;
+        }
+
+        if (condition instanceof ICompositePolicy compositePolicy) {
+            List<IPolicy> meaningfulChildren = compositeChildren(compositePolicy).stream()
+                    .filter(child -> !isOnlyEndDatePolicy(child, endDate))
+                    .filter(child -> !(child instanceof AlwaysTruePolicy))
+                    .toList();
+
+            return meaningfulChildren.isEmpty();
+        }
+
+        return false;
+    }
+
+    private static boolean isOnlyEndDatePolicy(IPolicy policy, LocalDate endDate) {
+        return endDate != null
+                && policy instanceof UntilDatePolicy untilDatePolicy
+                && endDate.equals(untilDatePolicy.deadlineDate());
+    }
+
+    private static String extractCouponCode(IPolicy policy) {
+        if (policy == null) {
+            return null;
+        }
+
+        if (policy instanceof CodePolicy codePolicy) {
+            return codePolicy.requiredCode();
+        }
+
+        if (policy instanceof ICompositePolicy compositePolicy) {
+            return compositeChildren(compositePolicy).stream()
+                    .map(IntegrationExtController::extractCouponCode)
+                    .filter(code -> code != null && !code.isBlank())
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return null;
+    }
+
+    private static List<IPolicy> compositeChildren(ICompositePolicy compositePolicy) {
+        return ((List<?>) compositePolicy.children()).stream()
+                .filter(IPolicy.class::isInstance)
+                .map(IPolicy.class::cast)
+                .toList();
     }
 
     private static Map<String, Object> scopeToMap(PolicyScope scope) {
@@ -526,14 +814,27 @@ public class IntegrationExtController {
         return payload;
     }
 
-    public record AddZoneRequest(String zoneName, BigDecimal price, String currency, int capacity,
-                                 String zoneType, Integer rows, Integer seatsPerRow) {
-        /** Backward-compatible constructor: standing zone with no seat layout. */
+    public record AddZoneRequest(
+            String zoneName,
+            BigDecimal price,
+            String currency,
+            int capacity,
+            String zoneType,
+            Integer rows,
+            Integer seatsPerRow) {
+        /**
+         * Backward-compatible constructor: standing zone with no seat layout.
+         */
         public AddZoneRequest(String zoneName, BigDecimal price, String currency, int capacity) {
             this(zoneName, price, currency, capacity, "STANDING", null, null);
         }
     }
 
-    public record UpdateEventRequest(String eventName, List<String> dates, String category,
-                                     String location, String description) {}
+    public record UpdateEventRequest(
+            String eventName,
+            List<String> dates,
+            String category,
+            String location,
+            String description) {
+    }
 }

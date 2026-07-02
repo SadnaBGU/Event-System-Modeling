@@ -424,7 +424,7 @@ class IntegrationExtControllerTest {
                 .andExpect(jsonPath("$.discountPolicies[0].scope.eventIds").isEmpty())
                 .andExpect(jsonPath("$.discountPolicies[0].stackable").value(false))
                 .andExpect(jsonPath("$.discountPolicies[0].discounts").isEmpty())
-                .andExpect(jsonPath("$.discountPolicies[0].summary").value("0 discount(s)"));
+                .andExpect(jsonPath("$.discountPolicies[0].summary").value("No discounts"));
 
         verify(purchasePolicyRepository).findCompanyOwnedPolicies(companyId);
         verify(discountPolicyRepository).findCompanyOwnedPolicies(companyId);
@@ -620,7 +620,7 @@ class IntegrationExtControllerTest {
         when(policy.isActive()).thenReturn(active);
         when(policy.isEventPolicy()).thenReturn(false);
         when(policy.isStackable()).thenReturn(false);
-        when(policy.getDiscountInfos()).thenReturn(List.of());
+        //when(policy.getDiscountInfos()).thenReturn(List.of());
         when(policy.discounts()).thenReturn(List.of());
 
         return policy;
@@ -639,7 +639,7 @@ class IntegrationExtControllerTest {
         when(policy.isActive()).thenReturn(active);
         when(policy.isEventPolicy()).thenReturn(true);
         when(policy.isStackable()).thenReturn(false);
-        when(policy.getDiscountInfos()).thenReturn(List.of());
+        //when(policy.getDiscountInfos()).thenReturn(List.of());
         when(policy.discounts()).thenReturn(List.of());
 
         return policy;

@@ -132,6 +132,30 @@ export function PolicyEditorPage({ scope }: Props) {
     },
     onError: (err) => toast.error(friendlyError(err, "Couldn't save the discount policy.")),
   });
+    
+  const deletePurchase = useMutation({
+    mutationFn: (policyId: string) =>
+      scope === 'company'
+        ? policiesApi.deleteCompanyPurchase(id, policyId)
+        : policiesApi.deleteEventPurchase(id, policyId),
+    onSuccess: async () => {
+      toast.success('Purchase policy deleted.');
+      await query.refetch();
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't delete the purchase policy.")),
+  });
+
+  const deleteDiscount = useMutation({
+    mutationFn: (policyId: string) =>
+      scope === 'company'
+        ? policiesApi.deleteCompanyDiscount(id, policyId)
+        : policiesApi.deleteEventDiscount(id, policyId),
+    onSuccess: async () => {
+      toast.success('Discount policy deleted.');
+      await query.refetch();
+    },
+    onError: (err) => toast.error(friendlyError(err, "Couldn't delete the discount policy.")),
+  });
 
   const discountsValid =
     discounts.length > 0 &&
@@ -204,7 +228,11 @@ export function PolicyEditorPage({ scope }: Props) {
         Who may buy, and how many, for example max tickets per buyer or minimum age.
       </p>
 
-      <ExistingPurchasePolicies policies={bundle.purchasePolicies} />
+    <ExistingPurchasePolicies
+      policies={bundle.purchasePolicies}
+      deleting={deletePurchase.isPending}
+      onDelete={(policyId) => deletePurchase.mutate(policyId)}
+    />
 
       <h3 className="draft-title">New purchase policy draft</h3>
 
@@ -244,7 +272,11 @@ export function PolicyEditorPage({ scope }: Props) {
         Visible discounts, conditional offers, or hidden coupon codes.
       </p>
 
-      <ExistingDiscountPolicies policies={bundle.discountPolicies} />
+      <ExistingDiscountPolicies
+        policies={bundle.discountPolicies}
+        deleting={deleteDiscount.isPending}
+        onDelete={(policyId) => deleteDiscount.mutate(policyId)}
+      />
 
       <h3 className="draft-title">New discount policy draft</h3>
 
@@ -366,7 +398,15 @@ export function PolicyEditorPage({ scope }: Props) {
   );
 }
 
-function ExistingPurchasePolicies({ policies }: { policies: PurchasePolicySummary[] }) {
+function ExistingPurchasePolicies({
+  policies,
+  deleting,
+  onDelete,
+}: {
+  policies: PurchasePolicySummary[];
+  deleting: boolean;
+  onDelete: (policyId: string) => void;
+}) {
   return (
     <section className="saved-policy-section">
       <h3>Saved purchase policies</h3>
@@ -383,6 +423,19 @@ function ExistingPurchasePolicies({ policies }: { policies: PurchasePolicySummar
                 <span className={policy.active ? 'status-pill active' : 'status-pill inactive'}>
                   {policy.active ? 'Active' : 'Inactive'}
                 </span>
+
+                <button
+                  type="button"
+                  className="btn danger small saved-policy-delete"
+                  disabled={deleting}
+                  onClick={() => {
+                    if (window.confirm('Delete this purchase policy?')) {
+                      onDelete(policy.policyId);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
               </div>
 
               <dl>
@@ -409,7 +462,15 @@ function ExistingPurchasePolicies({ policies }: { policies: PurchasePolicySummar
   );
 }
 
-function ExistingDiscountPolicies({ policies }: { policies: DiscountPolicySummary[] }) {
+function ExistingDiscountPolicies({
+  policies,
+  deleting,
+  onDelete,
+}: {
+  policies: DiscountPolicySummary[];
+  deleting: boolean;
+  onDelete: (policyId: string) => void;
+}) {
   return (
     <section className="saved-policy-section">
       <h3>Saved discount policies</h3>
@@ -426,6 +487,19 @@ function ExistingDiscountPolicies({ policies }: { policies: DiscountPolicySummar
                 <span className={policy.active ? 'status-pill active' : 'status-pill inactive'}>
                   {policy.active ? 'Active' : 'Inactive'}
                 </span>
+
+                <button
+                  type="button"
+                  className="btn danger small saved-policy-delete"
+                  disabled={deleting}
+                  onClick={() => {
+                    if (window.confirm('Delete this discount policy?')) {
+                      onDelete(policy.policyId);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
               </div>
 
               <dl>
@@ -456,7 +530,11 @@ function ExistingDiscountPolicies({ policies }: { policies: DiscountPolicySummar
                     <li key={`${policy.policyId}-${index}`}>
                       <strong>{discount.discountName}</strong>
                       {' · '}
+                      {discount.discountType || inferDiscountType(discount)}
+                      {' · '}
                       {formatPercent(discount.discountPercent)} off
+                      {discount.discountCode ? ` · code: ${discount.discountCode}` : ''}
+                      {discount.conditionSummary ? ` · ${discount.conditionSummary}` : ''}
                       {discount.endDate ? ` · until ${discount.endDate}` : ''}
                     </li>
                   ))}
@@ -493,6 +571,18 @@ function formatPercent(value: number | string): string {
 
   const trimmed = value.trim();
   return trimmed.endsWith('%') ? trimmed : `${trimmed}%`;
+}
+
+function inferDiscountType(discount: { visible?: boolean; discountCode?: string | null }): string {
+  if (discount.discountCode) {
+    return 'Coupon';
+  }
+
+  if (discount.visible === false) {
+    return 'Coupon';
+  }
+
+  return 'Discount';
 }
 
 function updateDiscount(

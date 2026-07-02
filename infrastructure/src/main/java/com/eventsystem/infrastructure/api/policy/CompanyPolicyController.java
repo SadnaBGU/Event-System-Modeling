@@ -13,6 +13,8 @@ import com.eventsystem.domain.event.EventStatus;
 import com.eventsystem.domain.event.IEventRepository;
 import com.eventsystem.domain.member.MemberId;
 import com.eventsystem.domain.policy.PolicyBuilder;
+import com.eventsystem.domain.policy.discount.DiscountPolicyId;
+import com.eventsystem.domain.policy.purchase.PurchasePolicyId;
 import com.eventsystem.domain.policy.rule.IPolicy;
 import com.eventsystem.domain.policy.rule.basic.AfterDatePolicy;
 import com.eventsystem.domain.policy.rule.basic.CodePolicy;
@@ -23,6 +25,7 @@ import com.eventsystem.domain.policy.rule.basic.UntilDatePolicy;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -47,7 +50,7 @@ public class CompanyPolicyController {
     private final IEventRepository eventRepository;
 
     public CompanyPolicyController(PolicyManagementService policyManagementService,
-                                   IEventRepository eventRepository) {
+            IEventRepository eventRepository) {
         this.policyManagementService = Objects.requireNonNull(
                 policyManagementService,
                 "policyManagementService must not be null");
@@ -115,8 +118,8 @@ public class CompanyPolicyController {
 
     @PutMapping("/companies/{companyId}/discount-policies")
     public ResponseEntity<Void> setCompanyDiscountPolicy(@RequestAttribute("authenticatedMemberId") MemberId actor,
-                                                         @PathVariable String companyId,
-                                                         @RequestBody DiscountPolicyRequest request) {
+            @PathVariable String companyId,
+            @RequestBody DiscountPolicyRequest request) {
         PolicyScopeCommand scope = new PolicyScopeCommand(true, Set.of());
         policyManagementService.createDiscountPolicy(toCommand(actor.value(), companyId, scope, request));
         return ResponseEntity.ok().build();
@@ -124,8 +127,8 @@ public class CompanyPolicyController {
 
     @PutMapping("/events/{eventId}/discount-policies")
     public ResponseEntity<Void> setEventDiscountPolicy(@RequestAttribute("authenticatedMemberId") MemberId actor,
-                                                       @PathVariable String eventId,
-                                                       @RequestBody DiscountPolicyRequest request) {
+            @PathVariable String eventId,
+            @RequestBody DiscountPolicyRequest request) {
         Event event = eventRepository.findById(new EventId(eventId))
                 .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId));
         requireDraft(event);
@@ -136,7 +139,7 @@ public class CompanyPolicyController {
     }
 
     private DiscountPolicyCommand toCommand(String actorId, String companyId,
-                                            PolicyScopeCommand scope, DiscountPolicyRequest request) {
+            PolicyScopeCommand scope, DiscountPolicyRequest request) {
         if (request == null || request.discounts() == null || request.discounts().isEmpty()) {
             throw new IllegalArgumentException("at least one discount is required");
         }
@@ -166,18 +169,97 @@ public class CompanyPolicyController {
                     BigDecimal.valueOf(item.percent()), rule, visibility, endDate));
         }
         String policyName = (request.policyName() == null || request.policyName().isBlank())
-                ? "API discount policy" : request.policyName();
+                ? "API discount policy"
+                : request.policyName();
         PolicyOwnerCommand ownerType = scope.companyWide()
-                ? PolicyOwnerCommand.COMPANY : PolicyOwnerCommand.EVENT;
+                ? PolicyOwnerCommand.COMPANY
+                : PolicyOwnerCommand.EVENT;
         return new DiscountPolicyCommand(actorId, companyId, policyName, scope,
                 discounts, request.stackable(), true, ownerType);
     }
 
-    public record DiscountPolicyRequest(String policyName, boolean stackable, List<DiscountItem> discounts) {}
+    @DeleteMapping("/companies/{companyId}/policies/{policyId}")
+    public ResponseEntity<Void> deleteCompanyPurchasePolicy(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String companyId,
+            @PathVariable String policyId) {
+        Objects.requireNonNull(actor, "authenticatedMemberId must not be null");
 
-    public record DiscountItem(String name, Double percent, String code, Integer minTickets, String endDate) {}
+        policyManagementService.deletePurchasePolicy(
+                actor,
+                new CompanyId(companyId),
+                new PurchasePolicyId(policyId));
 
-    /** Loads the event and rejects the edit unless it is still a draft (V3: no policy edits after publish). */
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/events/{eventId}/policies/{policyId}")
+    public ResponseEntity<Void> deleteEventPurchasePolicy(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String eventId,
+            @PathVariable String policyId) {
+        Objects.requireNonNull(actor, "authenticatedMemberId must not be null");
+
+        EventId eId = new EventId(eventId);
+        requireEventEditable(eId);
+
+        Event event = eventRepository.findById(eId)
+                .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId));
+
+        policyManagementService.deletePurchasePolicy(
+                actor,
+                event.companyId(),
+                new PurchasePolicyId(policyId));
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/companies/{companyId}/discount-policies/{policyId}")
+    public ResponseEntity<Void> deleteCompanyDiscountPolicy(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String companyId,
+            @PathVariable String policyId) {
+        Objects.requireNonNull(actor, "authenticatedMemberId must not be null");
+
+        policyManagementService.deleteDiscountPolicy(
+                actor,
+                new CompanyId(companyId),
+                new DiscountPolicyId(policyId));
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/events/{eventId}/discount-policies/{policyId}")
+    public ResponseEntity<Void> deleteEventDiscountPolicy(
+            @RequestAttribute("authenticatedMemberId") MemberId actor,
+            @PathVariable String eventId,
+            @PathVariable String policyId) {
+        Objects.requireNonNull(actor, "authenticatedMemberId must not be null");
+
+        EventId eId = new EventId(eventId);
+        requireEventEditable(eId);
+
+        Event event = eventRepository.findById(eId)
+                .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId));
+
+        policyManagementService.deleteDiscountPolicy(
+                actor,
+                event.companyId(),
+                new DiscountPolicyId(policyId));
+
+        return ResponseEntity.noContent().build();
+    }
+
+    public record DiscountPolicyRequest(String policyName, boolean stackable, List<DiscountItem> discounts) {
+    }
+
+    public record DiscountItem(String name, Double percent, String code, Integer minTickets, String endDate) {
+    }
+
+    /**
+     * Loads the event and rejects the edit unless it is still a draft (V3: no
+     * policy edits after publish).
+     */
     private void requireEventEditable(EventId eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("event not found: " + eventId.value()));
@@ -203,21 +285,26 @@ public class CompanyPolicyController {
             case "MIN_AGE" -> new MinAgePolicy(intValue(node, "value"));
 
             case "MAX_TICKETS",
-                 "MAX_TICKETS_PER_USER",
-                 "MAX_TICKETS_PER_ORDER" -> new MaxTicketPolicy(intValue(node, "value"));
+                    "MAX_TICKETS_PER_USER",
+                    "MAX_TICKETS_PER_ORDER" ->
+                new MaxTicketPolicy(intValue(node, "value"));
 
             case "MIN_TICKETS",
-                 "MIN_TICKETS_PER_USER",
-                 "MIN_TICKETS_PER_ORDER" -> new MinTicketPolicy(intValue(node, "value"));
+                    "MIN_TICKETS_PER_USER",
+                    "MIN_TICKETS_PER_ORDER" ->
+                new MinTicketPolicy(intValue(node, "value"));
 
             case "CODE",
-                 "REQUIRES_CODE" -> new CodePolicy(text(node, "value"));
+                    "REQUIRES_CODE" ->
+                new CodePolicy(text(node, "value"));
 
             case "BEFORE_DATE",
-                 "UNTIL_DATE" -> new UntilDatePolicy(LocalDate.parse(text(node, "value")));
+                    "UNTIL_DATE" ->
+                new UntilDatePolicy(LocalDate.parse(text(node, "value")));
 
             case "AFTER_DATE",
-                 "FROM_DATE" -> new AfterDatePolicy(LocalDate.parse(text(node, "value")));
+                    "FROM_DATE" ->
+                new AfterDatePolicy(LocalDate.parse(text(node, "value")));
 
             default -> throw new IllegalArgumentException("unsupported policy type: " + type);
         };

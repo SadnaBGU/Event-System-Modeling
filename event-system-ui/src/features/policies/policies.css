@@ -257,3 +257,27 @@
 .stackable-toggle input {
   margin: 0;
 }
+
+.saved-policy-delete {
+  margin-left: auto;
+}
+
+.btn.small {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.btn.danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: rgb(153, 27, 27);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.btn.danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
